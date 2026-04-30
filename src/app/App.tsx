@@ -148,6 +148,9 @@ export function App({ initialViewport }: AppProps) {
                 스팀 날개 정찰기와 마력 깃털 드론을 돌파한 뒤, 황동 비공정 코어의 3페이즈를
                 붕괴시키세요.
               </p>
+              <p className="stage-intro__controls">
+                전투 중 화면 어디든 드래그해 회피하세요. 자동 연사는 항상 유지됩니다.
+              </p>
               <button type="button" className="primary-button" onClick={() => startScreen('battle')}>
                 Deploy
               </button>

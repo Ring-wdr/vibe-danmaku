@@ -2,6 +2,40 @@ import { describe, expect, it } from 'vitest'
 
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
+import type { StageDefinition } from '../types'
+
+function createOffscreenBulletStage(): StageDefinition {
+  const stage = createStageDefinition('normal', { fastStage: true })
+
+  return {
+    ...stage,
+    duration: 999,
+    waves: [
+      {
+        id: 'offscreen-bullet-wave',
+        startAt: 0,
+        kind: 'steam-scout',
+        count: 1,
+        spacing: 0,
+        hp: 999,
+        speed: 0,
+        path: 'helix',
+        pattern: {
+          shape: 'ring',
+          count: 4,
+          interval: 999,
+          speed: 4,
+          spread: 0,
+          life: 20,
+        },
+      },
+    ],
+    boss: {
+      ...stage.boss,
+      startAt: 999,
+    },
+  }
+}
 
 describe('createBattleRuntime', () => {
   it('keeps the player inside the lower arena band while dragging', () => {
@@ -16,10 +50,22 @@ describe('createBattleRuntime', () => {
 
     const snapshot = runtime.getSnapshot()
 
-    expect(snapshot.player.position.x).toBeLessThanOrEqual(2.8)
-    expect(snapshot.player.position.x).toBeGreaterThanOrEqual(-2.8)
+    expect(snapshot.player.position.x).toBeLessThanOrEqual(3.3)
+    expect(snapshot.player.position.x).toBeGreaterThanOrEqual(-3.3)
     expect(snapshot.player.position.z).toBeLessThanOrEqual(-0.45)
-    expect(snapshot.player.position.z).toBeGreaterThanOrEqual(-2.6)
+    expect(snapshot.player.position.z).toBeGreaterThanOrEqual(-3.15)
+  })
+
+  it('allows drag movement into the former bottom instruction area', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createStageDefinition('normal'),
+    })
+
+    runtime.beginDrag({ x: 0, z: -3.15 })
+    runtime.update(0.016)
+
+    expect(runtime.getSnapshot().player.position.z).toBe(-3.15)
   })
 
   it('applies invulnerability frames after taking a hit', () => {
@@ -50,5 +96,29 @@ describe('createBattleRuntime', () => {
     runtime.update(0.45)
 
     expect(runtime.getSnapshot().playerShots).toBeGreaterThan(0)
+  })
+
+  it('lets enemy bullets leave the viewport before cleaning them up after a grace period', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createOffscreenBulletStage(),
+    })
+
+    runtime.update(0.5)
+    runtime.update(0.7)
+
+    expect(
+      runtime.getSnapshot().bullets.some(
+        (bullet) => bullet.source === 'enemy' && Math.abs(bullet.position.x) > 3.4,
+      ),
+    ).toBe(true)
+
+    runtime.update(1.3)
+
+    expect(
+      runtime.getSnapshot().bullets.some(
+        (bullet) => bullet.source === 'enemy' && Math.abs(bullet.position.x) > 3.4,
+      ),
+    ).toBe(false)
   })
 })

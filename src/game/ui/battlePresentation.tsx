@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 
-import type { ArenaPoint, BattleSnapshot } from '../types'
+import { gameAssets } from '../assets'
+import type { ArenaPoint, BattleSnapshot, EnemyKind } from '../types'
 
 type LayerKind = 'player' | 'enemy' | 'boss' | 'bullet'
 
@@ -13,7 +14,19 @@ type LayerPoint = {
 type EntityStyle = CSSProperties & {
   '--entity-scale'?: number
   '--entity-size'?: string
+  '--entity-width'?: string
+  '--entity-height'?: string
   '--entity-color'?: string
+}
+
+function resolveEnemyAsset(kind: EnemyKind) {
+  if (kind === 'feather-drone') {
+    return gameAssets.enemyFeatherUrl
+  }
+  if (kind === 'boss-core') {
+    return gameAssets.bossCoreUrl
+  }
+  return gameAssets.enemyScoutUrl
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -21,14 +34,17 @@ function clamp(value: number, min: number, max: number) {
 }
 
 export function projectArenaPointToLayer(point: ArenaPoint, kind: LayerKind): LayerPoint {
-  const normalizedX = clamp((point.x + 3.4) / 6.8, 0, 1)
-  const normalizedZ = clamp((point.z + 3.2) / 6.4, 0, 1)
+  const rawNormalizedX = (point.x + 3.4) / 6.8
+  const rawNormalizedZ = (point.z + 3.2) / 6.4
+  const normalizedX = kind === 'bullet' ? rawNormalizedX : clamp(rawNormalizedX, 0, 1)
+  const normalizedZ = kind === 'bullet' ? rawNormalizedZ : clamp(rawNormalizedZ, 0, 1)
   const depth = 1 - normalizedZ
   const horizonOffset = kind === 'enemy' || kind === 'boss' ? 14 : 12
+  const verticalTravel = kind === 'enemy' || kind === 'boss' ? 74 : 82
 
   return {
     left: 12 + normalizedX * 76,
-    top: horizonOffset + depth * (kind === 'enemy' || kind === 'boss' ? 74 : 72),
+    top: horizonOffset + depth * verticalTravel,
     scale: 0.68 + normalizedZ * 0.72,
   }
 }
@@ -52,16 +68,41 @@ export function BattlePresentationLayer({
 
   return (
     <div className="battle-entities" aria-hidden="true">
-      <div className="battle-entities__arena" />
-
+      <img
+        className="battle-entities__cloud battle-entities__cloud--far-a"
+        src={gameAssets.cloudLayerAUrl}
+        alt=""
+      />
+      <img
+        className="battle-entities__cloud battle-entities__cloud--far-b"
+        src={gameAssets.cloudLayerBUrl}
+        alt=""
+      />
+      <img
+        className="battle-entities__cloud battle-entities__cloud--near-a"
+        src={gameAssets.cloudLayerAUrl}
+        alt=""
+      />
+      <img
+        className="battle-entities__cloud battle-entities__cloud--near-b"
+        src={gameAssets.cloudLayerBUrl}
+        alt=""
+      />
       <div
         className={`battle-entity battle-entity--player ${
           snapshot.player.invulnerable ? 'battle-entity--player-invulnerable' : ''
         }`}
-        style={createEntityStyle(player)}
+        style={createEntityStyle(player, {
+          '--entity-width': '82px',
+          '--entity-height': '132px',
+          aspectRatio: '41 / 66',
+        })}
       >
         <span className="battle-entity__shadow" />
-        <span className="battle-entity__player-core" />
+        <span
+          className="battle-entity__sprite battle-entity__sprite--player"
+          style={{ backgroundImage: `url(${gameAssets.playerSheetUrl})` }}
+        />
       </div>
 
       {snapshot.enemies.map((enemy) => {
@@ -74,7 +115,12 @@ export function BattlePresentationLayer({
               '--entity-color': enemy.kind === 'feather-drone' ? '#7af0ff' : '#ffbe62',
             })}
           >
-            <span className="battle-entity__enemy-core" />
+            <span className="battle-entity__shadow battle-entity__shadow--enemy" />
+            <img
+              className="battle-entity__sprite battle-entity__sprite--enemy"
+              src={resolveEnemyAsset(enemy.kind)}
+              alt=""
+            />
           </div>
         )
       })}
@@ -84,10 +130,18 @@ export function BattlePresentationLayer({
         return (
           <div
             className="battle-entity battle-entity--boss"
-            style={createEntityStyle(layer)}
+            style={createEntityStyle(layer, {
+              '--entity-width': '128px',
+              '--entity-height': '160px',
+              aspectRatio: '4 / 5',
+            })}
           >
-            <span className="battle-entity__boss-ring" />
-            <span className="battle-entity__boss-core" />
+            <span className="battle-entity__boss-aura" />
+            <img
+              className="battle-entity__sprite battle-entity__sprite--boss"
+              src={gameAssets.bossCoreUrl}
+              alt=""
+            />
           </div>
         )
       })() : null}

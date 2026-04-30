@@ -24,6 +24,12 @@ type BattleViewProps = {
   onComplete: (result: RunResult) => void
 }
 
+export const battleDragInputConfig = {
+  horizontalWorldSpan: 8,
+  verticalWorldSpan: 5.2,
+  verticalWorldTop: 1.8,
+} as const
+
 function StageScene({
   snapshot,
 }: Pick<ReturnType<typeof useBattleRuntime>, 'snapshot'>) {
@@ -169,7 +175,7 @@ function StageScene({
   )
 }
 
-function createArenaPoint(
+export function createArenaPoint(
   clientX: number,
   clientY: number,
   rect: DOMRect,
@@ -178,8 +184,8 @@ function createArenaPoint(
   const yRatio = (clientY - rect.top) / rect.height
 
   return {
-    x: (xRatio - 0.5) * 6.2,
-    z: 1.8 - yRatio * 4.6,
+    x: (xRatio - 0.5) * battleDragInputConfig.horizontalWorldSpan,
+    z: battleDragInputConfig.verticalWorldTop - yRatio * battleDragInputConfig.verticalWorldSpan,
   }
 }
 
@@ -288,33 +294,27 @@ export function BattleView({
         <BattlePresentationLayer snapshot={snapshot} />
       </div>
 
-      <div className="battle-hud">
-        <div className="battle-chip">
-          <span>Stage 1</span>
-          <strong>{snapshot.phaseLabel}</strong>
-        </div>
-        <div className="battle-chip battle-chip--hp">
-          <span>Hull</span>
-          <strong>{'◆'.repeat(snapshot.player.hp).padEnd(3, '◇')}</strong>
-        </div>
-        <div className="battle-chip">
-          <span>Difficulty</span>
-          <strong>{difficulty.toUpperCase()}</strong>
+      <div className="battle-hud" aria-label="Battle status">
+        <div className="battle-status">
+          <div className="battle-status__phase">
+            <span>Stage 1</span>
+            <strong>{snapshot.phaseLabel}</strong>
+          </div>
+          <div className="battle-status__meta">
+            <strong className="battle-status__difficulty">{difficulty.toUpperCase()}</strong>
+            <strong className="battle-status__hp" aria-label={`Hull ${snapshot.player.hp} of 3`}>
+              {'◆'.repeat(snapshot.player.hp).padEnd(3, '◇')}
+            </strong>
+          </div>
         </div>
         {snapshot.boss ? (
           <div className="battle-boss">
-            <span>Boss Core</span>
+            <span>Boss</span>
             <div className="battle-boss__bar">
               <i style={{ width: `${snapshot.boss.hpRatio * 100}%` }} />
             </div>
           </div>
         ) : null}
-      </div>
-
-      <div className="battle-tip">
-        드래그로 회피하세요. 자동 연사는 항상 유지됩니다.
-        {fastStage ? ' Fast stage enabled.' : ''}
-        {invincible ? ' Debug shield engaged.' : ''}
       </div>
     </section>
   )

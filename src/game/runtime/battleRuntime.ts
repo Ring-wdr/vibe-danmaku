@@ -22,6 +22,7 @@ type RuntimeBullet = {
   glow: number
   life: number
   damage: number
+  offViewportFor: number
 }
 
 type RuntimeEnemy = {
@@ -56,8 +57,25 @@ type RuntimeOptions = {
 
 type Listener = () => void
 
+const bulletViewportBounds = {
+  minX: -3.4,
+  maxX: 3.4,
+  minZ: -3.2,
+  maxZ: 3.2,
+  cleanupGrace: 1.2,
+} as const
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function isBulletOutsideViewport(bullet: RuntimeBullet) {
+  return (
+    bullet.x < bulletViewportBounds.minX ||
+    bullet.x > bulletViewportBounds.maxX ||
+    bullet.z < bulletViewportBounds.minZ ||
+    bullet.z > bulletViewportBounds.maxZ
+  )
 }
 
 function distanceSquared(a: ArenaPoint, b: ArenaPoint) {
@@ -167,8 +185,8 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
     return cachedSnapshot
   }
 
-  const addBullet = (bullet: Omit<RuntimeBullet, 'id'>) => {
-    bullets.push({ id: `bullet-${lastBulletId++}`, ...bullet })
+  const addBullet = (bullet: Omit<RuntimeBullet, 'id' | 'offViewportFor'>) => {
+    bullets.push({ id: `bullet-${lastBulletId++}`, offViewportFor: 0, ...bullet })
   }
 
   const firePattern = (originX: number, originZ: number, pattern: EnemyWave['pattern']) => {
@@ -405,13 +423,13 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
         }
       }
 
-      if (
-        bullet.life <= 0 ||
-        bullet.z < -3.4 ||
-        bullet.z > 3.1 ||
-        bullet.x < -4.4 ||
-        bullet.x > 4.4
-      ) {
+      if (isBulletOutsideViewport(bullet)) {
+        bullet.offViewportFor += delta
+      } else {
+        bullet.offViewportFor = 0
+      }
+
+      if (bullet.life <= 0 || bullet.offViewportFor >= bulletViewportBounds.cleanupGrace) {
         bullets.splice(index, 1)
       }
     }
