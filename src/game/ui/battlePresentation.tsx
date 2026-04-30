@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import type { ArenaPoint, BattleSnapshot } from '../types'
 
 type LayerKind = 'player' | 'enemy' | 'boss' | 'bullet'
@@ -6,6 +8,12 @@ type LayerPoint = {
   left: number
   top: number
   scale: number
+}
+
+type EntityStyle = CSSProperties & {
+  '--entity-scale'?: number
+  '--entity-size'?: string
+  '--entity-color'?: string
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -25,6 +33,16 @@ export function projectArenaPointToLayer(point: ArenaPoint, kind: LayerKind): La
   }
 }
 
+function createEntityStyle(layer: LayerPoint, customStyle?: EntityStyle): EntityStyle {
+  return {
+    left: `${layer.left}%`,
+    top: `${layer.top}%`,
+    aspectRatio: '1 / 1',
+    '--entity-scale': layer.scale,
+    ...customStyle,
+  }
+}
+
 export function BattlePresentationLayer({
   snapshot,
 }: {
@@ -34,76 +52,63 @@ export function BattlePresentationLayer({
 
   return (
     <div className="battle-entities" aria-hidden="true">
-      <svg className="battle-entities__svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <defs>
-          <radialGradient id="arenaGlow" cx="50%" cy="58%" r="55%">
-            <stop offset="0%" stopColor="#5ceee4" stopOpacity="0.22" />
-            <stop offset="58%" stopColor="#5ceee4" stopOpacity="0.06" />
-            <stop offset="100%" stopColor="#5ceee4" stopOpacity="0" />
-          </radialGradient>
-        </defs>
+      <div className="battle-entities__arena" />
 
-        <ellipse cx="50" cy="64" rx="26" ry="14" fill="url(#arenaGlow)" />
-        <ellipse cx="50" cy="64" rx="24" ry="12.5" fill="none" stroke="#5ceee4" strokeOpacity="0.35" strokeWidth="0.45" />
+      <div
+        className={`battle-entity battle-entity--player ${
+          snapshot.player.invulnerable ? 'battle-entity--player-invulnerable' : ''
+        }`}
+        style={createEntityStyle(player)}
+      >
+        <span className="battle-entity__shadow" />
+        <span className="battle-entity__player-core" />
+      </div>
 
-        <ellipse
-          cx={player.left}
-          cy={player.top + 4}
-          rx={4.2 * player.scale}
-          ry={2.2 * player.scale}
-          fill="#5ceee4"
-          fillOpacity="0.34"
-        />
-        <polygon
-          points={`${player.left},${player.top - 4.2} ${player.left + 2.2},${player.top} ${player.left},${player.top + 4.2} ${player.left - 2.2},${player.top}`}
-          fill={snapshot.player.invulnerable ? '#fff1c6' : '#5ceee4'}
-          fillOpacity={snapshot.player.invulnerable ? 0.82 : 1}
-          stroke="#fff4df"
-          strokeWidth="0.35"
-        />
+      {snapshot.enemies.map((enemy) => {
+        const layer = projectArenaPointToLayer(enemy.position, 'enemy')
+        return (
+          <div
+            key={enemy.id}
+            className={`battle-entity battle-entity--enemy battle-entity--${enemy.kind}`}
+            style={createEntityStyle(layer, {
+              '--entity-color': enemy.kind === 'feather-drone' ? '#7af0ff' : '#ffbe62',
+            })}
+          >
+            <span className="battle-entity__enemy-core" />
+          </div>
+        )
+      })}
 
-        {snapshot.enemies.map((enemy) => {
-          const layer = projectArenaPointToLayer(enemy.position, 'enemy')
-          const size = 1.6 * layer.scale
-          return (
-            <polygon
-              key={enemy.id}
-              points={`${layer.left},${layer.top - size * 1.4} ${layer.left + size},${layer.top + size} ${layer.left - size},${layer.top + size}`}
-              fill={enemy.kind === 'feather-drone' ? '#7af0ff' : '#ffbe62'}
-              stroke="#fff4df"
-              strokeWidth="0.25"
-            />
-          )
-        })}
+      {snapshot.boss ? (() => {
+        const layer = projectArenaPointToLayer(snapshot.boss.position, 'boss')
+        return (
+          <div
+            className="battle-entity battle-entity--boss"
+            style={createEntityStyle(layer)}
+          >
+            <span className="battle-entity__boss-ring" />
+            <span className="battle-entity__boss-core" />
+          </div>
+        )
+      })() : null}
 
-        {snapshot.boss ? (() => {
-          const layer = projectArenaPointToLayer(snapshot.boss.position, 'boss')
-          return (
-            <g>
-              <circle cx={layer.left} cy={layer.top} r={4.2 * layer.scale} fill="#5ceee4" fillOpacity="0.16" />
-              <circle cx={layer.left} cy={layer.top} r={3.2 * layer.scale} fill="none" stroke="#7af0ff" strokeWidth="0.45" />
-              <circle cx={layer.left} cy={layer.top} r={1.5 * layer.scale} fill="#ffbe62" />
-            </g>
-          )
-        })() : null}
-
-        {snapshot.bullets.map((bullet) => {
-          const layer = projectArenaPointToLayer(
-            bullet.position,
-            bullet.source === 'player' ? 'bullet' : 'enemy',
-          )
-          const radius = 0.55 + bullet.radius * 1.6
-          return (
-            <circle
-              key={bullet.id}
-              cx={layer.left}
-              cy={layer.top}
-              r={radius}
-              fill={bullet.source === 'player' ? '#ffd28a' : '#55f0ff'}
-            />
-          )
-        })}
-      </svg>
+      {snapshot.bullets.map((bullet) => {
+        const layer = projectArenaPointToLayer(
+          bullet.position,
+          bullet.source === 'player' ? 'bullet' : 'enemy',
+        )
+        const diameter = Math.max(8, 7 + bullet.radius * 34)
+        return (
+          <span
+            key={bullet.id}
+            className={`battle-entity battle-entity--bullet battle-entity--bullet-${bullet.source}`}
+            style={createEntityStyle(layer, {
+              '--entity-scale': 1,
+              '--entity-size': `${diameter.toFixed(1)}px`,
+            })}
+          />
+        )
+      })}
     </div>
   )
 }
