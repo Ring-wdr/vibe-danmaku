@@ -36,4 +36,12 @@ describe('createStageDefinition', () => {
     expect(Math.max(...waveGaps)).toBeLessThanOrEqual(12)
     expect(finalApproachGap).toBeLessThanOrEqual(12)
   })
+
+  it('uses every regular enemy archetype in Stage 1', () => {
+    const stage = createStageDefinition('normal')
+
+    expect(new Set(stage.waves.map((wave) => wave.archetype))).toEqual(
+      new Set(['scout', 'sentinel', 'lancer', 'splitter', 'mine-layer', 'weaver']),
+    )
+  })
 })

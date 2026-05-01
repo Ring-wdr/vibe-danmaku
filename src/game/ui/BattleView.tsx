@@ -225,11 +225,11 @@ function PlayerSprite({ position }: { position: [number, number, number] }) {
 }
 
 function resolveEnemyAssetUrl(kind: EnemyKind) {
-  if (kind === 'feather-drone') {
-    return gameAssets.enemyFeatherUrl
-  }
   if (kind === 'boss-core') {
     return gameAssets.bossCoreUrl
+  }
+  if (kind === 'brass-cloud-sentinel' || kind === 'brass-cloud-weaver') {
+    return gameAssets.enemyFeatherUrl
   }
   return gameAssets.enemyScoutUrl
 }

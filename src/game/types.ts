@@ -7,9 +7,29 @@ export type AppScreen =
   | 'battle'
   | 'result'
 
-export type EnemyKind = 'steam-scout' | 'feather-drone' | 'boss-core'
+export type EnemyArchetypeId =
+  | 'scout'
+  | 'sentinel'
+  | 'lancer'
+  | 'splitter'
+  | 'mine-layer'
+  | 'weaver'
 
-export type PatternShape = 'fan' | 'ring' | 'spiral' | 'laser-bloom'
+export type EnemyThemeId = 'brass-cloud'
+export type EnemyAtlasId = 'enemy-brass-cloud'
+export type EnemyFrameId = EnemyArchetypeId
+export type EnemyVariantId = `${EnemyThemeId}-${EnemyArchetypeId}`
+export type EnemyKind = EnemyVariantId | 'boss-core'
+
+export type PatternShape =
+  | 'fan'
+  | 'ring'
+  | 'spiral'
+  | 'laser-bloom'
+  | 'needle'
+  | 'split'
+  | 'mine'
+  | 'wave'
 
 export type ArenaPoint = {
   x: number
@@ -23,16 +43,32 @@ export type BulletPatternConfig = {
   speed: number
   spread: number
   life: number
+  aim?: 'down' | 'player'
+  split?: {
+    delay: number
+    count: number
+    speedMultiplier: number
+  }
+  wave?: {
+    amplitude: number
+    frequency: number
+  }
 }
 
 export type EnemyWave = {
   id: string
   startAt: number
   kind: EnemyKind
+  archetype: EnemyArchetypeId
+  variant: EnemyVariantId
+  atlasId: EnemyAtlasId
+  frameId: EnemyFrameId
   count: number
   spacing: number
   hp: number
   speed: number
+  scale: number
+  hitRadius: number
   path: 'swoop-left' | 'swoop-right' | 'helix'
   pattern: BulletPatternConfig
 }
@@ -90,6 +126,10 @@ export type RunResult = {
 export type RenderEnemy = {
   id: string
   kind: EnemyKind
+  archetype: EnemyArchetypeId
+  variant: EnemyVariantId
+  atlasId: EnemyAtlasId
+  frameId: EnemyFrameId
   position: ArenaPoint
   scale: number
 }

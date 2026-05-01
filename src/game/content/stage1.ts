@@ -1,103 +1,81 @@
 import { gameAssets } from '../assets'
+import { resolveEnemyWave } from './enemies'
 import type {
   BossDefinition,
   BulletPatternConfig,
   CharacterDefinition,
   Difficulty,
-  EnemyWave,
   StageDefinition,
 } from '../types'
 
-const baseWaves: EnemyWave[] = [
+const baseWavePlacements = [
   {
     id: 'wave-1',
     startAt: 1.8,
-    kind: 'steam-scout',
+    archetype: 'scout',
+    variant: 'brass-cloud-scout',
     count: 3,
     spacing: 1.8,
-    hp: 14,
-    speed: 0.72,
-    path: 'swoop-left',
-    pattern: { shape: 'fan', count: 5, interval: 1.35, speed: 1.15, spread: 1.2, life: 7.5 },
   },
   {
     id: 'wave-2',
-    startAt: 11,
-    kind: 'feather-drone',
+    startAt: 10.5,
+    archetype: 'sentinel',
+    variant: 'brass-cloud-sentinel',
     count: 3,
-    spacing: 1.4,
-    hp: 16,
-    speed: 0.68,
-    path: 'helix',
-    pattern: { shape: 'ring', count: 6, interval: 1.75, speed: 0.98, spread: 0.35, life: 8 },
+    spacing: 1.45,
   },
   {
     id: 'wave-3',
-    startAt: 20,
-    kind: 'steam-scout',
-    count: 4,
-    spacing: 1.55,
-    hp: 16,
-    speed: 0.78,
-    path: 'swoop-right',
-    pattern: { shape: 'fan', count: 6, interval: 1.25, speed: 1.18, spread: 1.35, life: 8 },
+    startAt: 19,
+    archetype: 'lancer',
+    variant: 'brass-cloud-lancer',
+    count: 3,
+    spacing: 1.65,
   },
   {
     id: 'wave-4',
-    startAt: 29,
-    kind: 'feather-drone',
+    startAt: 28,
+    archetype: 'splitter',
+    variant: 'brass-cloud-splitter',
     count: 4,
-    spacing: 1.5,
-    hp: 18,
-    speed: 0.66,
-    path: 'helix',
-    pattern: { shape: 'ring', count: 8, interval: 1.6, speed: 1.05, spread: 0.35, life: 8.5 },
+    spacing: 1.45,
   },
   {
     id: 'wave-5',
     startAt: 38,
-    kind: 'steam-scout',
+    archetype: 'mine-layer',
+    variant: 'brass-cloud-mine-layer',
     count: 4,
-    spacing: 1.45,
-    hp: 18,
-    speed: 0.82,
-    path: 'swoop-left',
-    pattern: { shape: 'fan', count: 7, interval: 1.15, speed: 1.22, spread: 1.45, life: 8.2 },
+    spacing: 1.35,
   },
   {
     id: 'wave-6',
     startAt: 48,
-    kind: 'feather-drone',
-    count: 5,
-    spacing: 1.2,
-    hp: 19,
-    speed: 0.74,
-    path: 'helix',
-    pattern: { shape: 'ring', count: 9, interval: 1.45, speed: 1.1, spread: 0.38, life: 8.5 },
+    archetype: 'weaver',
+    variant: 'brass-cloud-weaver',
+    count: 4,
+    spacing: 1.25,
   },
   {
     id: 'wave-7',
     startAt: 58,
-    kind: 'steam-scout',
+    archetype: 'scout',
+    variant: 'brass-cloud-scout',
     count: 5,
-    spacing: 1.3,
-    hp: 20,
-    speed: 0.8,
-    path: 'swoop-right',
-    pattern: { shape: 'fan', count: 7, interval: 1.1, speed: 1.25, spread: 1.5, life: 8.5 },
+    spacing: 1.25,
+    pattern: { count: 7, spread: 1.45 },
   },
   {
     id: 'wave-8',
     startAt: 68,
-    kind: 'feather-drone',
+    archetype: 'weaver',
+    variant: 'brass-cloud-weaver',
     count: 5,
     spacing: 1.15,
-    hp: 22,
-    speed: 0.78,
-    path: 'helix',
-    pattern: { shape: 'spiral', count: 9, interval: 1.2, speed: 1.12, spread: 0.45, life: 8.8 },
+    pattern: { count: 8, interval: 1.05 },
   },
-]
+] as const
 
 const baseBoss: BossDefinition = {
   id: 'boss-brass-core',
@@ -128,7 +106,7 @@ const baseBoss: BossDefinition = {
   ],
 }
 
-const tuningByDifficulty: Record<
+const bossTuningByDifficulty: Record<
   Difficulty,
   { bulletCount: number; bulletSpeed: number; interval: number }
 > = {
@@ -137,8 +115,11 @@ const tuningByDifficulty: Record<
   hard: { bulletCount: 1.5, bulletSpeed: 1.18, interval: 0.82 },
 }
 
-function scalePattern(pattern: BulletPatternConfig, difficulty: Difficulty): BulletPatternConfig {
-  const tuning = tuningByDifficulty[difficulty]
+function scaleBossPattern(
+  pattern: BulletPatternConfig,
+  difficulty: Difficulty,
+): BulletPatternConfig {
+  const tuning = bossTuningByDifficulty[difficulty]
 
   return {
     ...pattern,
@@ -160,17 +141,16 @@ export function createStageDefinition(
     name: 'Brass Cloud Gate',
     lore: '황동 비공정 항로 위를 뒤덮은 마도 구름 회랑을 돌파해 비공정 코어를 파괴한다.',
     duration: scaleTime(165),
-    waves: baseWaves.map((wave) => ({
-      ...wave,
-      startAt: scaleTime(wave.startAt),
-      pattern: scalePattern(wave.pattern, difficulty),
+    waves: baseWavePlacements.map((placement) => ({
+      ...resolveEnemyWave(difficulty, placement),
+      startAt: scaleTime(placement.startAt),
     })),
     boss: {
       ...baseBoss,
       startAt: scaleTime(baseBoss.startAt),
       phases: baseBoss.phases.map((phase) => ({
         ...phase,
-        pattern: scalePattern(phase.pattern, difficulty),
+        pattern: scaleBossPattern(phase.pattern, difficulty),
       })),
     },
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
-import type { StageDefinition } from '../types'
+import type { BulletPatternConfig, StageDefinition } from '../types'
 
 function createEnemyBulletCleanupStage(): StageDefinition {
   const stage = createStageDefinition('normal', { fastStage: true })
@@ -44,6 +44,28 @@ function createImmediateWaveStage(): StageDefinition {
         ...stage.waves[0]!,
         startAt: 0,
         count: 1,
+      },
+    ],
+    boss: {
+      ...stage.boss,
+      startAt: 999,
+    },
+  }
+}
+
+function createPatternStage(pattern: BulletPatternConfig): StageDefinition {
+  const stage = createStageDefinition('normal')
+
+  return {
+    ...stage,
+    duration: 999,
+    waves: [
+      {
+        ...stage.waves[0]!,
+        id: `pattern-${pattern.shape}`,
+        startAt: 0,
+        count: 1,
+        pattern,
       },
     ],
     boss: {
@@ -174,5 +196,112 @@ describe('createBattleRuntime', () => {
         (bullet) => bullet.source === 'enemy' && Math.abs(bullet.position.x) > 3.4,
       ),
     ).toBe(false)
+  })
+})
+
+describe('regular enemy bullet patterns', () => {
+  it('fires needle bullets toward the player lane', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createPatternStage({
+        shape: 'needle',
+        count: 3,
+        interval: 999,
+        speed: 2,
+        spread: 0.2,
+        life: 5,
+        aim: 'player',
+      }),
+    })
+
+    runtime.update(2)
+
+    const enemyBullets = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy')
+    expect(enemyBullets.length).toBe(3)
+    expect(Math.max(...enemyBullets.map((bullet) => bullet.glow))).toBeGreaterThan(1.1)
+  })
+
+  it('creates secondary bullets from split patterns', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createPatternStage({
+        shape: 'split',
+        count: 2,
+        interval: 999,
+        speed: 1.2,
+        spread: 0.55,
+        life: 6,
+        split: { delay: 0.2, count: 2, speedMultiplier: 0.75 },
+      }),
+    })
+
+    for (let index = 0; index < 15; index += 1) {
+      runtime.update(0.1)
+    }
+    const beforeSplit = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy').length
+    runtime.update(0.25)
+    const afterSplit = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy').length
+
+    expect(afterSplit).toBeGreaterThan(beforeSplit)
+  })
+
+  it('keeps mine bullets slower and larger than needle bullets', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createPatternStage({
+        shape: 'mine',
+        count: 3,
+        interval: 999,
+        speed: 0.45,
+        spread: 0.8,
+        life: 6,
+      }),
+    })
+
+    runtime.update(2)
+
+    const enemyBullets = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy')
+    expect(enemyBullets.length).toBe(3)
+    expect(Math.min(...enemyBullets.map((bullet) => bullet.radius))).toBeGreaterThan(
+      0.13,
+    )
+  })
+
+  it('adds horizontal variation to wave bullets over time', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createPatternStage({
+        shape: 'wave',
+        count: 4,
+        interval: 999,
+        speed: 1,
+        spread: 0.8,
+        life: 6,
+        wave: { amplitude: 0.55, frequency: 2.4 },
+      }),
+    })
+
+    runtime.update(2)
+    const firstXs = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy')
+      .map((bullet) => bullet.position.x)
+    runtime.update(0.4)
+    const secondXs = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy')
+      .map((bullet) => bullet.position.x)
+
+    expect(secondXs.some((x, index) => Math.abs(x - firstXs[index]!) > 0.02)).toBe(
+      true,
+    )
   })
 })

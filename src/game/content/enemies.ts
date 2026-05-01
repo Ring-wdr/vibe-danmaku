@@ -1,0 +1,251 @@
+import { brassCloudEnemyFrames } from './enemyBrassCloudAtlas'
+import type {
+  BulletPatternConfig,
+  Difficulty,
+  EnemyArchetypeId,
+  EnemyVariantId,
+  EnemyWave,
+} from '../types'
+
+type EnemyArchetypeDefinition = {
+  id: EnemyArchetypeId
+  hp: number
+  speed: number
+  scale: number
+  hitRadius: number
+  path: EnemyWave['path']
+  pattern: BulletPatternConfig
+}
+
+type EnemyThemeVariant = {
+  id: EnemyVariantId
+  archetype: EnemyArchetypeId
+  theme: 'brass-cloud'
+  atlasId: 'enemy-brass-cloud'
+  frameId: EnemyArchetypeId
+  displayName: string
+  patternOverride?: Partial<BulletPatternConfig>
+}
+
+type StageEnemyPlacement = {
+  id: string
+  startAt: number
+  archetype: EnemyArchetypeId
+  variant: EnemyVariantId
+  count: number
+  spacing: number
+  hp?: number
+  speed?: number
+  path?: EnemyWave['path']
+  pattern?: Partial<BulletPatternConfig>
+}
+
+const tuningByDifficulty: Record<
+  Difficulty,
+  { hp: number; bulletCount: number; bulletSpeed: number; interval: number }
+> = {
+  easy: { hp: 1, bulletCount: 1, bulletSpeed: 1, interval: 1 },
+  normal: { hp: 1.12, bulletCount: 1.25, bulletSpeed: 1.08, interval: 0.92 },
+  hard: { hp: 1.28, bulletCount: 1.5, bulletSpeed: 1.18, interval: 0.82 },
+}
+
+export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition> = {
+  scout: {
+    id: 'scout',
+    hp: 14,
+    speed: 0.78,
+    scale: 0.82,
+    hitRadius: 0.2,
+    path: 'swoop-left',
+    pattern: {
+      shape: 'fan',
+      count: 5,
+      interval: 1.25,
+      speed: 1.15,
+      spread: 1.18,
+      life: 7.5,
+    },
+  },
+  sentinel: {
+    id: 'sentinel',
+    hp: 26,
+    speed: 0.56,
+    scale: 0.92,
+    hitRadius: 0.24,
+    path: 'helix',
+    pattern: {
+      shape: 'ring',
+      count: 7,
+      interval: 1.7,
+      speed: 0.96,
+      spread: 0.35,
+      life: 8.2,
+    },
+  },
+  lancer: {
+    id: 'lancer',
+    hp: 18,
+    speed: 0.66,
+    scale: 0.86,
+    hitRadius: 0.21,
+    path: 'swoop-right',
+    pattern: {
+      shape: 'needle',
+      count: 3,
+      interval: 1.35,
+      speed: 1.55,
+      spread: 0.22,
+      life: 6.8,
+      aim: 'player',
+    },
+  },
+  splitter: {
+    id: 'splitter',
+    hp: 20,
+    speed: 0.62,
+    scale: 0.88,
+    hitRadius: 0.22,
+    path: 'swoop-left',
+    pattern: {
+      shape: 'split',
+      count: 4,
+      interval: 1.5,
+      speed: 1.08,
+      spread: 0.74,
+      life: 8,
+      split: { delay: 0.55, count: 2, speedMultiplier: 0.78 },
+    },
+  },
+  'mine-layer': {
+    id: 'mine-layer',
+    hp: 24,
+    speed: 0.52,
+    scale: 0.9,
+    hitRadius: 0.24,
+    path: 'helix',
+    pattern: {
+      shape: 'mine',
+      count: 3,
+      interval: 1.85,
+      speed: 0.58,
+      spread: 0.9,
+      life: 7.2,
+    },
+  },
+  weaver: {
+    id: 'weaver',
+    hp: 19,
+    speed: 0.7,
+    scale: 0.84,
+    hitRadius: 0.21,
+    path: 'helix',
+    pattern: {
+      shape: 'wave',
+      count: 6,
+      interval: 1.18,
+      speed: 1.05,
+      spread: 1.2,
+      life: 8.2,
+      wave: { amplitude: 0.55, frequency: 2.4 },
+    },
+  },
+}
+
+export const brassCloudEnemyVariants: Record<EnemyVariantId, EnemyThemeVariant> = {
+  'brass-cloud-scout': {
+    id: 'brass-cloud-scout',
+    archetype: 'scout',
+    theme: 'brass-cloud',
+    atlasId: 'enemy-brass-cloud',
+    frameId: 'scout',
+    displayName: 'Brass Scout',
+  },
+  'brass-cloud-sentinel': {
+    id: 'brass-cloud-sentinel',
+    archetype: 'sentinel',
+    theme: 'brass-cloud',
+    atlasId: 'enemy-brass-cloud',
+    frameId: 'sentinel',
+    displayName: 'Brass Sentinel',
+  },
+  'brass-cloud-lancer': {
+    id: 'brass-cloud-lancer',
+    archetype: 'lancer',
+    theme: 'brass-cloud',
+    atlasId: 'enemy-brass-cloud',
+    frameId: 'lancer',
+    displayName: 'Brass Lancer',
+  },
+  'brass-cloud-splitter': {
+    id: 'brass-cloud-splitter',
+    archetype: 'splitter',
+    theme: 'brass-cloud',
+    atlasId: 'enemy-brass-cloud',
+    frameId: 'splitter',
+    displayName: 'Brass Splitter',
+  },
+  'brass-cloud-mine-layer': {
+    id: 'brass-cloud-mine-layer',
+    archetype: 'mine-layer',
+    theme: 'brass-cloud',
+    atlasId: 'enemy-brass-cloud',
+    frameId: 'mine-layer',
+    displayName: 'Brass Mine Layer',
+  },
+  'brass-cloud-weaver': {
+    id: 'brass-cloud-weaver',
+    archetype: 'weaver',
+    theme: 'brass-cloud',
+    atlasId: 'enemy-brass-cloud',
+    frameId: 'weaver',
+    displayName: 'Brass Weaver',
+  },
+}
+
+export { brassCloudEnemyFrames }
+
+export function resolvePatternForDifficulty(
+  pattern: BulletPatternConfig,
+  difficulty: Difficulty,
+): BulletPatternConfig {
+  const tuning = tuningByDifficulty[difficulty]
+
+  return {
+    ...pattern,
+    count: Math.max(3, Math.round(pattern.count * tuning.bulletCount)),
+    interval: Number((pattern.interval * tuning.interval).toFixed(2)),
+    speed: Number((pattern.speed * tuning.bulletSpeed).toFixed(2)),
+  }
+}
+
+export function resolveEnemyWave(
+  difficulty: Difficulty,
+  placement: StageEnemyPlacement,
+): EnemyWave {
+  const archetype = enemyArchetypes[placement.archetype]
+  const variant = brassCloudEnemyVariants[placement.variant]
+  const mergedPattern = {
+    ...archetype.pattern,
+    ...variant.patternOverride,
+    ...placement.pattern,
+  }
+  const tuning = tuningByDifficulty[difficulty]
+
+  return {
+    id: placement.id,
+    startAt: placement.startAt,
+    kind: variant.id,
+    archetype: archetype.id,
+    variant: variant.id,
+    atlasId: variant.atlasId,
+    frameId: variant.frameId,
+    count: placement.count,
+    spacing: placement.spacing,
+    hp: placement.hp ?? Math.round(archetype.hp * tuning.hp),
+    speed: placement.speed ?? archetype.speed,
+    scale: archetype.scale,
+    hitRadius: archetype.hitRadius,
+    path: placement.path ?? archetype.path,
+    pattern: resolvePatternForDifficulty(mergedPattern, difficulty),
+  }
+}

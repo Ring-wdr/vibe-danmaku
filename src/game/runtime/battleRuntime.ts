@@ -23,12 +23,24 @@ type RuntimeBullet = {
   life: number
   damage: number
   offViewportFor: number
+  age: number
+  splitAfter?: number
+  splitCount?: number
+  splitSpeed?: number
+  hasSplit?: boolean
+  waveAmplitude?: number
+  waveFrequency?: number
+  wavePhase?: number
 }
 
 type RuntimeEnemy = {
   id: string
   waveId: string
   kind: EnemyWave['kind']
+  archetype: EnemyWave['archetype']
+  variant: EnemyWave['variant']
+  atlasId: EnemyWave['atlasId']
+  frameId: EnemyWave['frameId']
   x: number
   z: number
   hp: number
@@ -37,6 +49,8 @@ type RuntimeEnemy = {
   drift: number
   travel: number
   path: EnemyWave['path']
+  scale: number
+  hitRadius: number
 }
 
 type RuntimeBoss = {
@@ -90,6 +104,15 @@ function distanceSquared(a: ArenaPoint, b: ArenaPoint) {
   const dz = a.z - b.z
 
   return dx * dx + dz * dz
+}
+
+function normalizeVelocity(dx: number, dz: number, speed: number) {
+  const length = Math.hypot(dx, dz) || 1
+
+  return {
+    vx: (dx / length) * speed,
+    vz: (dz / length) * speed,
+  }
 }
 
 function getEnemyEntryShootDelay(spawnZ: number, speed: number) {
@@ -146,8 +169,12 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
     const renderEnemies: RenderEnemy[] = enemies.map((enemy) => ({
       id: enemy.id,
       kind: enemy.kind,
+      archetype: enemy.archetype,
+      variant: enemy.variant,
+      atlasId: enemy.atlasId,
+      frameId: enemy.frameId,
       position: { x: enemy.x, z: enemy.z },
-      scale: enemy.kind === 'feather-drone' ? 0.72 : 0.9,
+      scale: enemy.scale,
     }))
     const renderBullets: RenderBullet[] = bullets.map((bullet) => ({
       id: bullet.id,
@@ -203,8 +230,8 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
     return cachedSnapshot
   }
 
-  const addBullet = (bullet: Omit<RuntimeBullet, 'id' | 'offViewportFor'>) => {
-    bullets.push({ id: `bullet-${lastBulletId++}`, offViewportFor: 0, ...bullet })
+  const addBullet = (bullet: Omit<RuntimeBullet, 'id' | 'offViewportFor' | 'age'>) => {
+    bullets.push({ id: `bullet-${lastBulletId++}`, offViewportFor: 0, age: 0, ...bullet })
   }
 
   const firePattern = (originX: number, originZ: number, pattern: EnemyWave['pattern']) => {
@@ -221,6 +248,52 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
           vz: Math.sin(angle) * pattern.speed,
           radius: 0.11,
           glow: 1.1,
+          life: pattern.life,
+          damage: 1,
+        })
+      }
+      return
+    }
+
+    if (pattern.shape === 'needle') {
+      const base =
+        pattern.aim === 'player'
+          ? Math.atan2(player.z - originZ, player.x - originX)
+          : centerAngle
+
+      for (let index = 0; index < pattern.count; index += 1) {
+        const spreadFactor =
+          pattern.count === 1 ? 0 : index / (pattern.count - 1) - 0.5
+        const angle = base + spreadFactor * pattern.spread
+        const velocity = normalizeVelocity(Math.cos(angle), Math.sin(angle), pattern.speed)
+        addBullet({
+          source: 'enemy',
+          x: originX,
+          z: originZ,
+          vx: velocity.vx,
+          vz: velocity.vz,
+          radius: 0.085,
+          glow: 1.28,
+          life: pattern.life,
+          damage: 1,
+        })
+      }
+      return
+    }
+
+    if (pattern.shape === 'mine') {
+      for (let index = 0; index < pattern.count; index += 1) {
+        const spreadFactor =
+          pattern.count === 1 ? 0 : index / (pattern.count - 1) - 0.5
+        const angle = centerAngle + spreadFactor * pattern.spread
+        addBullet({
+          source: 'enemy',
+          x: originX,
+          z: originZ,
+          vx: Math.cos(angle) * pattern.speed,
+          vz: Math.sin(angle) * pattern.speed,
+          radius: 0.16,
+          glow: 1.36,
           life: pattern.life,
           damage: 1,
         })
@@ -246,6 +319,17 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
         glow: pattern.shape === 'laser-bloom' ? 1.5 : 1,
         life: pattern.life,
         damage: 1,
+        splitAfter: pattern.shape === 'split' ? pattern.split?.delay ?? 0.5 : undefined,
+        splitCount: pattern.shape === 'split' ? pattern.split?.count ?? 2 : undefined,
+        splitSpeed:
+          pattern.shape === 'split'
+            ? pattern.speed * (pattern.split?.speedMultiplier ?? 0.75)
+            : undefined,
+        waveAmplitude:
+          pattern.shape === 'wave' ? pattern.wave?.amplitude ?? 0.45 : undefined,
+        waveFrequency:
+          pattern.shape === 'wave' ? pattern.wave?.frequency ?? 2.2 : undefined,
+        wavePhase: pattern.shape === 'wave' ? index * 0.7 : undefined,
       })
     }
   }
@@ -258,6 +342,10 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
         id: `enemy-${lastEnemyId++}`,
         waveId: wave.id,
         kind: wave.kind,
+        archetype: wave.archetype,
+        variant: wave.variant,
+        atlasId: wave.atlasId,
+        frameId: wave.frameId,
         x: -halfSpread + index * wave.spacing,
         z: spawnZ,
         hp: wave.hp,
@@ -266,6 +354,8 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
         drift: index * 0.7,
         travel: wave.speed,
         path: wave.path,
+        scale: wave.scale,
+        hitRadius: wave.hitRadius,
       })
     }
   }
@@ -389,7 +479,42 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
   const updateBullets = (delta: number) => {
     for (let index = bullets.length - 1; index >= 0; index -= 1) {
       const bullet = bullets[index]
-      bullet.x += bullet.vx * delta
+      bullet.age += delta
+
+      if (
+        bullet.source === 'enemy' &&
+        bullet.splitAfter !== undefined &&
+        bullet.splitCount !== undefined &&
+        bullet.splitSpeed !== undefined &&
+        !bullet.hasSplit &&
+        bullet.age >= bullet.splitAfter
+      ) {
+        bullet.hasSplit = true
+        for (let splitIndex = 0; splitIndex < bullet.splitCount; splitIndex += 1) {
+          const angle =
+            -Math.PI / 2 + (splitIndex - (bullet.splitCount - 1) / 2) * 0.48
+          addBullet({
+            source: 'enemy',
+            x: bullet.x,
+            z: bullet.z,
+            vx: Math.cos(angle) * bullet.splitSpeed,
+            vz: Math.sin(angle) * bullet.splitSpeed,
+            radius: Math.max(0.075, bullet.radius * 0.78),
+            glow: Math.max(1.1, bullet.glow * 0.92),
+            life: Math.max(1.8, bullet.life * 0.55),
+            damage: bullet.damage,
+          })
+        }
+      }
+
+      const waveOffset =
+        bullet.waveAmplitude !== undefined && bullet.waveFrequency !== undefined
+          ? Math.sin(bullet.age * bullet.waveFrequency + (bullet.wavePhase ?? 0)) *
+            bullet.waveAmplitude *
+            delta
+          : 0
+
+      bullet.x += bullet.vx * delta + waveOffset
       bullet.z += bullet.vz * delta
       bullet.life -= delta
 
@@ -409,7 +534,7 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
         let consumed = false
         for (let enemyIndex = enemies.length - 1; enemyIndex >= 0; enemyIndex -= 1) {
           const enemy = enemies[enemyIndex]
-          const hitDistance = bullet.radius + 0.2
+          const hitDistance = bullet.radius + enemy.hitRadius
           if (
             distanceSquared(
               { x: bullet.x, z: bullet.z },
