@@ -175,6 +175,7 @@ export function createBattleRuntime({
   let boss: RuntimeBoss | null = null
   let activeBossRole: 'midboss' | 'final' | null = null
   let midbossDefeated = !stage.midboss
+  let midbossGateDelay = 0
   const midbossGateAfterWaveIndex = stage.midboss?.gateAfterWaveIndex ?? -1
   const waveQueue = stage.waves.map((wave, index) => ({ wave, index }))
   const specialChargeRate =
@@ -223,6 +224,13 @@ export function createBattleRuntime({
     )
   }
 
+  const getPostMidbossTimelineElapsed = () => elapsed - midbossGateDelay
+
+  const getWaveTimelineElapsed = (waveIndex: number) =>
+    waveIndex > midbossGateAfterWaveIndex && stage.midboss
+      ? getPostMidbossTimelineElapsed()
+      : elapsed
+
   const getSpecialSlot = (): RenderSpecialSlot => ({
     id: beamLanceConfig.id,
     icon: beamLanceConfig.icon,
@@ -253,6 +261,7 @@ export function createBattleRuntime({
     const phase = getBossPhase()
     const renderEnemies: RenderEnemy[] = enemies.map((enemy) => ({
       id: enemy.id,
+      waveId: enemy.waveId,
       kind: enemy.kind,
       archetype: enemy.archetype,
       variant: enemy.variant,
@@ -655,6 +664,7 @@ export function createBattleRuntime({
 
     if (boss.hp <= 0) {
       if (activeBossRole === 'midboss') {
+        midbossGateDelay = Math.max(0, elapsed - (stage.midboss?.startAt ?? elapsed))
         boss = null
         activeBossRole = null
         midbossDefeated = true
@@ -781,7 +791,10 @@ export function createBattleRuntime({
       player.invulnerableFor = Math.max(0, player.invulnerableFor - delta)
     }
 
-    while (waveQueue[0] && elapsed >= waveQueue[0].wave.startAt) {
+    while (
+      waveQueue[0] &&
+      getWaveTimelineElapsed(waveQueue[0].index) >= waveQueue[0].wave.startAt
+    ) {
       if (!midbossDefeated && waveQueue[0].index > midbossGateAfterWaveIndex) {
         break
       }
@@ -801,7 +814,8 @@ export function createBattleRuntime({
       spawnBoss(stage.midboss, 'midboss')
     }
 
-    if (!boss && midbossDefeated && elapsed >= stage.boss.startAt) {
+    const bossTimelineElapsed = stage.midboss ? getPostMidbossTimelineElapsed() : elapsed
+    if (!boss && midbossDefeated && bossTimelineElapsed >= stage.boss.startAt) {
       spawnBoss(stage.boss, 'final')
     }
 

@@ -190,7 +190,7 @@ function createMidbossGateStage(): StageDefinition {
     duration: 999,
     waves: [
       { ...stage.waves[0]!, id: 'before-gate', startAt: 0, count: 1, hp: 999 },
-      { ...stage.waves[1]!, id: 'after-gate', startAt: 0.1, count: 1, hp: 999 },
+      { ...stage.waves[1]!, id: 'after-gate', startAt: 0.1, count: 1, hp: 99999 },
     ],
     midboss: {
       ...stage.boss,
@@ -233,7 +233,7 @@ function advanceWhileBossActive(
   runtime: ReturnType<typeof createRuntime>,
   bossId: string,
 ) {
-  for (let index = 0; index < 120; index += 1) {
+  for (let index = 0; index < 240; index += 1) {
     if (runtime.getSnapshot().boss?.id !== bossId) {
       return
     }
@@ -424,12 +424,12 @@ describe('midboss gate runtime', () => {
     expect(runtime.getSnapshot().boss?.id).toBe('test-midboss')
 
     advanceWhileBossActive(runtime, 'test-midboss')
-    runtime.update(0.01)
+    runtime.update(0.1)
 
     const snapshot = runtime.getSnapshot()
 
     expect(snapshot.result).toBeNull()
-    expect(snapshot.enemies).toHaveLength(2)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'after-gate')).toBe(true)
   })
 
   it('does not set a victory result when the midboss is defeated', () => {
@@ -476,6 +476,52 @@ describe('midboss gate runtime', () => {
     expect(snapshot.boss).toBeNull()
     expect(snapshot.elapsed).toBeGreaterThanOrEqual(snapshot.duration)
     expect(snapshot.result).toBeNull()
+  })
+
+  it('resumes overdue post-gate waves on a shifted timeline after late midboss defeat', () => {
+    const baseStage = createMidbossGateStage()
+    const stage = {
+      ...baseStage,
+      waves: [
+        { ...baseStage.waves[0]!, id: 'before-gate', startAt: 0, count: 1 },
+        { ...baseStage.waves[1]!, id: 'after-gate', startAt: 0.2, count: 1, hp: 99999 },
+      ],
+      midboss: {
+        ...baseStage.midboss!,
+        hp: 2200,
+        startAt: 0.05,
+      },
+      boss: {
+        ...baseStage.boss,
+        startAt: 0.3,
+      },
+    }
+    const runtime = createRuntime({ stage, character: midbossSlayerPilot })
+
+    runtime.update(0.4)
+
+    expect(runtime.getSnapshot().boss?.id).toBe('test-midboss')
+    expect(runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === 'after-gate')).toBe(
+      false,
+    )
+
+    advanceWhileBossActive(runtime, 'test-midboss')
+
+    let snapshot = runtime.getSnapshot()
+    expect(snapshot.boss).toBeNull()
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'after-gate')).toBe(false)
+
+    runtime.update(0.1)
+
+    snapshot = runtime.getSnapshot()
+    expect(snapshot.boss).toBeNull()
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'after-gate')).toBe(false)
+
+    runtime.update(0.11)
+
+    snapshot = runtime.getSnapshot()
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'after-gate')).toBe(true)
+    expect(snapshot.boss).toBeNull()
   })
 
   it('still sets a victory result when the final boss is defeated', () => {

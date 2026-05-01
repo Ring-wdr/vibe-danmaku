@@ -137,6 +137,7 @@ export type RunResult = {
 
 export type RenderEnemy = {
   id: string
+  waveId: string
   kind: EnemyKind
   archetype: EnemyArchetypeId
   variant: EnemyVariantId
