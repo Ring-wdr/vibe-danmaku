@@ -65,17 +65,16 @@ describe('createStage2Definition', () => {
     const easy = createStage2Definition('easy')
     const hard = createStage2Definition('hard')
 
-    expect(hard.midboss?.phases[0]?.pattern.count).toBeGreaterThan(
-      easy.midboss?.phases[0]?.pattern.count ?? 0,
-    )
-    expect(hard.midboss?.phases[1]?.pattern.count).toBeGreaterThan(
-      easy.midboss?.phases[1]?.pattern.count ?? 0,
-    )
-    expect(hard.boss.phases[0]?.pattern.count).toBeGreaterThan(
-      easy.boss.phases[0]?.pattern.count ?? 0,
-    )
-    expect(hard.boss.phases[1]?.pattern.count).toBeGreaterThan(
-      easy.boss.phases[1]?.pattern.count ?? 0,
-    )
+    expect(hard.midboss?.phases).toHaveLength(easy.midboss?.phases.length ?? 0)
+    hard.midboss?.phases.forEach((phase, index) => {
+      expect(phase.pattern.count).toBeGreaterThan(
+        easy.midboss?.phases[index]?.pattern.count ?? 0,
+      )
+    })
+
+    expect(hard.boss.phases).toHaveLength(easy.boss.phases.length)
+    hard.boss.phases.forEach((phase, index) => {
+      expect(phase.pattern.count).toBeGreaterThan(easy.boss.phases[index]!.pattern.count)
+    })
   })
 })
