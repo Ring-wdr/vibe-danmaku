@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import * as THREE from 'three'
 
 import { gameAssets } from '../assets'
@@ -16,6 +16,9 @@ import type {
   Difficulty,
   RenderBullet,
   RenderEnemy,
+  RenderSparkle,
+  RenderSpecialBeam,
+  RenderSpecialSlot,
   RunResult,
 } from '../types'
 
@@ -620,6 +623,113 @@ function BulletMesh({ bullet }: { bullet: RenderBullet }) {
   )
 }
 
+function SpecialBeamMesh({ beam }: { beam: RenderSpecialBeam }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const origin = arenaPointToView(beam.origin, 0.82)
+  const viewWidth = Math.max(0.16, beam.width * 0.55)
+  const viewLength = beam.length * 0.9
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) {
+      return
+    }
+
+    const pulse = 1 + Math.sin(clock.elapsedTime * 18) * 0.06
+    groupRef.current.scale.x = pulse
+  })
+
+  return (
+    <group
+      ref={groupRef}
+      position={[origin[0], origin[1] + viewLength / 2, origin[2] + 0.08]}
+    >
+      <mesh>
+        <planeGeometry args={[viewWidth * 2.8, viewLength]} />
+        <meshBasicMaterial
+          color="#52f5ff"
+          transparent
+          opacity={0.18}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh>
+        <planeGeometry args={[viewWidth * 1.35, viewLength]} />
+        <meshBasicMaterial
+          color="#ffd27b"
+          transparent
+          opacity={0.36}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh position={[0, 0, 0.025]}>
+        <planeGeometry args={[viewWidth * 0.48, viewLength]} />
+        <meshBasicMaterial
+          color="#fff7df"
+          transparent
+          opacity={0.82}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      {[-0.36, -0.12, 0.12, 0.36].map((offset) => (
+        <mesh key={offset} position={[0, viewLength * offset, 0.04]}>
+          <ringGeometry args={[viewWidth * 0.85, viewWidth * 1.12, 36]} />
+          <meshBasicMaterial
+            color={offset < 0 ? '#69f0e3' : '#f7c46b'}
+            transparent
+            opacity={0.34}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function SparkleMesh({ sparkle }: { sparkle: RenderSparkle }) {
+  const ratio = Math.min(1, sparkle.age / sparkle.life)
+  const opacity = Math.max(0, 1 - ratio)
+  const radius = 0.06 + ratio * 0.16 * sparkle.intensity
+
+  return (
+    <group position={arenaPointToView(sparkle.position, 0.9)}>
+      <mesh>
+        <circleGeometry args={[radius, 18]} />
+        <meshBasicMaterial
+          color="#fff4d7"
+          transparent
+          opacity={opacity * 0.86}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh rotation={[0, 0, Math.PI / 4]}>
+        <ringGeometry args={[radius * 1.15, radius * 1.38, 4]} />
+        <meshBasicMaterial
+          color="#69f0e3"
+          transparent
+          opacity={opacity * 0.72}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh rotation={[0, 0, Math.PI / 8]}>
+        <ringGeometry args={[radius * 1.55, radius * 1.72, 6]} />
+        <meshBasicMaterial
+          color="#f8b56b"
+          transparent
+          opacity={opacity * 0.48}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
   const enemyTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
 
@@ -628,6 +738,7 @@ function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
       <PlayerSprite
         battleElapsed={snapshot.elapsed}
         position={arenaPointToView(snapshot.player.position, 0.65)}
+        specialActive={snapshot.specialSlots.some((slot) => slot.active)}
       />
       {snapshot.enemies.map((enemy) => (
         <EnemySprite
@@ -641,6 +752,10 @@ function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
       <BossSprite snapshot={snapshot} />
       {snapshot.bullets.map((bullet) => (
         <BulletMesh key={bullet.id} bullet={bullet} />
+      ))}
+      {snapshot.specialBeam ? <SpecialBeamMesh beam={snapshot.specialBeam} /> : null}
+      {snapshot.sparkles.map((sparkle) => (
+        <SparkleMesh key={sparkle.id} sparkle={sparkle} />
       ))}
     </>
   )
@@ -687,6 +802,47 @@ export function createArenaPoint(
     x: (xRatio - 0.5) * battleDragInputConfig.horizontalWorldSpan,
     z: battleDragInputConfig.verticalWorldTop - yRatio * battleDragInputConfig.verticalWorldSpan,
   }
+}
+
+function SpecialSlotHud({
+  slots,
+  onActivate,
+}: {
+  slots: RenderSpecialSlot[]
+  onActivate: (slotId: RenderSpecialSlot['id']) => void
+}) {
+  return (
+    <div className="battle-specials" aria-label="Special attacks">
+      {slots.map((slot) => {
+        const chargeRatio = Math.min(1, slot.charge / slot.maxCharge)
+
+        return (
+          <button
+            key={slot.id}
+            type="button"
+            className={`battle-special-slot ${
+              slot.ready ? 'battle-special-slot--ready' : ''
+            } ${slot.active ? 'battle-special-slot--active' : ''}`}
+            style={{ '--special-charge': `${chargeRatio * 360}deg` } as CSSProperties}
+            disabled={!slot.ready}
+            aria-label="Activate Beam Lance special"
+            aria-valuemin={0}
+            aria-valuemax={slot.maxCharge}
+            aria-valuenow={Math.round(slot.charge)}
+            onClick={() => onActivate(slot.id)}
+          >
+            <span className="battle-special-slot__icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" focusable="false">
+                <path d="M24 5l7 18-7 20-7-20 7-18z" />
+                <path d="M13 27h22" />
+                <path d="M18 35h12" />
+              </svg>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 export function BattleView({
@@ -787,6 +943,10 @@ export function BattleView({
           </div>
         ) : null}
       </div>
+      <SpecialSlotHud
+        slots={snapshot.specialSlots}
+        onActivate={(slotId) => runtime.activateSpecial(slotId)}
+      />
     </section>
   )
 }

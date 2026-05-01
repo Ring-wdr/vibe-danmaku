@@ -423,6 +423,93 @@ h2 {
   background: linear-gradient(90deg, #77f6e7, #f8b56b 70%, #ff7a62);
 }
 
+.battle-specials {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 6;
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.battle-special-slot {
+  --special-charge: 0deg;
+  width: 72px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 5px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: var(--cream);
+  background:
+    conic-gradient(var(--teal) var(--special-charge), rgba(255, 255, 255, 0.14) 0),
+    rgba(6, 11, 18, 0.68);
+  border: 1px solid rgba(213, 168, 105, 0.3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.battle-special-slot::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(14, 29, 38, 0.96), rgba(5, 9, 17, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-special-slot:disabled {
+  cursor: default;
+}
+
+.battle-special-slot--ready {
+  box-shadow:
+    0 0 26px rgba(105, 240, 227, 0.34),
+    0 12px 30px rgba(0, 0, 0, 0.34);
+}
+
+.battle-special-slot--active {
+  animation: special-slot-pulse 520ms ease-in-out infinite alternate;
+}
+
+.battle-special-slot__icon {
+  position: relative;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 244, 223, 0.54);
+}
+
+.battle-special-slot--ready .battle-special-slot__icon,
+.battle-special-slot--active .battle-special-slot__icon {
+  color: var(--cream);
+}
+
+.battle-special-slot__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  stroke: #69f0e3;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes special-slot-pulse {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.06);
+  }
+}
+
 .result-screen {
   text-align: center;
   align-items: center;
