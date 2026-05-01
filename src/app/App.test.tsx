@@ -25,6 +25,8 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /select pilot/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /lyra aer/i })).toBeInTheDocument()
+    expect(document.querySelector('.character-focus')).toBeInTheDocument()
+    expect(document.querySelector('.character-roster')).toBeInTheDocument()
     expect(screen.queryByText(/difficulty hard engaged/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
