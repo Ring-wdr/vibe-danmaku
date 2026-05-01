@@ -137,15 +137,17 @@ describe('createBattleRuntime', () => {
   })
 
   it('spawns enemies above the visible arena before they drift into view', () => {
+    const stage = createImmediateWaveStage()
     const runtime = createBattleRuntime({
       difficulty: 'normal',
-      stage: createImmediateWaveStage(),
+      stage,
     })
 
     runtime.update(0.016)
 
     const enemy = runtime.getSnapshot().enemies[0]
     expect(enemy?.position.z).toBeGreaterThan(3.2)
+    expect(enemy?.hitRadius).toBe(stage.waves[0]?.hitRadius)
   })
 
   it('keeps wave enemies from firing immediately while they are far offscreen', () => {

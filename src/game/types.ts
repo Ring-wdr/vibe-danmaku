@@ -132,6 +132,7 @@ export type RenderEnemy = {
   frameId: EnemyFrameId
   position: ArenaPoint
   scale: number
+  hitRadius: number
 }
 
 export type RenderBoss = {

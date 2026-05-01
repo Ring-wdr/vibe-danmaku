@@ -175,6 +175,7 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
       frameId: enemy.frameId,
       position: { x: enemy.x, z: enemy.z },
       scale: enemy.scale,
+      hitRadius: enemy.hitRadius,
     }))
     const renderBullets: RenderBullet[] = bullets.map((bullet) => ({
       id: bullet.id,
