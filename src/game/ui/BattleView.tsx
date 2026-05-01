@@ -4,7 +4,14 @@ import * as THREE from 'three'
 
 import { gameAssets } from '../assets'
 import { useBattleRuntime } from './useBattleRuntime'
-import type { ArenaPoint, BattleSnapshot, Difficulty, EnemyKind, RunResult } from '../types'
+import type {
+  ArenaPoint,
+  BattleSnapshot,
+  Difficulty,
+  EnemyKind,
+  RenderBullet,
+  RunResult,
+} from '../types'
 
 type BattleViewProps = {
   difficulty: Difficulty
@@ -285,6 +292,35 @@ function arenaPointToView(point: ArenaPoint, z = 0.5): [number, number, number] 
   return [point.x * 0.55, point.z * 0.9 - 0.45, z]
 }
 
+type BulletPalette = {
+  aura: string
+  body: string
+  core: string
+  accent: string
+}
+
+function getBulletPalette(bullet: RenderBullet): BulletPalette {
+  if (bullet.source === 'player') {
+    return { aura: '#ffb45d', body: '#ffd28a', core: '#fff7d7', accent: '#f8e27a' }
+  }
+
+  if (bullet.glow >= 1.45) {
+    return { aura: '#9b7cff', body: '#55f0ff', core: '#e8fdff', accent: '#d29bff' }
+  }
+
+  return { aura: '#2ceaff', body: '#55f0ff', core: '#d9fdff', accent: '#8ff7ff' }
+}
+
+function getBulletPhase(id: string) {
+  let hash = 0
+
+  for (const char of id) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 997
+  }
+
+  return hash / 997
+}
+
 function MovingCloudPlane({
   texture,
   config,
@@ -419,6 +455,85 @@ function BackgroundFixtureLayer() {
   )
 }
 
+function BulletMesh({ bullet }: { bullet: RenderBullet }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const palette = getBulletPalette(bullet)
+  const phase = getBulletPhase(bullet.id)
+  const baseRadius = Math.max(0.052, bullet.radius * 0.72)
+  const glow = Math.min(1.8, Math.max(0.75, bullet.glow))
+  const isHeavyEnemyBullet = bullet.source === 'enemy' && bullet.glow >= 1.35
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) {
+      return
+    }
+
+    const pulse = 1 + Math.sin(clock.elapsedTime * 8 + phase * Math.PI * 2) * 0.08 * glow
+    groupRef.current.scale.setScalar(pulse)
+    groupRef.current.rotation.z += 0.018 * glow
+  })
+
+  return (
+    <group
+      ref={groupRef}
+      position={arenaPointToView(bullet.position, bullet.source === 'player' ? 0.76 : 0.74)}
+    >
+      <mesh>
+        <circleGeometry args={[baseRadius * (2.45 + glow * 0.26), 32]} />
+        <meshBasicMaterial
+          color={palette.aura}
+          transparent
+          opacity={0.16 + glow * 0.08}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh>
+        <circleGeometry args={[baseRadius * (1.38 + glow * 0.14), 28]} />
+        <meshBasicMaterial
+          color={palette.body}
+          transparent
+          opacity={0.5 + glow * 0.1}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh position={[baseRadius * 0.16, baseRadius * 0.16, 0.018]}>
+        <circleGeometry args={[baseRadius * 0.66, 24]} />
+        <meshBasicMaterial
+          color={palette.core}
+          transparent
+          opacity={0.94}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh position={[-baseRadius * 0.36, baseRadius * 0.42, 0.028]}>
+        <circleGeometry args={[baseRadius * 0.26, 16]} />
+        <meshBasicMaterial
+          color={palette.accent}
+          transparent
+          opacity={0.84}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      {isHeavyEnemyBullet ? (
+        <mesh rotation={[0, 0, phase * Math.PI]}>
+          <ringGeometry args={[baseRadius * 1.72, baseRadius * 1.98, 36]} />
+          <meshBasicMaterial
+            color={palette.accent}
+            transparent
+            opacity={0.38}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      ) : null}
+    </group>
+  )
+}
+
 function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
   return (
     <>
@@ -435,18 +550,7 @@ function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
       ))}
       <BossSprite snapshot={snapshot} />
       {snapshot.bullets.map((bullet) => (
-        <mesh
-          key={bullet.id}
-          position={arenaPointToView(bullet.position, bullet.source === 'player' ? 0.76 : 0.74)}
-        >
-          <circleGeometry args={[Math.max(0.045, bullet.radius * 0.7), 24]} />
-          <meshBasicMaterial
-            color={bullet.source === 'player' ? '#ffd28a' : '#55f0ff'}
-            transparent
-            opacity={Math.min(1, 0.72 + bullet.glow * 0.18)}
-            toneMapped={false}
-          />
-        </mesh>
+        <BulletMesh key={bullet.id} bullet={bullet} />
       ))}
     </>
   )
