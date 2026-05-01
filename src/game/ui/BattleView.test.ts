@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { createElement, type CSSProperties, type ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
 import {
@@ -17,6 +17,66 @@ vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }))
 
+const { mockActivateSpecial, mockSnapshot } = vi.hoisted(() => ({
+  mockActivateSpecial: vi.fn(),
+  mockSnapshot: {
+    difficulty: 'normal',
+    stageName: 'Test Stage',
+    elapsed: 0,
+    duration: 90,
+    phaseLabel: 'Opening',
+    player: {
+      position: { x: 0, z: -3 },
+      hp: 3,
+      invulnerable: false,
+    },
+    enemies: [
+      {
+        id: 'sentinel-1',
+        kind: 'brass-cloud-sentinel',
+        archetype: 'sentinel',
+        variant: 'brass-cloud-sentinel',
+        atlasId: 'enemy-brass-cloud',
+        frameId: 'sentinel',
+        position: { x: -1, z: 1 },
+        scale: 0.72,
+        hitRadius: 0.28,
+      },
+      {
+        id: 'weaver-1',
+        kind: 'brass-cloud-weaver',
+        archetype: 'weaver',
+        variant: 'brass-cloud-weaver',
+        atlasId: 'enemy-brass-cloud',
+        frameId: 'weaver',
+        position: { x: 1, z: 1 },
+        scale: 0.82,
+        hitRadius: 0.34,
+      },
+    ],
+    boss: null,
+    bullets: [],
+    specialSlots: [
+      {
+        id: 'beam-lance',
+        icon: 'beam',
+        charge: 50,
+        maxCharge: 100,
+        ready: false,
+        active: false,
+        activeRatio: 0,
+      },
+    ],
+    specialBeam: null,
+    sparkles: [],
+    playerShots: 0,
+    hitsTaken: 0,
+    bossEnteredCount: 0,
+    cuePulse: 0,
+    result: null,
+  },
+}))
+
 vi.mock('./useBattleRuntime', () => ({
   useBattleRuntime: () => ({
     runtime: {
@@ -24,50 +84,9 @@ vi.mock('./useBattleRuntime', () => ({
       beginDrag: vi.fn(),
       moveDrag: vi.fn(),
       endDrag: vi.fn(),
+      activateSpecial: mockActivateSpecial,
     },
-    snapshot: {
-      difficulty: 'normal',
-      stageName: 'Test Stage',
-      elapsed: 0,
-      duration: 90,
-      phaseLabel: 'Opening',
-      player: {
-        position: { x: 0, z: -3 },
-        hp: 3,
-        invulnerable: false,
-      },
-      enemies: [
-        {
-          id: 'sentinel-1',
-          kind: 'brass-cloud-sentinel',
-          archetype: 'sentinel',
-          variant: 'brass-cloud-sentinel',
-          atlasId: 'enemy-brass-cloud',
-          frameId: 'sentinel',
-          position: { x: -1, z: 1 },
-          scale: 0.72,
-          hitRadius: 0.28,
-        },
-        {
-          id: 'weaver-1',
-          kind: 'brass-cloud-weaver',
-          archetype: 'weaver',
-          variant: 'brass-cloud-weaver',
-          atlasId: 'enemy-brass-cloud',
-          frameId: 'weaver',
-          position: { x: 1, z: 1 },
-          scale: 0.82,
-          hitRadius: 0.34,
-        },
-      ],
-      boss: null,
-      bullets: [],
-      playerShots: 0,
-      hitsTaken: 0,
-      bossEnteredCount: 0,
-      cuePulse: 0,
-      result: null,
-    },
+    snapshot: mockSnapshot,
   }),
 }))
 
@@ -152,6 +171,21 @@ describe('getPlayerBattleSpritePose', () => {
 })
 
 describe('BattleView', () => {
+  beforeEach(() => {
+    mockActivateSpecial.mockClear()
+    mockSnapshot.specialSlots = [
+      {
+        id: 'beam-lance',
+        icon: 'beam',
+        charge: 50,
+        maxCharge: 100,
+        ready: false,
+        active: false,
+        activeRatio: 0,
+      },
+    ]
+  })
+
   it('renders the R3F canvas, HUD, and control overlay with atlas-backed enemies', () => {
     const { container } = render(
       createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }),
@@ -163,5 +197,44 @@ describe('BattleView', () => {
     expect(container.querySelector('.battle-shell__controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
     expect(container.querySelector('.battle-stage-plane')).not.toBeInTheDocument()
+  })
+
+  it('renders a circular beam-lance special slot with radial charge state', () => {
+    const { container } = render(
+      createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }),
+    )
+
+    const button = screen.getByRole('button', {
+      name: /activate beam lance special/i,
+    })
+
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-valuenow', '50')
+    expect(container.querySelector('.battle-special-slot')).toBeInTheDocument()
+    expect(container.querySelector('.battle-special-slot__icon')).toBeInTheDocument()
+  })
+
+  it('activates beam-lance from the ready circular slot', () => {
+    mockSnapshot.specialSlots = [
+      {
+        id: 'beam-lance',
+        icon: 'beam',
+        charge: 100,
+        maxCharge: 100,
+        ready: true,
+        active: false,
+        activeRatio: 0,
+      },
+    ]
+
+    render(createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }))
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /activate beam lance special/i,
+      }),
+    )
+
+    expect(mockActivateSpecial).toHaveBeenCalledWith('beam-lance')
   })
 })
