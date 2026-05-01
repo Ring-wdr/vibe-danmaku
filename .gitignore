@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .playwright-cli
+.superpowers
 
 # Editor directories and files
 .vscode/*
