@@ -13,6 +13,7 @@ import { useBattleRuntime } from './useBattleRuntime'
 import type {
   ArenaPoint,
   BattleSnapshot,
+  CharacterDefinition,
   Difficulty,
   RenderBullet,
   RenderEnemy,
@@ -24,6 +25,7 @@ import type {
 
 type BattleViewProps = {
   difficulty: Difficulty
+  character: CharacterDefinition
   fastStage?: boolean
   invincible?: boolean
   onComplete: (result: RunResult) => void
@@ -322,13 +324,15 @@ function RestoredTextureMaterial({
 function PlayerSprite({
   battleElapsed,
   position,
+  spriteSheetUrl,
   specialActive = false,
 }: {
   battleElapsed: number
   position: [number, number, number]
+  spriteSheetUrl: string
   specialActive?: boolean
 }) {
-  const texture = useLoadedTexture(gameAssets.playerSheetUrl)
+  const texture = useLoadedTexture(spriteSheetUrl)
   const previousXRef = useRef(position[0])
   const heldHorizontalMoveRef = useRef<{ direction: -1 | 0 | 1; until: number }>({
     direction: 0,
@@ -988,7 +992,13 @@ function PlayerFlightAirflow({ playerPosition }: { playerPosition: ArenaPoint })
   )
 }
 
-function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
+function RuntimeEntityLayer({
+  character,
+  snapshot,
+}: {
+  character: CharacterDefinition
+  snapshot: BattleSnapshot
+}) {
   const enemyTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
 
   return (
@@ -997,6 +1007,7 @@ function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
       <PlayerSprite
         battleElapsed={snapshot.elapsed}
         position={arenaPointToView(snapshot.player.position, 0.65)}
+        spriteSheetUrl={character.spriteSheetUrl}
         specialActive={snapshot.specialSlots.some((slot) => slot.active)}
       />
       {snapshot.enemies.map((enemy) => (
@@ -1020,7 +1031,13 @@ function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
   )
 }
 
-function BattleScene({ snapshot }: { snapshot: BattleSnapshot }) {
+function BattleScene({
+  character,
+  snapshot,
+}: {
+  character: CharacterDefinition
+  snapshot: BattleSnapshot
+}) {
   const laneGuideRef = useRef<THREE.Mesh>(null)
 
   useFrame((_, delta) => {
@@ -1044,7 +1061,7 @@ function BattleScene({ snapshot }: { snapshot: BattleSnapshot }) {
         <ringGeometry args={[0.48, 0.56, 48]} />
         <meshBasicMaterial color="#5ceee4" toneMapped={false} />
       </mesh>
-      <RuntimeEntityLayer snapshot={snapshot} />
+      <RuntimeEntityLayer character={character} snapshot={snapshot} />
     </>
   )
 }
@@ -1105,12 +1122,18 @@ function SpecialSlotHud({
 }
 
 export function BattleView({
+  character,
   difficulty,
   fastStage,
   invincible,
   onComplete,
 }: BattleViewProps) {
-  const { runtime, snapshot } = useBattleRuntime({ difficulty, fastStage, invincible })
+  const { runtime, snapshot } = useBattleRuntime({
+    difficulty,
+    character,
+    fastStage,
+    invincible,
+  })
   const overlayRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -1144,7 +1167,7 @@ export function BattleView({
         }}
         style={{ width: '100%', height: '100%', background: '#123640' }}
       >
-        <BattleScene snapshot={snapshot} />
+        <BattleScene character={character} snapshot={snapshot} />
       </Canvas>
       <span hidden data-testid="battle-background-motion" />
       <span hidden data-testid="battle-airflow-motion" />

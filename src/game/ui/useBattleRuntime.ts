@@ -2,10 +2,11 @@ import { useState, useSyncExternalStore } from 'react'
 
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from '../runtime/battleRuntime'
-import type { Difficulty } from '../types'
+import type { CharacterDefinition, Difficulty } from '../types'
 
 type BattleRuntimeOptions = {
   difficulty: Difficulty
+  character: CharacterDefinition
   fastStage?: boolean
   invincible?: boolean
 }
@@ -15,6 +16,7 @@ export function useBattleRuntime(options: BattleRuntimeOptions) {
     createBattleRuntime({
       difficulty: options.difficulty,
       stage: createStageDefinition(options.difficulty, { fastStage: options.fastStage }),
+      character: options.character,
       invincible: options.invincible,
     }),
   )
