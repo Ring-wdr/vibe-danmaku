@@ -8,6 +8,7 @@ export type AppScreen =
   | 'difficulty-select'
   | 'character-select'
   | 'stage-intro'
+  | 'battle-loading'
   | 'battle'
   | 'result'
 

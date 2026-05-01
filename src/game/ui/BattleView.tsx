@@ -151,6 +151,42 @@ function useLoadedTexture(url: string, configure?: (texture: THREE.Texture) => v
   return texture
 }
 
+function useLoadedTextureMap(textureUrls: Partial<Record<BackgroundTextureKey, string>>) {
+  const [textures, setTextures] = useState<Partial<Record<BackgroundTextureKey, THREE.Texture>>>({})
+
+  useEffect(() => {
+    let disposed = false
+    const loader = new THREE.TextureLoader()
+    const loadedTextures: THREE.Texture[] = []
+    const entries = Object.entries(textureUrls) as [BackgroundTextureKey, string][]
+
+    setTextures({})
+
+    entries.forEach(([key, url]) => {
+      loader.load(url, (loadedTexture) => {
+        if (disposed) {
+          loadedTexture.dispose()
+          return
+        }
+
+        loadedTextures.push(loadedTexture)
+        setTextures((currentTextures) => ({
+          ...currentTextures,
+          [key]: loadedTexture,
+        }))
+      })
+    })
+
+    return () => {
+      disposed = true
+      loadedTextures.forEach((texture) => texture.dispose())
+      setTextures({})
+    }
+  }, [textureUrls])
+
+  return textures
+}
+
 export function getAtlasFrameUv(frame: AtlasFrame) {
   const uvScale = new THREE.Vector2(
     frame.w / enemyBrassCloudAtlasSize.width,
@@ -438,6 +474,22 @@ export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string
   return gameAssets.bossCoreUrl
 }
 
+export function getBackgroundTextureUrls(
+  stage: StageDefinition,
+): Partial<Record<BackgroundTextureKey, string>> {
+  if (stage.backgroundTheme === 'burning-ruins') {
+    return {
+      ruinFloor: gameAssets.stage2RuinFloorUrl,
+      stage2Smoke: gameAssets.stage2SmokeLayerUrl,
+    }
+  }
+
+  return {
+    a: gameAssets.cloudLayerAUrl,
+    b: gameAssets.cloudLayerBUrl,
+  }
+}
+
 function BossSprite({ stage, snapshot }: { stage: StageDefinition; snapshot: BattleSnapshot }) {
   const bossTexture = useLoadedTexture(getBossCoreTextureUrl(stage, snapshot.boss))
 
@@ -542,16 +594,8 @@ function MovingCloudPlane({
 
 function MovingBackgroundLayer({ stage }: { stage: StageDefinition }) {
   const config = stageBackgroundMotionConfigs[stage.backgroundTheme]
-  const cloudTextureA = useLoadedTexture(gameAssets.cloudLayerAUrl)
-  const cloudTextureB = useLoadedTexture(gameAssets.cloudLayerBUrl)
-  const smokeTexture = useLoadedTexture(gameAssets.stage2SmokeLayerUrl)
-  const ruinFloorTexture = useLoadedTexture(gameAssets.stage2RuinFloorUrl)
-  const textures: Record<BackgroundTextureKey, THREE.Texture | undefined> = {
-    a: cloudTextureA ?? undefined,
-    b: cloudTextureB ?? undefined,
-    stage2Smoke: smokeTexture ?? undefined,
-    ruinFloor: ruinFloorTexture ?? undefined,
-  }
+  const textureUrls = useMemo(() => getBackgroundTextureUrls(stage), [stage])
+  const textures = useLoadedTextureMap(textureUrls)
   const renderLayer = (layerConfig: BackgroundMotionLayerConfig, layerIndex: number) => {
     const texture = textures[layerConfig.textureKey]
 

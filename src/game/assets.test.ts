@@ -10,9 +10,19 @@ describe('gameAssets', () => {
   })
 
   it('registers stage 2 burning ruins runtime assets', () => {
-    expect(gameAssets.stage2RuinFloorUrl).toMatch(/stage2-ruin-floor/)
-    expect(gameAssets.stage2SmokeLayerUrl).toMatch(/stage2-smoke-layer/)
-    expect(gameAssets.stage2MidbossCoreUrl).toMatch(/stage2-midboss-core/)
-    expect(gameAssets.stage2BossCoreUrl).toMatch(/stage2-boss-core/)
+    expect(gameAssets.stage2RuinFloorUrl).toMatch(/backgrounds\/burning-ruins\/stage2-ruin-floor/)
+    expect(gameAssets.stage2SmokeLayerUrl).toMatch(/backgrounds\/burning-ruins\/stage2-smoke-layer/)
+    expect(gameAssets.stage2MidbossCoreUrl).toMatch(/bosses\/stage2-midboss-core/)
+    expect(gameAssets.stage2BossCoreUrl).toMatch(/bosses\/stage2-boss-core/)
+  })
+
+  it('groups generated runtime assets by role and theme', () => {
+    expect(gameAssets.bossCoreUrl).toMatch(/bosses\/boss-core/)
+    expect(gameAssets.cloudLayerAUrl).toMatch(/backgrounds\/brass-cloud\/cloud-layer-a/)
+    expect(gameAssets.cloudLayerBUrl).toMatch(/backgrounds\/brass-cloud\/cloud-layer-b/)
+    expect(gameAssets.enemyBrassCloudAtlasUrl).toMatch(/enemies\/enemy-brass-cloud-atlas/)
+    expect(gameAssets.playerSheetUrl).toMatch(/players\/player-battle-sprite-sheet/)
+    expect(gameAssets.playerPortraitUrl).toMatch(/ui\/ui-player-portrait/)
+    expect(gameAssets.uiOrnamentUrl).toMatch(/ui\/ui-ornament/)
   })
 })

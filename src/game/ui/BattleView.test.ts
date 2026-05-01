@@ -11,6 +11,7 @@ import {
   battleDragInputConfig,
   BattleView,
   createArenaPoint,
+  getBackgroundTextureUrls,
   getBossCoreTextureUrl,
   getAtlasFrameUv,
   getFlightAirflowDynamics,
@@ -201,6 +202,35 @@ describe('getBossCoreTextureUrl', () => {
     )
   })
 })
+
+describe('getBackgroundTextureUrls', () => {
+  it('returns only brass-cloud textures for Stage 1', () => {
+    const textures = getBackgroundTextureUrls(createStageDefinition('normal'))
+
+    expect(textures).toEqual(
+      expect.objectContaining({
+        a: gameAssets.cloudLayerAUrl,
+        b: gameAssets.cloudLayerBUrl,
+      }),
+    )
+    expect(textures).not.toHaveProperty('stage2Smoke')
+    expect(textures).not.toHaveProperty('ruinFloor')
+  })
+
+  it('returns only burning-ruins textures for Stage 2', () => {
+    const textures = getBackgroundTextureUrls(createStage2Definition('normal'))
+
+    expect(textures).toEqual(
+      expect.objectContaining({
+        stage2Smoke: gameAssets.stage2SmokeLayerUrl,
+        ruinFloor: gameAssets.stage2RuinFloorUrl,
+      }),
+    )
+    expect(textures).not.toHaveProperty('a')
+    expect(textures).not.toHaveProperty('b')
+  })
+}
+)
 
 describe('getFlightAirflowDynamics', () => {
   it('raises turn intensity when the player changes lateral direction quickly', () => {

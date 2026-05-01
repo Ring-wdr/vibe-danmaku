@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import config from '../../vite.config'
+import config, { getGithubPagesBase } from '../../vite.config'
 
 type CodeSplittingGroup = {
   name: string
@@ -49,5 +49,15 @@ describe('vite production bundling', () => {
 
   it('uses a stricter warning limit after splitting the large battle bundle', () => {
     expect(viteConfig.build?.chunkSizeWarningLimit).toBeLessThan(500)
+  })
+})
+
+describe('GitHub Pages base path', () => {
+  it('uses the repository name as the base path for project pages', () => {
+    expect(getGithubPagesBase('Ring-wdr/vibe-danmaku')).toBe('/vibe-danmaku/')
+  })
+
+  it('uses root base for user or organization pages repositories', () => {
+    expect(getGithubPagesBase('Ring-wdr/ring-wdr.github.io')).toBe('/')
   })
 })

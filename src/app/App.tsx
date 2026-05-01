@@ -1,6 +1,11 @@
 import { lazy, Suspense, startTransition, useEffect, useMemo, useState } from 'react'
 import { parseAsBoolean, useQueryStates } from 'nuqs'
 
+import {
+  getBattleAssetPreloadItems,
+  preloadBattleAssets,
+  type BattleAssetProgress,
+} from './battleAssetPreload'
 import { gameAssets } from '../game/assets'
 import {
   getCharacterSelectRoster,
@@ -9,11 +14,19 @@ import {
 } from '../game/content/characters'
 import { createStageDefinition as createStage1Definition } from '../game/content/stage1'
 import { createStage2Definition } from '../game/content/stage2'
-import type { AppScreen, Difficulty, RunResult, StageDefinition } from '../game/types'
+import type {
+  AppScreen,
+  CharacterDefinition,
+  Difficulty,
+  RunResult,
+  StageDefinition,
+} from '../game/types'
 import { readLastCharacterId, writeLastCharacterId } from './characterSelectionStorage'
 
+const loadBattleViewModule = () => import('../game/ui/BattleView')
+
 const BattleView = lazy(async () => {
-  const module = await import('../game/ui/BattleView')
+  const module = await loadBattleViewModule()
   return { default: module.BattleView }
 })
 
@@ -39,6 +52,118 @@ function readViewport(initialViewport?: Viewport): Viewport {
     width: window.innerWidth,
     height: window.innerHeight,
   }
+}
+
+function BattleLoadingScreen({
+  character,
+  stage,
+  onReady,
+}: {
+  character: CharacterDefinition
+  stage: StageDefinition
+  onReady: () => void
+}) {
+  const [retrySeed, setRetrySeed] = useState(0)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<BattleAssetProgress>({
+    loadedItems: 0,
+    totalItems: 1,
+    ratio: 0,
+    currentLabel: 'Battle assets',
+  })
+  const percent = Math.round(Math.min(1, Math.max(0, progress.ratio)) * 100)
+
+  useEffect(() => {
+    let cancelled = false
+    const items = getBattleAssetPreloadItems({ stage, character })
+    const battleModule = loadBattleViewModule()
+
+    const prepareBattle = async () => {
+      setLoadError(null)
+      setProgress({
+        loadedItems: 0,
+        totalItems: items.length,
+        ratio: 0,
+        currentLabel: 'Battle assets',
+      })
+
+      try {
+        await preloadBattleAssets(items, (nextProgress) => {
+          if (!cancelled) {
+            setProgress(nextProgress)
+          }
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setProgress({
+          loadedItems: items.length,
+          totalItems: items.length,
+          ratio: 0.98,
+          currentLabel: 'Battle renderer',
+        })
+
+        await battleModule
+
+        if (!cancelled) {
+          setProgress({
+            loadedItems: items.length,
+            totalItems: items.length,
+            ratio: 1,
+            currentLabel: 'Ready',
+          })
+          onReady()
+        }
+      } catch {
+        if (!cancelled) {
+          setLoadError('Battle assets failed to load')
+        }
+      }
+    }
+
+    void prepareBattle()
+
+    return () => {
+      cancelled = true
+    }
+  }, [character, onReady, retrySeed, stage])
+
+  return (
+    <div className="battle-root__loading">
+      <div className="battle-loading-panel">
+        <p className="eyebrow">Stage {stage.stageNumber}</p>
+        <h1>{stage.name}</h1>
+        <div
+          className="battle-loading-panel__bar"
+          role="progressbar"
+          aria-label="Battle assets"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+        >
+          <i style={{ width: `${percent}%` }} />
+        </div>
+        <div className="battle-loading-panel__meta">
+          <strong>{percent}%</strong>
+          <span>{progress.currentLabel}</span>
+        </div>
+        <p>
+          {progress.loadedItems}/{progress.totalItems} assets ready
+        </p>
+        {loadError ? (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setRetrySeed((current) => current + 1)}
+          >
+            Retry Loading
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
 export function App({ initialViewport }: AppProps) {
@@ -99,7 +224,7 @@ export function App({ initialViewport }: AppProps) {
                 setResult(null)
                 setCurrentStageNumber(2)
                 setBattleSeed((current) => current + 1)
-                startScreen('battle')
+                startScreen('battle-loading')
                 return
               }
 
@@ -108,6 +233,18 @@ export function App({ initialViewport }: AppProps) {
             }}
           />
         </Suspense>
+      </main>
+    )
+  }
+
+  if (screen === 'battle-loading') {
+    return (
+      <main className="battle-root">
+        <BattleLoadingScreen
+          character={selectedCharacter}
+          stage={currentStage}
+          onReady={() => startScreen('battle')}
+        />
       </main>
     )
   }
@@ -272,7 +409,7 @@ export function App({ initialViewport }: AppProps) {
                 className="primary-button"
                 onClick={() => {
                   setCurrentStageNumber(1)
-                  startScreen('battle')
+                  startScreen('battle-loading')
                 }}
               >
                 Deploy
@@ -319,7 +456,7 @@ export function App({ initialViewport }: AppProps) {
                   onClick={() => {
                     setCurrentStageNumber(result.stageNumber)
                     setBattleSeed((current) => current + 1)
-                    startScreen('battle')
+                    startScreen('battle-loading')
                   }}
                 >
                   Retry Stage

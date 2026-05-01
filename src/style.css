@@ -59,6 +59,55 @@ select {
   place-items: center;
   color: var(--cream);
   background: #123640;
+  padding: 24px;
+}
+
+.battle-loading-panel {
+  width: min(100%, 360px);
+  display: grid;
+  gap: 14px;
+}
+
+.battle-loading-panel h1 {
+  font-family: 'Cinzel', serif;
+  font-size: 30px;
+  line-height: 1.02;
+}
+
+.battle-loading-panel__bar {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 244, 223, 0.16);
+}
+
+.battle-loading-panel__bar i {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #69f0e3, #f8b56b 72%, #ff7a62);
+  transition: width 160ms ease;
+}
+
+.battle-loading-panel__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.battle-loading-panel__meta strong {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.battle-loading-panel__meta span,
+.battle-loading-panel p {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 button {

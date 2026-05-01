@@ -7,8 +7,10 @@ import { App } from './App'
 import { lastCharacterStorageKey } from './characterSelectionStorage'
 import type { Difficulty, RunResult, StageDefinition } from '../game/types'
 
-const { mockBattleView } = vi.hoisted(() => ({
+const { mockBattleView, mockGetBattleAssetPreloadItems, mockPreloadBattleAssets } = vi.hoisted(() => ({
   mockBattleView: vi.fn(),
+  mockGetBattleAssetPreloadItems: vi.fn(),
+  mockPreloadBattleAssets: vi.fn(),
 }))
 
 vi.mock('../game/ui/BattleView', () => ({
@@ -49,6 +51,11 @@ vi.mock('../game/ui/BattleView', () => ({
   },
 }))
 
+vi.mock('./battleAssetPreload', () => ({
+  getBattleAssetPreloadItems: mockGetBattleAssetPreloadItems,
+  preloadBattleAssets: mockPreloadBattleAssets,
+}))
+
 function renderApp(ui: ReactElement) {
   return render(ui, {
     wrapper: withNuqsTestingAdapter({ searchParams: '' }),
@@ -59,6 +66,35 @@ describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mockBattleView.mockClear()
+    mockGetBattleAssetPreloadItems.mockReset()
+    mockPreloadBattleAssets.mockReset()
+    mockGetBattleAssetPreloadItems.mockImplementation(
+      ({ stage }: { stage: StageDefinition }) => [
+        {
+          id: `stage-${stage.stageNumber}`,
+          label: `Stage ${stage.stageNumber} assets`,
+          url: `/stage-${stage.stageNumber}.webp`,
+        },
+      ],
+    )
+    mockPreloadBattleAssets.mockImplementation(
+      async (
+        items: { label: string }[],
+        onProgress: (progress: {
+          loadedItems: number
+          totalItems: number
+          ratio: number
+          currentLabel: string
+        }) => void,
+      ) => {
+        onProgress({
+          loadedItems: items.length,
+          totalItems: items.length,
+          ratio: 1,
+          currentLabel: items[items.length - 1]?.label ?? 'Battle assets',
+        })
+      },
+    )
   })
 
   it('moves from title to difficulty select to character select before stage intro', () => {
@@ -129,6 +165,50 @@ describe('App', () => {
     await screen.findByLabelText(/mock stage 1 battle/i)
   }
 
+  it('shows battle asset loading progress before rendering the battle screen', async () => {
+    let resolvePreload!: () => void
+    const preloadDone = new Promise<void>((resolve) => {
+      resolvePreload = resolve
+    })
+    mockPreloadBattleAssets.mockImplementationOnce(
+      async (
+        items: { label: string }[],
+        onProgress: (progress: {
+          loadedItems: number
+          totalItems: number
+          ratio: number
+          currentLabel: string
+        }) => void,
+      ) => {
+        onProgress({
+          loadedItems: 0,
+          totalItems: items.length,
+          ratio: 0.42,
+          currentLabel: 'Brass boss core',
+        })
+        await preloadDone
+      },
+    )
+
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    fireEvent.click(screen.getByRole('button', { name: /normal/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }))
+
+    expect(screen.getByRole('progressbar', { name: /battle assets/i })).toHaveAttribute(
+      'aria-valuenow',
+      '42',
+    )
+    expect(screen.getByText(/brass boss core/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/mock stage 1 battle/i)).not.toBeInTheDocument()
+
+    resolvePreload()
+
+    expect(await screen.findByLabelText(/mock stage 1 battle/i)).toBeInTheDocument()
+  })
+
   it('automatically starts stage 2 when stage 1 is cleared without showing results', async () => {
     await deployToBattle()
 
@@ -141,6 +221,11 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
 
     await screen.findByLabelText(/mock stage 2 battle/i)
+    expect(mockGetBattleAssetPreloadItems).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stage: expect.objectContaining({ stageNumber: 2 }),
+      }),
+    )
     expect(screen.queryByRole('heading', { name: /cloud gate broken/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: /burning ruin corridor/i })).not.toBeInTheDocument()
     expect(mockBattleView).toHaveBeenLastCalledWith(
@@ -190,6 +275,6 @@ describe('App', () => {
         }),
       )
     })
-    expect(screen.getByLabelText(/mock stage 2 battle/i)).toBeInTheDocument()
+    expect(await screen.findByLabelText(/mock stage 2 battle/i)).toBeInTheDocument()
   })
 })

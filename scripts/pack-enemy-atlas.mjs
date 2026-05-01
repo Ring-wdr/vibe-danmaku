@@ -4,7 +4,7 @@ import sharp from 'sharp'
 
 const root = process.cwd()
 const sourceDir = path.join(root, 'src/assets/generated/enemies/brass-cloud')
-const outPath = path.join(root, 'src/assets/generated/enemy-brass-cloud-atlas.webp')
+const outPath = path.join(root, 'src/assets/generated/enemies/enemy-brass-cloud-atlas.webp')
 const cellSize = 192
 const spriteSize = 168
 const columns = 3

@@ -32,7 +32,23 @@ function isBattleThreeVendor(id: string) {
   )
 }
 
+export function getGithubPagesBase(repository = process.env.GITHUB_REPOSITORY) {
+  if (!repository) {
+    return '/'
+  }
+
+  const [owner, repo] = repository.split('/')
+  if (!owner || !repo || repo.toLowerCase() === `${owner.toLowerCase()}.github.io`) {
+    return '/'
+  }
+
+  return `/${repo}/`
+}
+
+const base = process.env.VITE_BASE_PATH ?? (process.env.GITHUB_ACTIONS ? getGithubPagesBase() : '/')
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     babel({
