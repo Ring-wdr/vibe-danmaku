@@ -23,4 +23,17 @@ describe('createStageDefinition', () => {
 
     expect(easy.waves[0]?.startAt).toBeLessThanOrEqual(2)
   })
+
+  it('keeps regular enemy waves close enough together to avoid empty combat stretches', () => {
+    const stage = createStageDefinition('normal')
+    const waveStartTimes = stage.waves.map((wave) => wave.startAt)
+    const waveGaps = waveStartTimes.slice(1).map((startAt, index) => {
+      return startAt - waveStartTimes[index]!
+    })
+    const finalApproachGap = stage.boss.startAt - waveStartTimes[waveStartTimes.length - 1]!
+
+    expect(stage.waves.length).toBeGreaterThanOrEqual(7)
+    expect(Math.max(...waveGaps)).toBeLessThanOrEqual(12)
+    expect(finalApproachGap).toBeLessThanOrEqual(12)
+  })
 })
