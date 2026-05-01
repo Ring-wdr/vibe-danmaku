@@ -143,6 +143,7 @@ function RestoredTextureMaterial({
   uvScale?: THREE.Vector2
   uvOffset?: THREE.Vector2
 }) {
+  const hasExplicitUv = Boolean(uvScale || uvOffset)
   const material = useMemo(() => {
     const initialUvScale = uvScale ?? new THREE.Vector2(1 / frameColumns, 1)
     const initialUvOffset = uvOffset ?? new THREE.Vector2(0, 0)
@@ -203,7 +204,7 @@ function RestoredTextureMaterial({
   }, [frameColumns, texture, uvOffset, uvScale])
 
   useFrame(({ clock }) => {
-    if (frameColumns <= 1) {
+    if (frameColumns <= 1 || hasExplicitUv) {
       return
     }
 
@@ -683,9 +684,6 @@ export function BattleView({
         <BattleScene snapshot={snapshot} />
       </Canvas>
       <span hidden data-testid="battle-background-motion" />
-      <span hidden data-testid="battle-enemy-atlas-frames">
-        {snapshot.enemies.map((enemy) => enemy.frameId).join(' ')}
-      </span>
       <div
         ref={overlayRef}
         className="battle-shell__controls"

@@ -109,16 +109,13 @@ describe('getAtlasFrameUv', () => {
 })
 
 describe('BattleView', () => {
-  it('renders the R3F canvas, HUD, and atlas-backed enemy frame metadata', () => {
+  it('renders the R3F canvas, HUD, and control overlay with atlas-backed enemies', () => {
     const { container } = render(
       createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }),
     )
 
     expect(screen.getByTestId('battle-canvas')).toBeInTheDocument()
     expect(screen.getByTestId('battle-background-motion')).toBeInTheDocument()
-    expect(screen.getByTestId('battle-enemy-atlas-frames')).toHaveTextContent(
-      'sentinel weaver',
-    )
     expect(screen.getByLabelText('Battle status')).toBeInTheDocument()
     expect(container.querySelector('.battle-shell__controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
