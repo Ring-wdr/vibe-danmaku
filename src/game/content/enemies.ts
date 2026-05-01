@@ -45,8 +45,8 @@ const tuningByDifficulty: Record<
   { hp: number; bulletCount: number; bulletSpeed: number; interval: number }
 > = {
   easy: { hp: 1, bulletCount: 1, bulletSpeed: 1, interval: 1 },
-  normal: { hp: 1.12, bulletCount: 1.25, bulletSpeed: 1.08, interval: 0.92 },
-  hard: { hp: 1.28, bulletCount: 1.5, bulletSpeed: 1.18, interval: 0.82 },
+  normal: { hp: 1.12, bulletCount: 1.08, bulletSpeed: 1.08, interval: 0.92 },
+  hard: { hp: 1.28, bulletCount: 1.22, bulletSpeed: 1.18, interval: 0.82 },
 }
 
 export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition> = {
@@ -55,7 +55,7 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
     hp: 14,
     speed: 0.86,
     scale: 0.82,
-    hitRadius: 0.25,
+    hitRadius: 0.33,
     path: 'swoop-left',
     pattern: {
       shape: 'fan',
@@ -71,7 +71,7 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
     hp: 26,
     speed: 0.62,
     scale: 0.92,
-    hitRadius: 0.3,
+    hitRadius: 0.38,
     path: 'helix',
     pattern: {
       shape: 'ring',
@@ -87,7 +87,7 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
     hp: 18,
     speed: 0.73,
     scale: 0.86,
-    hitRadius: 0.26,
+    hitRadius: 0.34,
     path: 'swoop-right',
     pattern: {
       shape: 'needle',
@@ -104,7 +104,7 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
     hp: 20,
     speed: 0.68,
     scale: 0.88,
-    hitRadius: 0.28,
+    hitRadius: 0.36,
     path: 'swoop-left',
     pattern: {
       shape: 'split',
@@ -121,7 +121,7 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
     hp: 24,
     speed: 0.57,
     scale: 0.9,
-    hitRadius: 0.3,
+    hitRadius: 0.38,
     path: 'helix',
     pattern: {
       shape: 'mine',
@@ -137,7 +137,7 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
     hp: 19,
     speed: 0.77,
     scale: 0.84,
-    hitRadius: 0.26,
+    hitRadius: 0.34,
     path: 'helix',
     pattern: {
       shape: 'wave',

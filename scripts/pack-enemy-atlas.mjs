@@ -4,8 +4,9 @@ import sharp from 'sharp'
 
 const root = process.cwd()
 const sourceDir = path.join(root, 'src/assets/generated/enemies/brass-cloud')
-const outPath = path.join(root, 'src/assets/generated/enemy-brass-cloud-atlas.png')
-const cellSize = 256
+const outPath = path.join(root, 'src/assets/generated/enemy-brass-cloud-atlas.webp')
+const cellSize = 192
+const spriteSize = 168
 const columns = 3
 const rows = 2
 const frames = ['scout', 'sentinel', 'lancer', 'splitter', 'mine-layer', 'weaver']
@@ -16,16 +17,16 @@ const composites = await Promise.all(
   frames.map(async (frame, index) => {
     const input = await sharp(path.join(sourceDir, `${frame}.png`))
       .resize({
-        width: 220,
-        height: 220,
+        width: spriteSize,
+        height: spriteSize,
         fit: 'contain',
         background: { r: 0, g: 0, b: 0, alpha: 0 },
       })
-      .png()
+      .webp({ quality: 76, alphaQuality: 84, effort: 5 })
       .toBuffer()
 
-    const left = (index % columns) * cellSize + 18
-    const top = Math.floor(index / columns) * cellSize + 18
+    const left = (index % columns) * cellSize + 12
+    const top = Math.floor(index / columns) * cellSize + 12
 
     return { input, left, top }
   }),
@@ -40,7 +41,7 @@ await sharp({
   },
 })
   .composite(composites)
-  .png()
+  .webp({ quality: 76, alphaQuality: 84, effort: 5 })
   .toFile(outPath)
 
 console.log(`Packed ${frames.length} frames into ${path.relative(root, outPath)}`)

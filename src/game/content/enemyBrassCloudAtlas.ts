@@ -8,15 +8,15 @@ export type AtlasFrame = {
 }
 
 export const enemyBrassCloudAtlasSize = {
-  width: 768,
-  height: 512,
+  width: 576,
+  height: 384,
 } as const
 
 export const brassCloudEnemyFrames: Record<EnemyFrameId, AtlasFrame> = {
-  scout: { x: 0, y: 0, w: 256, h: 256 },
-  sentinel: { x: 256, y: 0, w: 256, h: 256 },
-  lancer: { x: 512, y: 0, w: 256, h: 256 },
-  splitter: { x: 0, y: 256, w: 256, h: 256 },
-  'mine-layer': { x: 256, y: 256, w: 256, h: 256 },
-  weaver: { x: 512, y: 256, w: 256, h: 256 },
+  scout: { x: 0, y: 0, w: 192, h: 192 },
+  sentinel: { x: 192, y: 0, w: 192, h: 192 },
+  lancer: { x: 384, y: 0, w: 192, h: 192 },
+  splitter: { x: 0, y: 192, w: 192, h: 192 },
+  'mine-layer': { x: 192, y: 192, w: 192, h: 192 },
+  weaver: { x: 384, y: 192, w: 192, h: 192 },
 } as const

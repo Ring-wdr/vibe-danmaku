@@ -3,6 +3,28 @@ import { describe, expect, it } from 'vitest'
 import { createStageDefinition } from './stage1'
 
 describe('createStageDefinition', () => {
+  it('roughly doubles or triples each regular wave after the density increase', () => {
+    const stage = createStageDefinition('normal')
+    const previousWaveCounts = [3, 3, 3, 4, 4, 4, 5, 5]
+
+    expect(stage.waves.map((wave) => wave.count)).toEqual([7, 7, 7, 9, 9, 9, 12, 12])
+    expect(stage.waves.reduce((total, wave) => total + wave.count, 0)).toBe(72)
+
+    stage.waves.forEach((wave, index) => {
+      const ratio = wave.count / previousWaveCounts[index]!
+      expect(ratio).toBeGreaterThanOrEqual(2)
+      expect(ratio).toBeLessThanOrEqual(3)
+    })
+  })
+
+  it('keeps denser enemy formations inside the playable horizontal span', () => {
+    const stage = createStageDefinition('normal')
+
+    for (const wave of stage.waves) {
+      expect((wave.count - 1) * wave.spacing).toBeLessThanOrEqual(6)
+    }
+  })
+
   it('keeps wave timing stable across difficulties while scaling bullet counts', () => {
     const easy = createStageDefinition('easy')
     const hard = createStageDefinition('hard')
@@ -16,6 +38,8 @@ describe('createStageDefinition', () => {
     expect(hard.boss.phases[1]?.pattern.count).toBeGreaterThan(
       easy.boss.phases[1]?.pattern.count ?? 0,
     )
+    expect(easy.boss.phases.map((phase) => phase.pattern.count)).toEqual([8, 10, 12])
+    expect(hard.boss.phases.map((phase) => phase.pattern.count)).toEqual([10, 12, 14])
   })
 
   it('starts the first combat wave quickly after deploy so the battle does not feel empty', () => {

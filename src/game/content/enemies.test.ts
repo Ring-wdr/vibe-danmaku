@@ -69,12 +69,12 @@ describe('enemy content resolver', () => {
         archetypeIds.map((archetype) => [archetype, enemyArchetypes[archetype].hitRadius]),
       ),
     ).toEqual({
-      scout: 0.25,
-      sentinel: 0.3,
-      lancer: 0.26,
-      splitter: 0.28,
-      'mine-layer': 0.3,
-      weaver: 0.26,
+      scout: 0.33,
+      sentinel: 0.38,
+      lancer: 0.34,
+      splitter: 0.36,
+      'mine-layer': 0.38,
+      weaver: 0.34,
     })
   })
 
@@ -101,6 +101,13 @@ describe('enemy content resolver', () => {
     expect(hard.count).toBeGreaterThan(easy.count)
     expect(hard.speed).toBeGreaterThan(easy.speed)
     expect(hard.interval).toBeLessThan(easy.interval)
+  })
+
+  it('keeps difficulty bullet-count tuning restrained after enemy density increases', () => {
+    const pattern = enemyArchetypes.weaver.pattern
+
+    expect(resolvePatternForDifficulty(pattern, 'normal').count).toBe(6)
+    expect(resolvePatternForDifficulty(pattern, 'hard').count).toBe(7)
   })
 
   it('rejects placements whose variant belongs to a different archetype', () => {
