@@ -1,10 +1,6 @@
+import { scaleBossDefinition } from './bossScaling'
 import { resolveEnemyWave } from './enemies'
-import type {
-  BossDefinition,
-  BulletPatternConfig,
-  Difficulty,
-  StageDefinition,
-} from '../types'
+import type { BossDefinition, Difficulty, StageDefinition } from '../types'
 
 const baseWavePlacements = [
   {
@@ -104,35 +100,13 @@ const baseBoss: BossDefinition = {
   ],
 }
 
-const bossTuningByDifficulty: Record<
-  Difficulty,
-  { bulletCount: number; bulletSpeed: number; interval: number }
-> = {
-  easy: { bulletCount: 1, bulletSpeed: 1, interval: 1 },
-  normal: { bulletCount: 1.08, bulletSpeed: 1.08, interval: 0.92 },
-  hard: { bulletCount: 1.2, bulletSpeed: 1.18, interval: 0.82 },
-}
-
-function scaleBossPattern(
-  pattern: BulletPatternConfig,
-  difficulty: Difficulty,
-): BulletPatternConfig {
-  const tuning = bossTuningByDifficulty[difficulty]
-
-  return {
-    ...pattern,
-    count: Math.max(3, Math.round(pattern.count * tuning.bulletCount)),
-    interval: Number((pattern.interval * tuning.interval).toFixed(2)),
-    speed: Number((pattern.speed * tuning.bulletSpeed).toFixed(2)),
-  }
-}
-
 export function createStageDefinition(
   difficulty: Difficulty,
   options?: { fastStage?: boolean },
 ): StageDefinition {
   const fastMultiplier = options?.fastStage ? 0.22 : 1
   const scaleTime = (value: number) => Number((value * fastMultiplier).toFixed(2))
+  const boss = scaleBossDefinition(baseBoss, difficulty)
 
   return {
     id: 'brass-cloud-gate',
@@ -146,12 +120,8 @@ export function createStageDefinition(
       startAt: scaleTime(placement.startAt),
     })),
     boss: {
-      ...baseBoss,
-      startAt: scaleTime(baseBoss.startAt),
-      phases: baseBoss.phases.map((phase) => ({
-        ...phase,
-        pattern: scaleBossPattern(phase.pattern, difficulty),
-      })),
+      ...boss,
+      startAt: scaleTime(boss.startAt),
     },
   }
 }

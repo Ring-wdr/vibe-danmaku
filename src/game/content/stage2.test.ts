@@ -60,4 +60,22 @@ describe('createStage2Definition', () => {
     expect(fast.midboss?.startAt).toBeCloseTo((regular.midboss?.startAt ?? 0) * 0.22)
     expect(fast.boss.startAt).toBeCloseTo(regular.boss.startAt * 0.22)
   })
+
+  it('increases midboss and final boss pattern counts on hard difficulty', () => {
+    const easy = createStage2Definition('easy')
+    const hard = createStage2Definition('hard')
+
+    expect(hard.midboss?.phases[0]?.pattern.count).toBeGreaterThan(
+      easy.midboss?.phases[0]?.pattern.count ?? 0,
+    )
+    expect(hard.midboss?.phases[1]?.pattern.count).toBeGreaterThan(
+      easy.midboss?.phases[1]?.pattern.count ?? 0,
+    )
+    expect(hard.boss.phases[0]?.pattern.count).toBeGreaterThan(
+      easy.boss.phases[0]?.pattern.count ?? 0,
+    )
+    expect(hard.boss.phases[1]?.pattern.count).toBeGreaterThan(
+      easy.boss.phases[1]?.pattern.count ?? 0,
+    )
+  })
 })

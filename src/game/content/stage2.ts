@@ -1,7 +1,7 @@
+import { scaleBossDefinition } from './bossScaling'
 import { resolveEnemyWave } from './enemies'
 import type {
   BossDefinition,
-  BulletPatternConfig,
   Difficulty,
   MidbossDefinition,
   StageDefinition,
@@ -160,47 +160,14 @@ const baseBoss: BossDefinition = {
   ],
 }
 
-const bossTuningByDifficulty: Record<
-  Difficulty,
-  { bulletCount: number; bulletSpeed: number; interval: number }
-> = {
-  easy: { bulletCount: 1, bulletSpeed: 1, interval: 1 },
-  normal: { bulletCount: 1.08, bulletSpeed: 1.08, interval: 0.92 },
-  hard: { bulletCount: 1.2, bulletSpeed: 1.18, interval: 0.82 },
-}
-
-function scaleBossPattern(
-  pattern: BulletPatternConfig,
-  difficulty: Difficulty,
-): BulletPatternConfig {
-  const tuning = bossTuningByDifficulty[difficulty]
-
-  return {
-    ...pattern,
-    count: Math.max(3, Math.round(pattern.count * tuning.bulletCount)),
-    interval: Number((pattern.interval * tuning.interval).toFixed(2)),
-    speed: Number((pattern.speed * tuning.bulletSpeed).toFixed(2)),
-  }
-}
-
-function scaleBoss<TBoss extends BossDefinition>(boss: TBoss, difficulty: Difficulty): TBoss {
-  return {
-    ...boss,
-    phases: boss.phases.map((phase) => ({
-      ...phase,
-      pattern: scaleBossPattern(phase.pattern, difficulty),
-    })),
-  }
-}
-
 export function createStage2Definition(
   difficulty: Difficulty,
   options?: { fastStage?: boolean },
 ): StageDefinition {
   const fastMultiplier = options?.fastStage ? 0.22 : 1
   const scaleTime = (value: number) => Number((value * fastMultiplier).toFixed(2))
-  const midboss = scaleBoss(baseMidboss, difficulty)
-  const boss = scaleBoss(baseBoss, difficulty)
+  const midboss = scaleBossDefinition(baseMidboss, difficulty)
+  const boss = scaleBossDefinition(baseBoss, difficulty)
 
   return {
     id: 'burning-ruin-corridor',
