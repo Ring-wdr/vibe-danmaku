@@ -459,6 +459,9 @@ export function createBattleRuntime({
 
     result = {
       outcome,
+      stageId: stage.id,
+      stageName: stage.name,
+      stageNumber: stage.stageNumber,
       difficulty,
       duration: elapsed,
       remainingHp: player.hp,
