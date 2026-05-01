@@ -8,6 +8,7 @@ import {
   BattleView,
   createArenaPoint,
   getAtlasFrameUv,
+  getPlayerBattleSpritePose,
 } from './BattleView'
 
 vi.mock('@react-three/fiber', () => ({
@@ -105,6 +106,48 @@ describe('getAtlasFrameUv', () => {
     expect(uvScale.y).toBeCloseTo(1 / 2)
     expect(uvOffset.x).toBeCloseTo(2 / 3)
     expect(uvOffset.y).toBeCloseTo(0)
+  })
+})
+
+describe('getPlayerBattleSpritePose', () => {
+  it('keeps the player on frame 0 while idle', () => {
+    expect(getPlayerBattleSpritePose({ currentX: 0, previousX: 0 })).toEqual({
+      frameIndex: 0,
+      flipX: false,
+    })
+  })
+
+  it('reserves frame 2 for the future special attack pose', () => {
+    expect(
+      getPlayerBattleSpritePose({ currentX: 0, previousX: 0, specialActive: true }),
+    ).toEqual({
+      frameIndex: 2,
+      flipX: false,
+    })
+  })
+
+  it('uses frame 3 for player-driven horizontal movement and flips left movement', () => {
+    expect(getPlayerBattleSpritePose({ currentX: 1, previousX: 0 })).toEqual({
+      frameIndex: 3,
+      flipX: false,
+    })
+    expect(getPlayerBattleSpritePose({ currentX: -1, previousX: 0 })).toEqual({
+      frameIndex: 3,
+      flipX: true,
+    })
+  })
+
+  it('can keep the horizontal movement frame briefly after a drag step', () => {
+    expect(
+      getPlayerBattleSpritePose({
+        currentX: 1,
+        previousX: 1,
+        heldHorizontalDirection: 1,
+      }),
+    ).toEqual({
+      frameIndex: 3,
+      flipX: false,
+    })
   })
 })
 

@@ -90,6 +90,33 @@ export function getAtlasFrameUv(frame: AtlasFrame) {
   return { uvScale, uvOffset }
 }
 
+export function getPlayerBattleSpritePose({
+  currentX,
+  previousX,
+  specialActive = false,
+  heldHorizontalDirection = 0,
+}: {
+  currentX: number
+  previousX: number
+  specialActive?: boolean
+  heldHorizontalDirection?: -1 | 0 | 1
+}) {
+  if (specialActive) {
+    return { frameIndex: 2, flipX: false }
+  }
+
+  const horizontalDelta = currentX - previousX
+  if (Math.abs(horizontalDelta) > 0.001) {
+    return { frameIndex: 3, flipX: horizontalDelta < 0 }
+  }
+
+  if (heldHorizontalDirection !== 0) {
+    return { frameIndex: 3, flipX: heldHorizontalDirection < 0 }
+  }
+
+  return { frameIndex: 0, flipX: false }
+}
+
 function RestoredTextureMaterial({
   texture,
   opacity = 1,
@@ -98,6 +125,8 @@ function RestoredTextureMaterial({
   contrast = 1.08,
   frameColumns = 1,
   frameRate = 8,
+  frameIndex,
+  flipX = false,
   uvScale,
   uvOffset,
 }: {
@@ -108,13 +137,18 @@ function RestoredTextureMaterial({
   contrast?: number
   frameColumns?: number
   frameRate?: number
+  frameIndex?: number
+  flipX?: boolean
   uvScale?: THREE.Vector2
   uvOffset?: THREE.Vector2
 }) {
   const hasExplicitUv = Boolean(uvScale || uvOffset)
+  const hasFixedFrame = frameIndex !== undefined
   const material = useMemo(() => {
     const initialUvScale = uvScale ?? new THREE.Vector2(1 / frameColumns, 1)
-    const initialUvOffset = uvOffset ?? new THREE.Vector2(0, 0)
+    const initialUvOffset =
+      uvOffset ??
+      new THREE.Vector2((frameIndex ?? 0) / Math.max(1, frameColumns), 0)
 
     return new THREE.ShaderMaterial({
       uniforms: {
@@ -126,6 +160,7 @@ function RestoredTextureMaterial({
         alphaCutoff: { value: 0.02 },
         uvScale: { value: initialUvScale.clone() },
         uvOffset: { value: initialUvOffset.clone() },
+        flipX: { value: flipX ? 1 : 0 },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -144,10 +179,12 @@ function RestoredTextureMaterial({
         uniform float alphaCutoff;
         uniform vec2 uvScale;
         uniform vec2 uvOffset;
+        uniform float flipX;
         varying vec2 vUv;
 
         void main() {
-          vec2 sampleUv = vUv * uvScale + uvOffset;
+          vec2 localUv = vec2(mix(vUv.x, 1.0 - vUv.x, flipX), vUv.y);
+          vec2 sampleUv = localUv * uvScale + uvOffset;
           vec4 texel = texture2D(map, sampleUv);
           float alpha = texel.a * opacity;
 
@@ -172,7 +209,7 @@ function RestoredTextureMaterial({
   }, [frameColumns, texture, uvOffset, uvScale])
 
   useFrame(({ clock }) => {
-    if (frameColumns <= 1 || hasExplicitUv) {
+    if (frameColumns <= 1 || hasExplicitUv || hasFixedFrame) {
       return
     }
 
@@ -185,7 +222,9 @@ function RestoredTextureMaterial({
 
   useEffect(() => {
     const nextUvScale = uvScale ?? new THREE.Vector2(1 / frameColumns, 1)
-    const nextUvOffset = uvOffset ?? new THREE.Vector2(0, 0)
+    const nextFrameOffset =
+      frameIndex === undefined ? 0 : frameIndex / Math.max(1, frameColumns)
+    const nextUvOffset = uvOffset ?? new THREE.Vector2(nextFrameOffset, 0)
 
     material.uniforms.map.value = texture
     material.uniforms.opacity.value = opacity
@@ -194,11 +233,14 @@ function RestoredTextureMaterial({
     material.uniforms.contrast.value = contrast
     material.uniforms.uvScale.value.copy(nextUvScale)
     material.uniforms.uvOffset.value.copy(nextUvOffset)
+    material.uniforms.flipX.value = flipX ? 1 : 0
     material.needsUpdate = true
   }, [
     contrast,
     exposure,
+    flipX,
     frameColumns,
+    frameIndex,
     material,
     opacity,
     saturation,
@@ -210,8 +252,43 @@ function RestoredTextureMaterial({
   return <primitive object={material} attach="material" />
 }
 
-function PlayerSprite({ position }: { position: [number, number, number] }) {
+function PlayerSprite({
+  battleElapsed,
+  position,
+  specialActive = false,
+}: {
+  battleElapsed: number
+  position: [number, number, number]
+  specialActive?: boolean
+}) {
   const texture = useLoadedTexture(gameAssets.playerSheetUrl)
+  const previousXRef = useRef(position[0])
+  const heldHorizontalMoveRef = useRef<{ direction: -1 | 0 | 1; until: number }>({
+    direction: 0,
+    until: 0,
+  })
+  const horizontalDelta = position[0] - previousXRef.current
+
+  if (Math.abs(horizontalDelta) > 0.001) {
+    heldHorizontalMoveRef.current = {
+      direction: horizontalDelta < 0 ? -1 : 1,
+      until: battleElapsed + 0.12,
+    }
+  }
+
+  const pose = getPlayerBattleSpritePose({
+    currentX: position[0],
+    previousX: previousXRef.current,
+    heldHorizontalDirection:
+      battleElapsed <= heldHorizontalMoveRef.current.until
+        ? heldHorizontalMoveRef.current.direction
+        : 0,
+    specialActive,
+  })
+
+  useEffect(() => {
+    previousXRef.current = position[0]
+  }, [position])
 
   if (!texture) {
     return (
@@ -230,6 +307,8 @@ function PlayerSprite({ position }: { position: [number, number, number] }) {
         exposure={1.95}
         saturation={1.48}
         frameColumns={4}
+        frameIndex={pose.frameIndex}
+        flipX={pose.flipX}
       />
     </mesh>
   )
@@ -547,6 +626,7 @@ function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
   return (
     <>
       <PlayerSprite
+        battleElapsed={snapshot.elapsed}
         position={arenaPointToView(snapshot.player.position, 0.65)}
       />
       {snapshot.enemies.map((enemy) => (

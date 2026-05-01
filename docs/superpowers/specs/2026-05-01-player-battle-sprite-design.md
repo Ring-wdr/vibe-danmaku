@@ -4,7 +4,7 @@
 
 Create a new player battle sprite sheet that fits the current steamfantasy danmaku concept while preserving the existing `player-sprite-sheet.png` file for later reuse.
 
-The new sprite should keep the pilot-character identity instead of replacing the player with a pure aircraft. It should be easier to read in the active battle scene than the current highly detailed character sheet.
+The new sprite should keep the pilot-character identity instead of replacing the player with a pure aircraft. It should also respect the vertical shooter screen grammar: the player is positioned near the bottom of the screen and fights enemies above, so the sprite must read as a bottom-side pilot facing or banking upward rather than a front-facing character illustration.
 
 ## Chosen Direction
 
@@ -17,7 +17,7 @@ The sprite should preserve the current character cues:
 - bright aether effects that match the brass-cloud enemy theme
 - full-body pilot silhouette
 
-The battle version should simplify and brighten the silhouette so it remains readable on the R3F canvas, especially when bullets are dense.
+The battle version should simplify and brighten the silhouette so it remains readable on the R3F canvas, especially when bullets are dense. It should prioritize back-view or upward three-quarter poses, visible wings, cape flow, upward weapon direction, and propulsion/aether effects that imply movement toward the top of the battlefield.
 
 ## Asset Model
 
@@ -33,10 +33,10 @@ The new sheet should remain a horizontal four-frame PNG because the current rend
 
 Recommended frame meanings:
 
-- frame 1: neutral hover
-- frame 2: slight left or wind-up pose
-- frame 3: firing or aether focus pose
-- frame 4: boost or flourish pose
+- frame 1: neutral hover, seen from behind or upward three-quarter view
+- frame 2: slight left bank while still facing upward
+- frame 3: upward firing or aether focus pose
+- frame 4: upward boost or evasive flourish pose
 
 All frames should use consistent scale, baseline, padding, and character proportions so the animation does not wobble.
 
@@ -53,12 +53,14 @@ Use `imagegen` to generate a single horizontal four-frame transparent game sprit
 Prompt constraints:
 
 - style: polished anime game sprite, steamfantasy brass and teal
-- subject: Lyra Aer style female pilot, full-body, readable in a small vertical shooter playfield
+- subject: Lyra Aer style female pilot, full-body, bottom-side player unit facing upward toward enemies
+- perspective: back view or upward three-quarter view, not front-facing portrait poses
 - layout: four evenly spaced frames in one horizontal row
 - background: transparent or flat chroma-key-removable background
 - no text, watermark, logos, cast shadow, environment, UI, or extra characters
 - consistent framing, proportions, and foot baseline across all frames
-- strong silhouette, brighter player-readability accents, less tiny costume noise than the current sheet
+- strong silhouette, brighter player-readability accents, upward weapon/aether direction, less tiny costume noise than the current sheet
+- compact aether effects only; do not add long beams or trails that force the character to shrink inside the frame
 
 If the generated output needs background removal, use the standard chroma-key cleanup path and save only the final project-bound PNG in the workspace.
 
