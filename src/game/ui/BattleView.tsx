@@ -3,6 +3,12 @@ import { useEffect, useRef, useState } from 'react'
 
 import { BattleHud } from './BattleHud'
 import { BattleScene } from './BattleScene'
+import {
+  readBattleSettings,
+  writeBattleSettings,
+  type BattleSettings,
+  type DragSensitivity,
+} from './battleSettingsStorage'
 import { battleDragInputConfig, createArenaPoint } from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
 import styles from './BattleView.module.css'
@@ -19,22 +25,6 @@ type BattleViewProps = {
   fastStage?: boolean
   invincible?: boolean
   onComplete: (result: RunResult) => void
-}
-
-type FrameRate = 30 | 60
-type ControlMode = 'position' | 'drag'
-type DragSensitivity = 1 | 2 | 3
-
-type BattleSettings = {
-  frameRate: FrameRate
-  controlMode: ControlMode
-  dragSensitivity: DragSensitivity
-}
-
-const defaultBattleSettings: BattleSettings = {
-  frameRate: 60,
-  controlMode: 'position',
-  dragSensitivity: 1,
 }
 
 function createRelativeArenaPoint({
@@ -87,14 +77,14 @@ export function BattleView({
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const deliveredResultRef = useRef<RunResult | null>(null)
   const isPausedRef = useRef(false)
-  const settingsRef = useRef(defaultBattleSettings)
+  const [settings, setSettings] = useState<BattleSettings>(() => readBattleSettings())
+  const [draftSettings, setDraftSettings] = useState<BattleSettings>(settings)
+  const settingsRef = useRef(settings)
   const relativeDragRef = useRef<{
     originX: number
     originY: number
     originPlayer: ArenaPoint
   } | null>(null)
-  const [settings, setSettings] = useState<BattleSettings>(defaultBattleSettings)
-  const [draftSettings, setDraftSettings] = useState<BattleSettings>(defaultBattleSettings)
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
@@ -280,6 +270,7 @@ export function BattleView({
               onSubmit={(event) => {
                 event.preventDefault()
                 setSettings(draftSettings)
+                writeBattleSettings(draftSettings)
                 setIsPaused(false)
               }}
             >

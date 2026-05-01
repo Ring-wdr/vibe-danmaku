@@ -279,6 +279,7 @@ describe('BattleView', () => {
   })
 
   beforeEach(() => {
+    window.localStorage.clear()
     mockActivateSpecial.mockClear()
     mockUseBattleRuntime.mockReset()
     mockSnapshot.result = null
@@ -449,6 +450,70 @@ describe('BattleView', () => {
     const [relativePoint] = runtime.moveDrag.mock.lastCall ?? []
     expect(relativePoint?.x).toBeCloseTo(1.84)
     expect(relativePoint?.z).toBeCloseTo(-4.04)
+  })
+
+  it('persists applied pause settings across battle remounts', () => {
+    const firstRuntime = createMockRuntime()
+    mockUseBattleRuntime.mockReturnValue({
+      runtime: firstRuntime,
+      snapshot: mockSnapshot,
+    })
+
+    const { unmount } = render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    fireEvent.click(screen.getByRole('radio', { name: '30 FPS' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
+    fireEvent.click(screen.getByRole('radio', { name: '3x' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
+
+    expect(window.localStorage.length).toBeGreaterThan(0)
+    unmount()
+
+    const secondRuntime = createMockRuntime()
+    mockUseBattleRuntime.mockReturnValue({
+      runtime: secondRuntime,
+      snapshot: mockSnapshot,
+    })
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    expect(screen.getByRole('radio', { name: '30 FPS' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Drag' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: '3x' })).toBeChecked()
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+
+    const controls = screen.getByTestId('battle-controls')
+    Object.defineProperty(controls, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => controlRect,
+    })
+    controls.setPointerCapture = vi.fn()
+    controls.hasPointerCapture = vi.fn(() => true)
+    controls.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: 466 })
+    fireEvent.pointerMove(controls, { pointerId: 1, clientX: 258, clientY: 466 })
+
+    expect(secondRuntime.beginDrag).toHaveBeenCalledWith(mockSnapshot.player.position)
+    const [relativePoint] = secondRuntime.moveDrag.mock.lastCall ?? []
+    expect(relativePoint?.x).toBeCloseTo(2.76)
+    expect(relativePoint?.z).toBeCloseTo(-3)
   })
 
   it('applies the selected 30 frame update cadence only after Apply is pressed', () => {
