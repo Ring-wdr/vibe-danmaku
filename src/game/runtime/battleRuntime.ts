@@ -65,6 +65,13 @@ const bulletViewportBounds = {
   cleanupGrace: 1.2,
 } as const
 
+const enemySpawnEntry = {
+  startZ: bulletViewportBounds.maxZ + 1.85,
+  rowOffset: 0.16,
+  attackLead: 0.85,
+  firstShotBuffer: 0.15,
+} as const
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
@@ -83,6 +90,17 @@ function distanceSquared(a: ArenaPoint, b: ArenaPoint) {
   const dz = a.z - b.z
 
   return dx * dx + dz * dz
+}
+
+function getEnemyEntryShootDelay(spawnZ: number, speed: number) {
+  if (speed <= 0) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  const attackReadyZ = bulletViewportBounds.maxZ + enemySpawnEntry.attackLead
+  const timeToVisibleArena = Math.max(0, (spawnZ - attackReadyZ) / speed)
+
+  return timeToVisibleArena + enemySpawnEntry.firstShotBuffer
 }
 
 export function createBattleRuntime({ difficulty, stage, invincible = false }: RuntimeOptions) {
@@ -235,15 +253,16 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
   const spawnWave = (wave: EnemyWave) => {
     const halfSpread = ((wave.count - 1) * wave.spacing) / 2
     for (let index = 0; index < wave.count; index += 1) {
+      const spawnZ = enemySpawnEntry.startZ + index * enemySpawnEntry.rowOffset
       enemies.push({
         id: `enemy-${lastEnemyId++}`,
         waveId: wave.id,
         kind: wave.kind,
         x: -halfSpread + index * wave.spacing,
-        z: 2.45 + index * 0.1,
+        z: spawnZ,
         hp: wave.hp,
         pattern: wave.pattern,
-        shootTimer: 0.5 + index * 0.18,
+        shootTimer: getEnemyEntryShootDelay(spawnZ, wave.speed) + index * 0.18,
         drift: index * 0.7,
         travel: wave.speed,
         path: wave.path,

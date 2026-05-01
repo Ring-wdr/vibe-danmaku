@@ -4,30 +4,46 @@ import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
 import type { StageDefinition } from '../types'
 
-function createOffscreenBulletStage(): StageDefinition {
+function createEnemyBulletCleanupStage(): StageDefinition {
   const stage = createStageDefinition('normal', { fastStage: true })
 
   return {
     ...stage,
     duration: 999,
+    waves: [],
+    boss: {
+      ...stage.boss,
+      startAt: 0,
+      phases: [
+        {
+          id: 'cleanup-test-ring',
+          threshold: 0,
+          label: 'Cleanup Test',
+          supportLaser: false,
+          pattern: {
+            shape: 'ring',
+            count: 4,
+            interval: 999,
+            speed: 4,
+            spread: 0,
+            life: 20,
+          },
+        },
+      ],
+    },
+  }
+}
+
+function createImmediateWaveStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+
+  return {
+    ...stage,
     waves: [
       {
-        id: 'offscreen-bullet-wave',
+        ...stage.waves[0]!,
         startAt: 0,
-        kind: 'steam-scout',
         count: 1,
-        spacing: 0,
-        hp: 999,
-        speed: 0,
-        path: 'helix',
-        pattern: {
-          shape: 'ring',
-          count: 4,
-          interval: 999,
-          speed: 4,
-          spread: 0,
-          life: 20,
-        },
       },
     ],
     boss: {
@@ -98,10 +114,48 @@ describe('createBattleRuntime', () => {
     expect(runtime.getSnapshot().playerShots).toBeGreaterThan(0)
   })
 
+  it('spawns enemies above the visible arena before they drift into view', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createImmediateWaveStage(),
+    })
+
+    runtime.update(0.016)
+
+    const enemy = runtime.getSnapshot().enemies[0]
+    expect(enemy?.position.z).toBeGreaterThan(3.2)
+  })
+
+  it('keeps wave enemies from firing immediately while they are far offscreen', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createImmediateWaveStage(),
+    })
+
+    runtime.update(0.6)
+
+    expect(
+      runtime.getSnapshot().bullets.some((bullet) => bullet.source === 'enemy'),
+    ).toBe(false)
+  })
+
+  it('starts wave enemy fire while enemies are entering from the upper edge', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createImmediateWaveStage(),
+    })
+
+    runtime.update(2)
+
+    const snapshot = runtime.getSnapshot()
+    expect(snapshot.enemies[0]?.position.z).toBeGreaterThan(3.2)
+    expect(snapshot.bullets.some((bullet) => bullet.source === 'enemy')).toBe(true)
+  })
+
   it('lets enemy bullets leave the viewport before cleaning them up after a grace period', () => {
     const runtime = createBattleRuntime({
       difficulty: 'normal',
-      stage: createOffscreenBulletStage(),
+      stage: createEnemyBulletCleanupStage(),
     })
 
     runtime.update(0.5)
