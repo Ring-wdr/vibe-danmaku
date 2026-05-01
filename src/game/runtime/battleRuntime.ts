@@ -827,7 +827,7 @@ export function createBattleRuntime({
     updateBoss(delta)
     updateBullets(delta)
 
-    if (!result && elapsed >= stage.duration && !boss) {
+    if (!result && !stage.midboss && elapsed >= stage.duration && !boss) {
       finish('victory')
     }
 

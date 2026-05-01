@@ -431,6 +431,34 @@ describe('midboss gate runtime', () => {
     expect(snapshot.result).toBeNull()
   })
 
+  it('does not turn midboss defeat into timeout victory after stage duration', () => {
+    const baseStage = createMidbossGateStage()
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 0.12,
+        waves: [],
+        boss: {
+          ...baseStage.boss,
+          startAt: 10,
+        },
+      },
+      character: midbossSlayerPilot,
+    })
+
+    runtime.update(0.13)
+
+    expect(runtime.getSnapshot().boss?.id).toBe('test-midboss')
+
+    advanceWhileBossActive(runtime, 'test-midboss')
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.boss).toBeNull()
+    expect(snapshot.elapsed).toBeGreaterThanOrEqual(snapshot.duration)
+    expect(snapshot.result).toBeNull()
+  })
+
   it('still sets a victory result when the final boss is defeated', () => {
     const baseStage = createMidbossGateStage()
     const stage = {
