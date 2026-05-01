@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import * as THREE from 'three'
 
 import { gameAssets } from '../assets'
@@ -42,6 +42,43 @@ const backgroundLoop = {
 
 const cloudLayerConfigs = battleBackgroundMotionConfig.cloudLayers
 const backgroundFixtureSeeds = battleBackgroundMotionConfig.fixtures
+const flightBodyAirflowCowlConfigs = [
+  {
+    z: 0.8,
+    thickness: 0.018,
+    opacity: 0.34,
+    phase: 0.2,
+    points: [
+      [-0.68, -0.74],
+      [-0.58, -0.22],
+      [-0.35, 0.28],
+      [-0.12, 0.43],
+      [0.12, 0.43],
+      [0.35, 0.28],
+      [0.58, -0.22],
+      [0.68, -0.74],
+    ] as [number, number][],
+  },
+  {
+    z: 0.81,
+    thickness: 0.011,
+    opacity: 0.22,
+    phase: 1.7,
+    points: [
+      [-0.5, -0.52],
+      [-0.41, -0.04],
+      [-0.22, 0.25],
+      [0, 0.34],
+      [0.22, 0.25],
+      [0.41, -0.04],
+      [0.5, -0.52],
+    ] as [number, number][],
+  },
+] as const
+const flightTurnWakeConfigs = [
+  { side: -1, y: -0.22, z: 0.61, phase: 0 },
+  { side: 1, y: -0.22, z: 0.61, phase: 1.3 },
+] as const
 
 function getLoopingBackgroundY(startY: number, elapsed: number, speed: number) {
   const rawY = startY - elapsed * speed
@@ -49,6 +86,33 @@ function getLoopingBackgroundY(startY: number, elapsed: number, speed: number) {
   const wrapped = ((shifted % backgroundLoop.height) + backgroundLoop.height) % backgroundLoop.height
 
   return backgroundLoop.minY + wrapped
+}
+
+export function getFlightAirflowDynamics({
+  currentPosition,
+  previousPosition,
+  previousHorizontalVelocity,
+  delta,
+}: {
+  currentPosition: ArenaPoint
+  previousPosition: ArenaPoint
+  previousHorizontalVelocity: number
+  delta: number
+}) {
+  const safeDelta = Math.max(delta, 1 / 90)
+  const horizontalVelocity = (currentPosition.x - previousPosition.x) / safeDelta
+  const verticalVelocity = (currentPosition.z - previousPosition.z) / safeDelta
+  const horizontalAcceleration = horizontalVelocity - previousHorizontalVelocity
+  const direction: -1 | 0 | 1 =
+    Math.abs(horizontalVelocity) > 0.04 ? (horizontalVelocity < 0 ? -1 : 1) : 0
+
+  return {
+    direction,
+    horizontalVelocity,
+    verticalVelocity,
+    speedRatio: Math.min(1, Math.hypot(horizontalVelocity, verticalVelocity) / 8),
+    turnRatio: Math.min(1, Math.abs(horizontalAcceleration) / 22),
+  }
 }
 
 function useLoadedTexture(url: string, configure?: (texture: THREE.Texture) => void) {
@@ -730,11 +794,206 @@ function SparkleMesh({ sparkle }: { sparkle: RenderSparkle }) {
   )
 }
 
+function TurnWakeRing({
+  config,
+  wakeRef,
+}: {
+  config: (typeof flightTurnWakeConfigs)[number]
+  wakeRef: RefObject<{ speed: number; turn: number; direction: -1 | 0 | 1 }>
+}) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null)
+
+  useFrame(({ clock }) => {
+    const wake = wakeRef.current
+    const sideMatchesTurn = wake.direction === 0 ? 0.42 : wake.direction === config.side ? 1 : 0.34
+    const pulse = Math.max(0.08, wake.turn * sideMatchesTurn + wake.speed * 0.16)
+    const phase = (clock.elapsedTime * (1.85 + wake.speed) + config.phase) % 1
+    const radius = 0.72 + phase * 0.64
+
+    if (meshRef.current) {
+      meshRef.current.position.x = config.side * (0.46 + wake.turn * 0.3)
+      meshRef.current.rotation.z = config.side * (clock.elapsedTime * 0.55 + config.phase)
+      meshRef.current.scale.set(radius, radius * (0.55 + wake.turn * 0.2), 1)
+    }
+
+    if (materialRef.current) {
+      materialRef.current.opacity = pulse * (1 - phase) * 0.48
+    }
+  })
+
+  return (
+    <mesh ref={meshRef} position={[config.side * 0.46, config.y, config.z]}>
+      <ringGeometry args={[0.21, 0.27, 40]} />
+      <meshBasicMaterial
+        ref={materialRef}
+        color={config.side < 0 ? '#dffcff' : '#ffd9a1'}
+        transparent
+        opacity={0}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
+function BodyAirflowCowl({
+  config,
+  wakeRef,
+}: {
+  config: (typeof flightBodyAirflowCowlConfigs)[number]
+  wakeRef: RefObject<{ speed: number; turn: number; direction: -1 | 0 | 1 }>
+}) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const materialRef = useRef<THREE.ShaderMaterial>(null)
+  const geometry = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3(
+      config.points.map(([x, y]) => new THREE.Vector3(x, y, config.z)),
+      false,
+      'catmullrom',
+      0.18,
+    )
+
+    return new THREE.TubeGeometry(curve, 72, config.thickness, 6, false)
+  }, [config])
+
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          opacity: { value: config.opacity },
+          color: { value: new THREE.Color('#d8fffb') },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float opacity;
+          uniform vec3 color;
+          varying vec2 vUv;
+
+          void main() {
+            float startFade = smoothstep(0.0, 0.18, vUv.x);
+            float endFade = 1.0 - smoothstep(0.82, 1.0, vUv.x);
+            float alpha = opacity * startFade * endFade;
+
+            gl_FragColor = vec4(color, alpha);
+          }
+        `,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.NormalBlending,
+        toneMapped: false,
+      }),
+    [config.opacity],
+  )
+
+  useFrame(({ clock }) => {
+    const wake = wakeRef.current
+    const directionPull = wake.direction * wake.turn
+
+    if (meshRef.current) {
+      meshRef.current.position.x =
+        -directionPull * 0.06 + Math.sin(clock.elapsedTime * 6.5 + config.phase) * 0.008
+      meshRef.current.position.y = Math.sin(clock.elapsedTime * 5.2 + config.phase) * 0.008
+      meshRef.current.scale.set(1 + wake.speed * 0.04, 1 + wake.turn * 0.08, 1)
+      meshRef.current.rotation.z = -directionPull * 0.16
+    }
+
+    if (materialRef.current) {
+      materialRef.current.uniforms.opacity.value =
+        config.opacity + wake.speed * 0.08 + wake.turn * 0.08
+    }
+  })
+
+  useEffect(
+    () => () => {
+      geometry.dispose()
+      material.dispose()
+    },
+    [geometry, material],
+  )
+
+  return (
+    <mesh ref={meshRef}>
+      <primitive object={geometry} attach="geometry" />
+      <primitive ref={materialRef} object={material} attach="material" />
+    </mesh>
+  )
+}
+
+function PlayerFlightAirflow({ playerPosition }: { playerPosition: ArenaPoint }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const previousPositionRef = useRef(playerPosition)
+  const previousHorizontalVelocityRef = useRef(0)
+  const wakeRef = useRef<{ speed: number; turn: number; direction: -1 | 0 | 1 }>({
+    speed: 0,
+    turn: 0,
+    direction: 0,
+  })
+
+  useFrame((_, delta) => {
+    const dynamics = getFlightAirflowDynamics({
+      currentPosition: playerPosition,
+      previousPosition: previousPositionRef.current,
+      previousHorizontalVelocity: previousHorizontalVelocityRef.current,
+      delta,
+    })
+    const wake = wakeRef.current
+
+    wake.speed = THREE.MathUtils.lerp(wake.speed, 0.56 + dynamics.speedRatio * 0.44, 0.16)
+    wake.turn = Math.max(dynamics.turnRatio, wake.turn * 0.86)
+    wake.direction = dynamics.direction
+    previousPositionRef.current = playerPosition
+    previousHorizontalVelocityRef.current = dynamics.horizontalVelocity
+
+    if (groupRef.current) {
+      const [x, y, z] = arenaPointToView(playerPosition, 0.54)
+      groupRef.current.position.set(x, y, z)
+      groupRef.current.rotation.z = THREE.MathUtils.lerp(
+        groupRef.current.rotation.z,
+        -dynamics.horizontalVelocity * 0.018,
+        0.18,
+      )
+    }
+  })
+
+  return (
+    <group
+      ref={groupRef}
+      position={arenaPointToView(playerPosition, 0.54)}
+      name="player-flight-airflow"
+    >
+      {flightBodyAirflowCowlConfigs.map((config) => (
+        <BodyAirflowCowl
+          key={`${config.z}-${config.phase}`}
+          config={config}
+          wakeRef={wakeRef}
+        />
+      ))}
+      {flightTurnWakeConfigs.map((config) => (
+        <TurnWakeRing
+          key={config.side}
+          config={config}
+          wakeRef={wakeRef}
+        />
+      ))}
+    </group>
+  )
+}
+
 function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
   const enemyTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
 
   return (
     <>
+      <PlayerFlightAirflow playerPosition={snapshot.player.position} />
       <PlayerSprite
         battleElapsed={snapshot.elapsed}
         position={arenaPointToView(snapshot.player.position, 0.65)}
@@ -888,6 +1147,7 @@ export function BattleView({
         <BattleScene snapshot={snapshot} />
       </Canvas>
       <span hidden data-testid="battle-background-motion" />
+      <span hidden data-testid="battle-airflow-motion" />
       <div
         ref={overlayRef}
         className="battle-shell__controls"

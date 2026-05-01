@@ -8,6 +8,7 @@ import {
   BattleView,
   createArenaPoint,
   getAtlasFrameUv,
+  getFlightAirflowDynamics,
   getPlayerBattleSpritePose,
 } from './BattleView'
 
@@ -170,6 +171,37 @@ describe('getPlayerBattleSpritePose', () => {
   })
 })
 
+describe('getFlightAirflowDynamics', () => {
+  it('raises turn intensity when the player changes lateral direction quickly', () => {
+    const dynamics = getFlightAirflowDynamics({
+      currentPosition: { x: -0.4, z: -3 },
+      previousPosition: { x: 0.2, z: -3 },
+      previousHorizontalVelocity: 8,
+      delta: 1 / 60,
+    })
+
+    expect(dynamics.direction).toBe(-1)
+    expect(dynamics.turnRatio).toBeGreaterThan(0.8)
+    expect(dynamics.speedRatio).toBe(1)
+  })
+
+  it('keeps idle airflow dynamics calm without creating a turn impulse', () => {
+    expect(
+      getFlightAirflowDynamics({
+        currentPosition: { x: 0, z: -3 },
+        previousPosition: { x: 0, z: -3 },
+        previousHorizontalVelocity: 0,
+        delta: 1 / 60,
+      }),
+    ).toMatchObject({
+      direction: 0,
+      horizontalVelocity: 0,
+      speedRatio: 0,
+      turnRatio: 0,
+    })
+  })
+})
+
 describe('BattleView', () => {
   beforeEach(() => {
     mockActivateSpecial.mockClear()
@@ -193,6 +225,7 @@ describe('BattleView', () => {
 
     expect(screen.getByTestId('battle-canvas')).toBeInTheDocument()
     expect(screen.getByTestId('battle-background-motion')).toBeInTheDocument()
+    expect(screen.getByTestId('battle-airflow-motion')).toBeInTheDocument()
     expect(screen.getByLabelText('Battle status')).toBeInTheDocument()
     expect(container.querySelector('.battle-shell__controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
