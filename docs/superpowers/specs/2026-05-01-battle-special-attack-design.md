@@ -18,13 +18,15 @@ Do not add collectible charge items in this pass. Item drops would require new s
 
 ## Player Experience
 
-The battle HUD shows a special gauge and an activation button.
+The battle HUD shows a special slot bar. This pass ships one special slot, but the UI and snapshot shape should allow more special buttons later.
 
+- Each special is a circular icon button.
+- The charge gauge fills as a circular radial ratio around the button.
 - Before full charge, the button is visibly unavailable.
-- At full charge, the button becomes active.
-- Pressing the button starts the special immediately.
+- At full charge, the circular gauge is complete and the button becomes active.
+- Pressing the ready button starts that special immediately.
 - During the special, the player keeps normal drag movement and auto-fire behavior.
-- When the special starts, the gauge resets to empty and starts charging again only after the active window ends.
+- When the special starts, that slot's gauge resets to empty and starts charging again only after the active window ends.
 
 The special should usually become available just before or shortly after the boss appears in Stage 1:
 
@@ -72,17 +74,21 @@ Add runtime state for:
 - `specialSparkleTimer`
 - recent beam hit sparkle events
 
-Expose special state through `BattleSnapshot`:
+Expose special slot state through `BattleSnapshot`:
 
 ```ts
-special: {
+specialSlots: Array<{
+  id: 'beam-lance'
+  icon: 'beam'
   charge: number
   maxCharge: number
   ready: boolean
   active: boolean
   activeRatio: number
-}
+}>
 ```
+
+The first implementation has one slot with id `beam-lance`. Future specials should add slots to this array without replacing the circular slot UI.
 
 Expose beam render data only while active:
 
@@ -110,10 +116,10 @@ sparkles: Array<{
 Add a runtime method:
 
 ```ts
-activateSpecial(): boolean
+activateSpecial(id: 'beam-lance'): boolean
 ```
 
-It returns `true` only when the gauge is full and no result has been reached. Invalid activation attempts should leave state unchanged.
+It returns `true` only when the requested slot is full and no result has been reached. Invalid activation attempts should leave state unchanged.
 
 ## Damage And Hit Events
 
@@ -154,24 +160,30 @@ The existing player sprite pose helper already reserves `specialActive` for fram
 
 ## UI Design
 
-Add a compact special control to the battle HUD.
+Add a compact special slot control to the battle HUD.
 
 Requirements:
 
-- Shows gauge fill percentage.
-- Has a clear ready state.
+- Uses circular buttons so multiple specials can line up later.
+- Shows gauge fill as a circular radial progress ring around the icon.
+- Shows the current `beam-lance` special with a beam-themed icon.
+- Has a clear ready state: complete ring, brighter icon, and active button affordance.
+- Has a clear charging state: partial ring, dimmed icon, unavailable button affordance.
 - Allows pointer interaction without breaking the full-screen drag movement area.
 - Keeps the battle canvas as the primary surface.
 - Does not add instructional text blocks over the playfield.
+- Does not show a rectangular text button for the special.
 
-The control can sit near the lower-right or lower-center edge, with `pointer-events` enabled only on the button area. The rest of the overlay should keep existing drag behavior.
+The current one-slot group can sit near the lower-right edge, with `pointer-events` enabled only on the circular button area. Future slots should stack or arc upward from the same group instead of scattering across the playfield. The rest of the overlay should keep existing drag behavior.
+
+The radial gauge can be implemented with SVG, CSS `conic-gradient`, or an R3F/HUD hybrid, but it must remain stable at mobile sizes and should not resize as the charge changes.
 
 ## Data Flow
 
 1. `createBattleRuntime` updates charge, active duration, beam damage, and sparkles.
-2. `BattleSnapshot` exposes `special`, `specialBeam`, and `sparkles`.
-3. `BattleView` renders the gauge and button from `snapshot.special`.
-4. Clicking the button calls `runtime.activateSpecial()`.
+2. `BattleSnapshot` exposes `specialSlots`, `specialBeam`, and `sparkles`.
+3. `BattleView` renders circular icon buttons from `snapshot.specialSlots`.
+4. Clicking the `beam-lance` button calls `runtime.activateSpecial('beam-lance')`.
 5. `BattleScene` renders the beam and sparkle effects from snapshot render data.
 
 ## Testing
@@ -180,8 +192,8 @@ Runtime tests:
 
 - Natural charge approaches full around `stage.boss.startAt`.
 - Enemy defeat grants charge bonus.
-- `activateSpecial()` fails before full charge.
-- `activateSpecial()` succeeds at full charge and resets the gauge.
+- `activateSpecial('beam-lance')` fails before full charge.
+- `activateSpecial('beam-lance')` succeeds at full charge and resets that slot's gauge.
 - Active beam damages enemies in its vertical strip.
 - Active beam damages the boss.
 - Beam misses targets outside its width or behind the player.
@@ -190,9 +202,9 @@ Runtime tests:
 
 UI tests:
 
-- Battle HUD renders special gauge and activation button.
+- Battle HUD renders a circular `beam-lance` icon button with a radial charge gauge.
 - Button is disabled before ready and enabled at full charge in the mocked snapshot.
-- Clicking the ready button calls `runtime.activateSpecial()`.
+- Clicking the ready button calls `runtime.activateSpecial('beam-lance')`.
 
 Browser verification:
 
@@ -206,7 +218,7 @@ Browser verification:
 ## Out Of Scope
 
 - Charge pickup items.
-- Multiple special types.
+- Implementing additional special effects beyond the first `beam-lance` slot.
 - Upgrade trees or meta progression.
 - Enemy bullet clearing.
 - Post-processing bloom.
