@@ -136,6 +136,8 @@ export function createStageDefinition(
 
   return {
     id: 'brass-cloud-gate',
+    stageNumber: 1,
+    backgroundTheme: 'brass-cloud',
     name: 'Brass Cloud Gate',
     lore: '황동 비공정 항로 위를 뒤덮은 마도 구름 회랑을 돌파해 비공정 코어를 파괴한다.',
     duration: scaleTime(165),
