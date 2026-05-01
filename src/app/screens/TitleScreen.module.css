@@ -1,0 +1,118 @@
+.screen {
+  --thumb-zone-lift: max(18px, env(safe-area-inset-bottom));
+  height: 100%;
+  min-height: 0;
+  padding: 34px 22px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 22px;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.title {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(3rem, 11vw, 4.6rem);
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.art {
+  position: relative;
+  margin-top: 10px;
+  min-height: clamp(160px, 35dvh, 360px);
+  flex: 1 1 160px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.portrait {
+  width: min(100%, 320px);
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.45));
+}
+
+.crest {
+  position: absolute;
+  inset: auto 0 4% auto;
+  width: 132px;
+  opacity: 0.68;
+}
+
+.startButton {
+  width: 100%;
+  min-height: 64px;
+  flex-shrink: 0;
+  margin-top: auto;
+  margin-bottom: var(--thumb-zone-lift);
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 22px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #fbcb81, #bb6a31);
+  color: #1b100b;
+  font-weight: 800;
+  box-shadow: 0 12px 32px rgba(210, 118, 43, 0.35);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.startButton:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-height: 620px) {
+  .screen {
+    --thumb-zone-lift: 0px;
+    padding: 28px 18px 18px;
+    gap: 12px;
+  }
+
+  .heroCopy {
+    gap: 14px;
+  }
+
+  .title {
+    font-size: 2.75rem;
+  }
+
+  .copy {
+    line-height: 1.45;
+  }
+
+  .art {
+    min-height: 0;
+    flex-basis: 80px;
+    overflow: hidden;
+  }
+
+  .crest {
+    display: none;
+  }
+
+  .startButton {
+    min-height: 52px;
+    padding: 13px 16px;
+    border-radius: 18px;
+  }
+}

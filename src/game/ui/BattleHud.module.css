@@ -1,0 +1,209 @@
+.pauseButton {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 8;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--cream);
+  background: rgba(5, 9, 17, 0.62);
+  border: 1px solid rgba(213, 168, 105, 0.28);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(12px);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  touch-action: manipulation;
+}
+
+.hud {
+  position: absolute;
+  top: calc(58px + env(safe-area-inset-top));
+  left: 10px;
+  right: 10px;
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.status,
+.boss {
+  background: rgba(5, 9, 17, 0.46);
+  border: 1px solid rgba(213, 168, 105, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.status {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 6px 10px 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.statusPhase,
+.statusMeta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.statusPhase {
+  gap: 8px;
+}
+
+.statusMeta {
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.statusLabel,
+.bossLabel {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.statusValue {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.phaseValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.difficulty {
+  color: var(--cream);
+}
+
+.hp {
+  color: var(--teal);
+  letter-spacing: 0.08em;
+}
+
+.boss {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 5px 9px;
+}
+
+.bossBar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bossBarFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #77f6e7, #f8b56b 70%, #ff7a62);
+}
+
+.specials {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 6;
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.specialSlot {
+  --special-charge: 0deg;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  width: 72px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 5px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: var(--cream);
+  background:
+    conic-gradient(var(--teal) var(--special-charge), rgba(255, 255, 255, 0.14) 0),
+    rgba(6, 11, 18, 0.68);
+  border: 1px solid rgba(213, 168, 105, 0.3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.specialSlot::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(14, 29, 38, 0.96), rgba(5, 9, 17, 0.94));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.specialSlot:disabled {
+  cursor: default;
+}
+
+.specialSlotReady {
+  box-shadow:
+    0 0 26px rgba(105, 240, 227, 0.34),
+    0 12px 30px rgba(0, 0, 0, 0.34);
+}
+
+.specialSlotActive {
+  animation: specialSlotPulse 520ms ease-in-out infinite alternate;
+}
+
+.specialSlotIcon {
+  position: relative;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 244, 223, 0.54);
+}
+
+.specialSlotReady .specialSlotIcon,
+.specialSlotActive .specialSlotIcon {
+  color: var(--cream);
+}
+
+.specialSlotIconSvg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  stroke: #69f0e3;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@keyframes specialSlotPulse {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.06);
+  }
+}

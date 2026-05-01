@@ -313,13 +313,13 @@ describe('BattleView', () => {
     expect(screen.getByTestId('battle-background-motion')).toBeInTheDocument()
     expect(screen.getByTestId('battle-airflow-motion')).toBeInTheDocument()
     expect(screen.getByLabelText('Battle status')).toBeInTheDocument()
-    expect(container.querySelector('.battle-shell__controls')).toBeInTheDocument()
+    expect(screen.getByTestId('battle-controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
     expect(container.querySelector('.battle-stage-plane')).not.toBeInTheDocument()
   })
 
   it('renders a circular beam-lance special slot with radial charge state', () => {
-    const { container } = render(
+    render(
       createElement(BattleView, {
         difficulty: 'normal',
         stage: defaultStage,
@@ -334,8 +334,8 @@ describe('BattleView', () => {
 
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('aria-valuenow', '50')
-    expect(container.querySelector('.battle-special-slot')).toBeInTheDocument()
-    expect(container.querySelector('.battle-special-slot__icon')).toBeInTheDocument()
+    expect(button).toBeInTheDocument()
+    expect(screen.getByTestId('battle-special-slot-icon')).toBeInTheDocument()
   })
 
   it('pauses battle updates from the HUD button until Resume is pressed', () => {

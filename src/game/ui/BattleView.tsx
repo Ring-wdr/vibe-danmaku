@@ -5,6 +5,7 @@ import { BattleHud } from './BattleHud'
 import { BattleScene } from './BattleScene'
 import { createArenaPoint } from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
+import styles from './BattleView.module.css'
 import type { CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
 
 export { battleDragInputConfig, createArenaPoint, getFlightAirflowDynamics } from './battleViewMath'
@@ -86,7 +87,7 @@ export function BattleView({
   }, [onComplete, snapshot.result])
 
   return (
-    <section className="battle-shell" aria-label={`Stage ${stage.stageNumber} battle`}>
+    <section className={styles.shell} aria-label={`Stage ${stage.stageNumber} battle`}>
       <Canvas
         camera={{ position: [0, 0, 8], fov: 48 }}
         gl={{ alpha: false, antialias: true }}
@@ -104,7 +105,8 @@ export function BattleView({
       </span>
       <div
         ref={overlayRef}
-        className="battle-shell__controls"
+        className={styles.controls}
+        data-testid="battle-controls"
         onPointerDown={(event) => {
           if (isPausedRef.current) {
             return
@@ -152,13 +154,13 @@ export function BattleView({
         onActivateSpecial={(slotId) => runtime.activateSpecial(slotId)}
       />
       {isPaused ? (
-        <div className="battle-pause-overlay" role="dialog" aria-modal="true" aria-label="Battle paused">
-          <div className="battle-pause-panel">
-            <p className="eyebrow">Paused</p>
-            <h1>Battle paused</h1>
+        <div className={styles.pauseOverlay} role="dialog" aria-modal="true" aria-label="Battle paused">
+          <div className={styles.pausePanel}>
+            <p className={styles.pauseEyebrow}>Paused</p>
+            <h1 className={styles.pauseTitle}>Battle paused</h1>
             <button
               type="button"
-              className="primary-button"
+              className={styles.resumeButton}
               onClick={() => setIsPaused(false)}
             >
               Resume

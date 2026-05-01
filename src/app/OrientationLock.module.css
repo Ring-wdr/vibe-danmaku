@@ -1,0 +1,30 @@
+.lock {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  background: rgba(5, 8, 15, 0.94);
+  display: grid;
+  place-content: center;
+  gap: 18px;
+  text-align: center;
+  padding: 24px;
+}
+
+.icon {
+  width: 94px;
+  justify-self: center;
+  opacity: 0.82;
+}
+
+.title {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}

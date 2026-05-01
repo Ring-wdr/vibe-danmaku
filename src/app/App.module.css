@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:global(:root) {
+  --bg-0: #070911;
+  --bg-1: #0e1423;
+  --bg-2: #1b2635;
+  --brass: #d5a869;
+  --teal: #69f0e3;
+  --cream: #fff4df;
+  --ink: #f8ecda;
+  --muted: #d3c0aa;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  font-family: 'Manrope', sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(105, 240, 227, 0.16), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(213, 168, 105, 0.24), transparent 30%),
+    linear-gradient(180deg, var(--bg-2), var(--bg-0));
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:global(*) {
+  box-sizing: border-box;
+}
+
+:global(html),
+:global(body),
+:global(#app) {
+  min-height: 100%;
+  margin: 0;
+}
+
+:global(body) {
+  min-height: 100dvh;
+}
+
+.battleRoot {
+  width: 100vw;
+  height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+  background: #123640;
+}
+
+.battleLoadingFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--cream);
+  background: #123640;
+  padding: 24px;
+}
+
+.shell {
+  --shell-padding-block: 16px;
+  --shell-frame-height: calc(100dvh - 32px);
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--shell-padding-block) 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 186, 89, 0.08), transparent 20%),
+    linear-gradient(135deg, rgba(18, 207, 196, 0.14), transparent 35%);
+  filter: blur(24px);
+}
+
+.phoneFrame {
+  width: min(100%, 430px);
+  height: min(var(--shell-frame-height), 932px);
+  background: linear-gradient(180deg, rgba(10, 15, 26, 0.95), rgba(5, 8, 15, 0.96));
+  border: 1px solid rgba(213, 168, 105, 0.3);
+  border-radius: 32px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+}
+
+.phoneFrame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 24%);
+  pointer-events: none;
+}
+
+.screenStack {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.screenStackBlocked {
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+@media (min-width: 431px) {
+  .shell {
+    --shell-padding-block: 28px;
+    --shell-frame-height: calc(100dvh - 56px);
+    padding: var(--shell-padding-block) 28px;
+  }
+}

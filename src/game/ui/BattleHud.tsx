@@ -1,6 +1,11 @@
 import type { CSSProperties } from 'react'
 
+import styles from './BattleHud.module.css'
 import type { BattleSnapshot, Difficulty, RenderSpecialSlot, StageDefinition } from '../types'
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
 
 function SpecialSlotHud({
   slots,
@@ -10,7 +15,7 @@ function SpecialSlotHud({
   onActivate: (slotId: RenderSpecialSlot['id']) => void
 }) {
   return (
-    <div className="battle-specials" aria-label="Special attacks">
+    <div className={styles.specials} aria-label="Special attacks">
       {slots.map((slot) => {
         const chargeRatio = Math.min(1, slot.charge / slot.maxCharge)
 
@@ -18,9 +23,11 @@ function SpecialSlotHud({
           <button
             key={slot.id}
             type="button"
-            className={`battle-special-slot ${
-              slot.ready ? 'battle-special-slot--ready' : ''
-            } ${slot.active ? 'battle-special-slot--active' : ''}`}
+            className={cx(
+              styles.specialSlot,
+              slot.ready && styles.specialSlotReady,
+              slot.active && styles.specialSlotActive,
+            )}
             style={{ '--special-charge': `${chargeRatio * 360}deg` } as CSSProperties}
             disabled={!slot.ready}
             aria-label="Activate Beam Lance special"
@@ -29,8 +36,12 @@ function SpecialSlotHud({
             aria-valuenow={Math.round(slot.charge)}
             onClick={() => onActivate(slot.id)}
           >
-            <span className="battle-special-slot__icon" aria-hidden="true">
-              <svg viewBox="0 0 48 48" focusable="false">
+            <span
+              className={styles.specialSlotIcon}
+              data-testid="battle-special-slot-icon"
+              aria-hidden="true"
+            >
+              <svg className={styles.specialSlotIconSvg} viewBox="0 0 48 48" focusable="false">
                 <path d="M24 5l7 18-7 20-7-20 7-18z" />
                 <path d="M13 27h22" />
                 <path d="M18 35h12" />
@@ -62,31 +73,41 @@ export function BattleHud({
     <>
       <button
         type="button"
-        className="battle-pause-button"
+        className={styles.pauseButton}
         aria-label="Pause battle"
         aria-pressed={isPaused}
         onClick={onPause}
       >
         ||
       </button>
-      <div className="battle-hud" aria-label="Battle status">
-        <div className="battle-status">
-          <div className="battle-status__phase">
-            <span>Stage {stage.stageNumber}</span>
-            <strong>{snapshot.phaseLabel}</strong>
+      <div className={styles.hud} aria-label="Battle status">
+        <div className={styles.status}>
+          <div className={styles.statusPhase}>
+            <span className={styles.statusLabel}>Stage {stage.stageNumber}</span>
+            <strong className={cx(styles.statusValue, styles.phaseValue)}>
+              {snapshot.phaseLabel}
+            </strong>
           </div>
-          <div className="battle-status__meta">
-            <strong className="battle-status__difficulty">{difficulty.toUpperCase()}</strong>
-            <strong className="battle-status__hp" aria-label={`Hull ${snapshot.player.hp} of 3`}>
+          <div className={styles.statusMeta}>
+            <strong className={cx(styles.statusValue, styles.difficulty)}>
+              {difficulty.toUpperCase()}
+            </strong>
+            <strong
+              className={cx(styles.statusValue, styles.hp)}
+              aria-label={`Hull ${snapshot.player.hp} of 3`}
+            >
               {'◆'.repeat(snapshot.player.hp).padEnd(3, '◇')}
             </strong>
           </div>
         </div>
         {snapshot.boss ? (
-          <div className="battle-boss">
-            <span>Boss</span>
-            <div className="battle-boss__bar">
-              <i style={{ width: `${snapshot.boss.hpRatio * 100}%` }} />
+          <div className={styles.boss}>
+            <span className={styles.bossLabel}>Boss</span>
+            <div className={styles.bossBar}>
+              <i
+                className={styles.bossBarFill}
+                style={{ width: `${snapshot.boss.hpRatio * 100}%` }}
+              />
             </div>
           </div>
         ) : null}

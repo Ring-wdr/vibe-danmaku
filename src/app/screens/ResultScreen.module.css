@@ -1,0 +1,121 @@
+.screen {
+  --thumb-zone-lift: max(18px, env(safe-area-inset-bottom));
+  height: 100%;
+  min-height: 0;
+  padding: 34px 22px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  text-align: center;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--brass);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.title {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2.2rem, 8vw, 3.2rem);
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.item {
+  padding: 16px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(213, 168, 105, 0.16);
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+.value {
+  font-size: 16px;
+}
+
+.actions {
+  width: 100%;
+  display: grid;
+  gap: 12px;
+}
+
+.primaryButton,
+.secondaryButton {
+  cursor: pointer;
+  font: inherit;
+  border-radius: 22px;
+  min-height: 58px;
+  padding: 16px 18px;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.primaryButton {
+  border: 0;
+  background: linear-gradient(135deg, #fbcb81, #bb6a31);
+  color: #1b100b;
+  font-weight: 800;
+  box-shadow: 0 12px 32px rgba(210, 118, 43, 0.35);
+}
+
+.secondaryButton {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  border: 1px solid rgba(213, 168, 105, 0.28);
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-height: 620px) {
+  .screen {
+    --thumb-zone-lift: 0px;
+    padding: 28px 18px 18px;
+    gap: 16px;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .item {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    min-height: 52px;
+    padding: 13px 16px;
+    border-radius: 18px;
+  }
+}
