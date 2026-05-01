@@ -111,18 +111,6 @@ function createSpecialTestStage(): StageDefinition {
   }
 }
 
-function createSpecialEnemyOnlyStage(): StageDefinition {
-  const stage = createSpecialTestStage()
-
-  return {
-    ...stage,
-    boss: {
-      ...stage.boss,
-      startAt: 999,
-    },
-  }
-}
-
 function createSpecialChargeBonusStage(): StageDefinition {
   const stage = createStageDefinition('normal')
 

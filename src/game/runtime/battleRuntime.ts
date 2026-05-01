@@ -7,7 +7,6 @@ import type {
   RenderBoss,
   RenderBullet,
   RenderEnemy,
-  RenderSparkle,
   RenderSpecialBeam,
   RenderSpecialSlot,
   RunResult,
