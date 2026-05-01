@@ -16,7 +16,7 @@ import {
   getFlightAirflowDynamics,
   getPlayerBattleSpritePose,
 } from './BattleView'
-import type { RunResult } from '../types'
+import type { RunResult, StageDefinition } from '../types'
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
@@ -171,14 +171,26 @@ describe('getPlayerBattleSpritePose', () => {
 })
 
 describe('getBossCoreTextureUrl', () => {
-  it('uses the Stage 2 midboss core asset for midboss encounters', () => {
-    expect(getBossCoreTextureUrl({ id: 'midboss-ember-gate' })).toBe(
+  it('uses the Stage 2 midboss core asset by matching the stage midboss id', () => {
+    const stage = createStage2Definition('normal')
+    if (!stage.midboss) {
+      throw new Error('Stage 2 test fixture must include a midboss')
+    }
+    const stageWithUnprefixedMidboss: StageDefinition = {
+      ...stage,
+      midboss: {
+        ...stage.midboss,
+        id: 'ember-gate',
+      },
+    }
+
+    expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, { id: 'ember-gate' })).toBe(
       gameAssets.stage2MidbossCoreUrl,
     )
-    expect(getBossCoreTextureUrl({ id: 'boss-ash-citadel-core' })).toBe(
+    expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, { id: 'midboss-other' })).toBe(
       gameAssets.bossCoreUrl,
     )
-    expect(getBossCoreTextureUrl(null)).toBe(gameAssets.bossCoreUrl)
+    expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, null)).toBe(gameAssets.bossCoreUrl)
   })
 })
 

@@ -12,6 +12,7 @@ import {
   stageBackgroundMotionConfigs,
   type BackgroundFixtureConfig,
   type BackgroundMotionLayerConfig,
+  type BackgroundTextureKey,
 } from './sceneConfig'
 import { useBattleRuntime } from './useBattleRuntime'
 import type {
@@ -425,12 +426,12 @@ function EnemySprite({
   )
 }
 
-export function getBossCoreTextureUrl(boss: { id: string } | null) {
-  return boss?.id.startsWith('midboss-') ? gameAssets.stage2MidbossCoreUrl : gameAssets.bossCoreUrl
+export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string } | null) {
+  return boss?.id === stage.midboss?.id ? gameAssets.stage2MidbossCoreUrl : gameAssets.bossCoreUrl
 }
 
-function BossSprite({ snapshot }: { snapshot: BattleSnapshot }) {
-  const bossTexture = useLoadedTexture(getBossCoreTextureUrl(snapshot.boss))
+function BossSprite({ stage, snapshot }: { stage: StageDefinition; snapshot: BattleSnapshot }) {
+  const bossTexture = useLoadedTexture(getBossCoreTextureUrl(stage, snapshot.boss))
 
   if (!snapshot.boss) {
     return null
@@ -537,7 +538,7 @@ function MovingBackgroundLayer({ stage }: { stage: StageDefinition }) {
   const cloudTextureB = useLoadedTexture(gameAssets.cloudLayerBUrl)
   const smokeTexture = useLoadedTexture(gameAssets.stage2SmokeLayerUrl)
   const ruinFloorTexture = useLoadedTexture(gameAssets.stage2RuinFloorUrl)
-  const textures: Partial<Record<BackgroundMotionLayerConfig['textureKey'], THREE.Texture>> = {
+  const textures: Record<BackgroundTextureKey, THREE.Texture | undefined> = {
     a: cloudTextureA ?? undefined,
     b: cloudTextureB ?? undefined,
     stage2Smoke: smokeTexture ?? undefined,
@@ -1017,9 +1018,11 @@ function PlayerFlightAirflow({ playerPosition }: { playerPosition: ArenaPoint })
 
 function RuntimeEntityLayer({
   character,
+  stage,
   snapshot,
 }: {
   character: CharacterDefinition
+  stage: StageDefinition
   snapshot: BattleSnapshot
 }) {
   const enemyTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
@@ -1043,7 +1046,7 @@ function RuntimeEntityLayer({
           scale={enemy.scale}
         />
       ))}
-      <BossSprite snapshot={snapshot} />
+      <BossSprite stage={stage} snapshot={snapshot} />
       {snapshot.bullets.map((bullet) => (
         <BulletMesh key={bullet.id} bullet={bullet} />
       ))}
@@ -1087,7 +1090,7 @@ function BattleScene({
         <ringGeometry args={[0.48, 0.56, 48]} />
         <meshBasicMaterial color="#5ceee4" toneMapped={false} />
       </mesh>
-      <RuntimeEntityLayer character={character} snapshot={snapshot} />
+      <RuntimeEntityLayer character={character} stage={stage} snapshot={snapshot} />
     </>
   )
 }
