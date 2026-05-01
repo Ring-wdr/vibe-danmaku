@@ -186,6 +186,12 @@ The radial gauge can be implemented with SVG, CSS `conic-gradient`, or an R3F/HU
 4. Clicking the `beam-lance` button calls `runtime.activateSpecial('beam-lance')`.
 5. `BattleScene` renders the beam and sparkle effects from snapshot render data.
 
+## Query String Controls
+
+If implementation adds or changes query string controls for debug, verification, or special-attack testing, install and use `nuqs` for query state management.
+
+Do not add ad hoc query parsing with `window.location.search` or direct `URLSearchParams` calls in React components for new controls. Existing query flags such as `fastStage` and `invincible` may be migrated only if the implementation naturally touches that area.
+
 ## Testing
 
 Runtime tests:
