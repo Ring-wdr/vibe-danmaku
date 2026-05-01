@@ -160,29 +160,6 @@ p {
   pointer-events: none;
 }
 
-.top-bar {
-  position: absolute;
-  top: 0;
-  inset-inline: 0;
-  z-index: 5;
-  padding: max(18px, env(safe-area-inset-top)) 22px 14px;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 11px;
-  background: linear-gradient(180deg, rgba(7, 10, 18, 0.84), rgba(7, 10, 18, 0.15));
-}
-
-.top-bar strong {
-  color: var(--cream);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
 .screen-stack {
   height: 100%;
   min-height: 0;
@@ -196,9 +173,10 @@ p {
 }
 
 .screen {
+  --thumb-zone-lift: max(18px, env(safe-area-inset-bottom));
   height: 100%;
   min-height: 0;
-  padding: 92px 22px 26px;
+  padding: 34px 22px 26px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -211,6 +189,14 @@ p {
 .screen--hero {
   justify-content: flex-start;
   overflow-y: hidden;
+}
+
+.thumb-action {
+  width: 100%;
+  min-height: 64px;
+  flex-shrink: 0;
+  margin-top: auto;
+  margin-bottom: var(--thumb-zone-lift);
 }
 
 .hero-copy {
@@ -314,6 +300,11 @@ h2 {
 .difficulty-grid {
   display: grid;
   gap: 14px;
+}
+
+.screen--difficulty .difficulty-grid {
+  margin-top: auto;
+  margin-bottom: max(26px, env(safe-area-inset-bottom));
 }
 
 .difficulty-card {
@@ -496,6 +487,14 @@ h2 {
 .stage-intro {
   text-align: center;
   align-items: center;
+}
+
+.stage-intro__action-zone {
+  width: 100%;
+  display: grid;
+  gap: 18px;
+  margin-top: auto;
+  margin-bottom: var(--thumb-zone-lift);
 }
 
 .stage-intro__controls {
@@ -764,13 +763,9 @@ h2 {
 }
 
 @media (max-height: 620px) {
-  .top-bar {
-    padding: max(12px, env(safe-area-inset-top)) 18px 10px;
-    font-size: 9px;
-  }
-
   .screen {
-    padding: 70px 18px 18px;
+    --thumb-zone-lift: 0px;
+    padding: 28px 18px 18px;
     gap: 16px;
   }
 
@@ -794,6 +789,11 @@ h2 {
     min-height: 0;
     flex-basis: 80px;
     overflow: hidden;
+  }
+
+  .screen--difficulty .difficulty-grid,
+  .stage-intro__action-zone {
+    margin-bottom: 0;
   }
 
   .screen--hero .hero-copy p:not(.eyebrow) {

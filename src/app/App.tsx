@@ -253,16 +253,11 @@ export function App({ initialViewport }: AppProps) {
     <main className="app-shell">
       <div className="app-shell__backdrop" />
       <section className="app-shell__phone-frame">
-        <header className="top-bar">
-          <span>Steamfantasy Bullet Opera</span>
-          <strong>Brass Cloud Gate</strong>
-        </header>
-
         {portraitOnly ? (
           <div className="orientation-lock">
             <img src={gameAssets.uiOrnamentUrl} alt="" />
             <h1>Portrait mode required</h1>
-            <p>모바일 세로 플레이 전용 프로토타입입니다. 화면을 세로로 돌린 뒤 다시 진입해 주세요.</p>
+            <p>모바일 세로 플레이 전용입니다. 화면을 세로로 돌린 뒤 다시 진입해 주세요.</p>
           </div>
         ) : null}
 
@@ -270,33 +265,32 @@ export function App({ initialViewport }: AppProps) {
           {screen === 'title' ? (
             <section className="screen screen--hero">
               <div className="hero-copy">
-                <p className="eyebrow">Stage 1 Prototype</p>
                 <h1>Brass Cloud Gate</h1>
                 <p>
                   황동 비공정 항로 위의 마도 구름 회랑을 돌파하고, 거대 비공정 코어가
                   뿜어내는 환광 탄막을 갈라 버리세요.
                 </p>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => {
-                    setCurrentStageNumber(1)
-                    setResult(null)
-                    startScreen('difficulty-select')
-                  }}
-                >
-                  Start Sortie
-                </button>
               </div>
               <div className="hero-art">
                 <img src={gameAssets.playerPortraitUrl} alt="Lyra Aer portrait" />
                 <img className="hero-art__crest" src={gameAssets.uiOrnamentUrl} alt="" />
               </div>
+              <button
+                type="button"
+                className="primary-button thumb-action"
+                onClick={() => {
+                  setCurrentStageNumber(1)
+                  setResult(null)
+                  startScreen('difficulty-select')
+                }}
+              >
+                Start Sortie
+              </button>
             </section>
           ) : null}
 
           {screen === 'difficulty-select' ? (
-            <section className="screen">
+            <section className="screen screen--difficulty">
               <div className="section-heading">
                 <p className="eyebrow">Select Hazard</p>
                 <h2>Choose difficulty</h2>
@@ -380,7 +374,7 @@ export function App({ initialViewport }: AppProps) {
 
               <button
                 type="button"
-                className="primary-button"
+                className="primary-button thumb-action"
                 onClick={() => {
                   writeLastCharacterId(selectedCharacter.id)
                   startScreen('stage-intro')
@@ -401,19 +395,21 @@ export function App({ initialViewport }: AppProps) {
                 스팀 날개 정찰기와 마력 깃털 드론을 돌파한 뒤, 황동 비공정 코어의 3페이즈를
                 붕괴시키세요.
               </p>
-              <p className="stage-intro__controls">
-                전투 중 화면 어디든 드래그해 회피하세요. 자동 연사는 항상 유지됩니다.
-              </p>
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => {
-                  setCurrentStageNumber(1)
-                  startScreen('battle-loading')
-                }}
-              >
-                Deploy
-              </button>
+              <div className="stage-intro__action-zone">
+                <p className="stage-intro__controls">
+                  전투 중 화면 어디든 드래그해 회피하세요. 자동 연사는 항상 유지됩니다.
+                </p>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => {
+                    setCurrentStageNumber(1)
+                    startScreen('battle-loading')
+                  }}
+                >
+                  Deploy
+                </button>
+              </div>
             </section>
           ) : null}
 

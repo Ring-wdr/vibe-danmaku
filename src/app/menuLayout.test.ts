@@ -24,4 +24,16 @@ describe('menu layout CSS', () => {
   it('keeps the title screen from showing a scrollbar', () => {
     expect(blockFor('.screen--hero')).toContain('overflow-y: hidden')
   })
+
+  it('keeps menu content close to the top after removing the menu header', () => {
+    expect(blockFor('.top-bar')).toBe('')
+    expect(blockFor('.screen')).toContain('padding: 34px 22px 26px')
+  })
+
+  it('places menu decisions in the lower thumb zone on tall mobile screens', () => {
+    expect(blockFor('.thumb-action')).toContain('margin-top: auto')
+    expect(blockFor('.thumb-action')).toContain('margin-bottom: var(--thumb-zone-lift)')
+    expect(blockFor('.screen--difficulty .difficulty-grid')).toContain('margin-top: auto')
+    expect(blockFor('.stage-intro__action-zone')).toContain('margin-top: auto')
+  })
 })
