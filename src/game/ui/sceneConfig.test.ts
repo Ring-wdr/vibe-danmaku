@@ -44,6 +44,10 @@ describe('cloudBackdropLayers', () => {
       burningRuinsConfig.floorLayers.every((layer) => layer.textureKey === 'ruinFloor'),
     ).toBe(true)
     expect(burningRuinsConfig.floorLayers.every((layer) => layer.speed > 0)).toBe(true)
+    expect(burningRuinsConfig.floorLayers.every((layer) => layer.z > -2)).toBe(true)
+    expect(burningRuinsConfig.floorLayers.every((layer) => layer.opacity >= 0.4)).toBe(
+      true,
+    )
     expect(
       burningRuinsConfig.cloudLayers.some((layer) => layer.textureKey === 'stage2Smoke'),
     ).toBe(true)
