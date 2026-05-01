@@ -70,6 +70,25 @@ export function App({ initialViewport }: AppProps) {
     startTransition(() => setScreen(nextScreen))
   }
 
+  if (screen === 'battle') {
+    return (
+      <main className="battle-root">
+        <Suspense fallback={<div className="battle-root__loading">Loading Battle</div>}>
+          <BattleView
+            key={`${difficulty}-${battleSeed}-${debugFlags.fastStage}-${debugFlags.invincible}`}
+            difficulty={difficulty}
+            fastStage={debugFlags.fastStage}
+            invincible={debugFlags.invincible}
+            onComplete={(nextResult) => {
+              setResult(nextResult)
+              startScreen('result')
+            }}
+          />
+        </Suspense>
+      </main>
+    )
+  }
+
   return (
     <main className="app-shell">
       <div className="app-shell__backdrop" />
@@ -155,29 +174,6 @@ export function App({ initialViewport }: AppProps) {
                 Deploy
               </button>
             </section>
-          ) : null}
-
-          {screen === 'battle' ? (
-            <Suspense
-              fallback={
-                <section className="screen stage-intro">
-                  <p className="eyebrow">Loading Battle</p>
-                  <h2>Igniting Aether Rails</h2>
-                  <p className="stage-intro__lore">구름 회랑과 탄막 엔진을 정렬하는 중입니다.</p>
-                </section>
-              }
-            >
-              <BattleView
-                key={`${difficulty}-${battleSeed}-${debugFlags.fastStage}-${debugFlags.invincible}`}
-                difficulty={difficulty}
-                fastStage={debugFlags.fastStage}
-                invincible={debugFlags.invincible}
-                onComplete={(nextResult) => {
-                  setResult(nextResult)
-                  startScreen('result')
-                }}
-              />
-            </Suspense>
           ) : null}
 
           {screen === 'result' && result ? (

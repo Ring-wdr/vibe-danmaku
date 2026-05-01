@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { createElement, type CSSProperties, type ReactNode } from 'react'
+import { describe, expect, it, vi } from 'vitest'
 
-import { battleDragInputConfig, createArenaPoint } from './BattleView'
+import { battleDragInputConfig, BattleView, createArenaPoint } from './BattleView'
+
+vi.mock('@react-three/fiber', () => ({
+  Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
+    createElement('canvas', { 'data-testid': 'battle-canvas', style }),
+  useFrame: vi.fn(),
+}))
 
 const controlRect = {
   left: 0,
@@ -26,5 +34,19 @@ describe('createArenaPoint', () => {
     const formerInstructionArea = createArenaPoint(215, 900, controlRect)
 
     expect(formerInstructionArea.z).toBeLessThan(-3.1)
+  })
+})
+
+describe('BattleView', () => {
+  it('renders the R3F canvas and drag input overlay without old DOM entity layers', () => {
+    const { container } = render(
+      createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }),
+    )
+
+    expect(screen.getByTestId('battle-canvas')).toBeInTheDocument()
+    expect(screen.getByLabelText('Battle status')).toBeInTheDocument()
+    expect(container.querySelector('.battle-shell__controls')).toBeInTheDocument()
+    expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
+    expect(container.querySelector('.battle-stage-plane')).not.toBeInTheDocument()
   })
 })

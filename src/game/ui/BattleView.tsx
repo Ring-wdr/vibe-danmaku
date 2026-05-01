@@ -1,21 +1,10 @@
-import { Billboard, Plane, useTexture } from '@react-three/drei'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 import { gameAssets } from '../assets'
-import {
-  arenaVisualConfig,
-  battleCameraConfig,
-  battleCanvasFallbackColor,
-  battleInteractionConfig,
-  cloudBackdropLayers,
-} from './sceneConfig'
-import { BattlePresentationLayer, projectArenaPointToLayer } from './battlePresentation'
-import { useBattleSoundscape } from './useBattleSoundscape'
 import { useBattleRuntime } from './useBattleRuntime'
-import type { ArenaPoint, Difficulty, RunResult } from '../types'
+import type { ArenaPoint, BattleSnapshot, Difficulty, EnemyKind, RunResult } from '../types'
 
 type BattleViewProps = {
   difficulty: Difficulty
@@ -30,147 +19,232 @@ export const battleDragInputConfig = {
   verticalWorldTop: 1.8,
 } as const
 
-function StageScene({
-  snapshot,
-}: Pick<ReturnType<typeof useBattleRuntime>, 'snapshot'>) {
-  const cloudA = useTexture(gameAssets.cloudLayerAUrl)
-  const cloudB = useTexture(gameAssets.cloudLayerBUrl)
-  const playerSheet = useTexture(gameAssets.playerSheetUrl)
-  const scout = useTexture(gameAssets.enemyScoutUrl)
-  const feather = useTexture(gameAssets.enemyFeatherUrl)
-  const bossCore = useTexture(gameAssets.bossCoreUrl)
-  const animatedPlayerRef = useRef<THREE.Texture | null>(null)
+function useLoadedTexture(url: string, configure?: (texture: THREE.Texture) => void) {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null)
 
-  if (!animatedPlayerRef.current) {
-    const clone = playerSheet.clone()
-    clone.needsUpdate = true
-    clone.repeat.set(0.25, 1)
-    animatedPlayerRef.current = clone
-  }
+  useEffect(() => {
+    let disposed = false
+    const loader = new THREE.TextureLoader()
 
-  useFrame(() => {
-    const animated = animatedPlayerRef.current
-    if (animated) {
-      const frame = Math.floor(snapshot.elapsed * 8) % 4
-      animated.offset.x = frame * 0.25
+    loader.load(url, (loadedTexture) => {
+      if (disposed) {
+        loadedTexture.dispose()
+        return
+      }
+
+      loadedTexture.colorSpace = THREE.SRGBColorSpace
+      configure?.(loadedTexture)
+      setTexture(loadedTexture)
+    })
+
+    return () => {
+      disposed = true
+      setTexture((currentTexture) => {
+        currentTexture?.dispose()
+        return null
+      })
     }
+  }, [configure, url])
+
+  return texture
+}
+
+function PlayerSprite({ position }: { position: [number, number, number] }) {
+  const configurePlayerTexture = useCallback((loadedTexture: THREE.Texture) => {
+    loadedTexture.wrapS = THREE.RepeatWrapping
+    loadedTexture.repeat.set(0.25, 1)
+  }, [])
+  const texture = useLoadedTexture(gameAssets.playerSheetUrl, configurePlayerTexture)
+
+  useFrame(({ clock }) => {
+    if (!texture) {
+      return
+    }
+
+    texture.offset.x = (Math.floor(clock.elapsedTime * 8) % 4) * 0.25
   })
 
-  const resolveEnemyTexture = (kind: 'steam-scout' | 'feather-drone' | 'boss-core') => {
-    if (kind === 'feather-drone') {
-      return feather
-    }
-    if (kind === 'boss-core') {
-      return bossCore
-    }
-    return scout
+  if (!texture) {
+    return (
+      <mesh position={position}>
+        <circleGeometry args={[0.34, 32]} />
+        <meshBasicMaterial color="#ffe082" toneMapped={false} />
+      </mesh>
+    )
   }
 
   return (
+    <mesh position={position}>
+      <planeGeometry args={[1.1, 1.78]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        alphaTest={0.02}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
+function CloudLayer() {
+  const cloudTexture = useLoadedTexture(gameAssets.cloudLayerAUrl)
+
+  if (!cloudTexture) {
+    return null
+  }
+
+  return (
+    <mesh position={[0, 1.1, -1.7]} rotation={[0, 0, -0.08]}>
+      <planeGeometry args={[5.8, 5.8]} />
+      <meshBasicMaterial
+        map={cloudTexture}
+        transparent
+        opacity={0.42}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
+function resolveEnemyAssetUrl(kind: EnemyKind) {
+  if (kind === 'feather-drone') {
+    return gameAssets.enemyFeatherUrl
+  }
+  if (kind === 'boss-core') {
+    return gameAssets.bossCoreUrl
+  }
+  return gameAssets.enemyScoutUrl
+}
+
+function EnemySprite({
+  kind,
+  position,
+  scale,
+}: {
+  kind: EnemyKind
+  position: [number, number, number]
+  scale: number
+}) {
+  const enemyTexture = useLoadedTexture(resolveEnemyAssetUrl(kind))
+
+  if (!enemyTexture) {
+    return (
+      <mesh position={position}>
+        <circleGeometry args={[0.36, 32]} />
+        <meshBasicMaterial color="#ffbe62" toneMapped={false} />
+      </mesh>
+    )
+  }
+
+  return (
+    <mesh position={position}>
+      <planeGeometry args={[scale, scale]} />
+      <meshBasicMaterial
+        map={enemyTexture}
+        transparent
+        alphaTest={0.02}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
+function BossSprite({ snapshot }: { snapshot: BattleSnapshot }) {
+  const bossTexture = useLoadedTexture(gameAssets.bossCoreUrl)
+
+  if (!snapshot.boss) {
+    return null
+  }
+
+  const position = arenaPointToView(snapshot.boss.position, 0.78)
+
+  if (!bossTexture) {
+    return (
+      <mesh position={position}>
+        <circleGeometry args={[0.72, 48]} />
+        <meshBasicMaterial color="#7af0ff" toneMapped={false} />
+      </mesh>
+    )
+  }
+
+  return (
+    <mesh position={position}>
+      <planeGeometry args={[1.65, 1.65]} />
+      <meshBasicMaterial
+        map={bossTexture}
+        transparent
+        alphaTest={0.02}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
+function arenaPointToView(point: ArenaPoint, z = 0.5): [number, number, number] {
+  return [point.x * 0.55, point.z * 0.9 - 0.45, z]
+}
+
+function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
+  return (
     <>
-      <color attach="background" args={[battleCanvasFallbackColor]} />
-      <fog attach="fog" args={[battleCanvasFallbackColor, 5.2, 11.5]} />
-      <ambientLight intensity={1.5} color="#8fd7c4" />
-      <directionalLight position={[2, 6, 2]} intensity={2.8} color="#ffd08a" />
-      <pointLight position={[0, 1.8, 2]} intensity={18} distance={7} color="#38d4cf" />
-
-      {cloudBackdropLayers.map((layer) => (
-        <Plane
-          key={layer.texture}
-          args={layer.size}
-          rotation={layer.rotation}
-          position={layer.position}
-        >
-          <meshBasicMaterial
-            transparent
-            opacity={layer.opacity}
-            map={layer.texture === 'cloudA' ? cloudA : cloudB}
-            depthWrite={false}
-          />
-        </Plane>
-      ))}
-
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.05, -0.2]}>
-        <ringGeometry args={[1.3, 3.45, 128]} />
-        <meshStandardMaterial
-          color={arenaVisualConfig.ringColor}
-          emissive={arenaVisualConfig.ringEmissive}
-          emissiveIntensity={arenaVisualConfig.ringEmissiveIntensity}
-        />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.03, -0.2]}>
-        <circleGeometry args={[3.2, 64]} />
-        <meshStandardMaterial
-          color={arenaVisualConfig.floorColor}
-          emissive={arenaVisualConfig.floorEmissive}
-          emissiveIntensity={arenaVisualConfig.floorEmissiveIntensity}
-          metalness={0.45}
-          roughness={0.56}
-        />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.99, -0.2]}>
-        <ringGeometry args={[2.15, 2.24, 96]} />
-        <meshBasicMaterial color="#7cf2ec" transparent opacity={0.3} toneMapped={false} />
-      </mesh>
-
-      <Billboard position={[snapshot.player.position.x, -0.06, snapshot.player.position.z]}>
-        <Plane args={arenaVisualConfig.playerSpriteScale}>
-          <meshBasicMaterial
-            transparent
-            map={animatedPlayerRef.current ?? playerSheet}
-            toneMapped={false}
-            opacity={snapshot.player.invulnerable ? 0.62 : 1}
-          />
-        </Plane>
-      </Billboard>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[snapshot.player.position.x, -0.98, snapshot.player.position.z + 0.05]}
-      >
-        <circleGeometry args={[arenaVisualConfig.playerHaloScale[0], 48]} />
-        <meshBasicMaterial
-          color={arenaVisualConfig.playerHaloColor}
-          transparent
-          opacity={arenaVisualConfig.playerHaloOpacity}
-          toneMapped={false}
-        />
-      </mesh>
-
+      <PlayerSprite
+        position={arenaPointToView(snapshot.player.position, 0.65)}
+      />
       {snapshot.enemies.map((enemy) => (
-        <Billboard key={enemy.id} position={[enemy.position.x, -0.03, enemy.position.z]}>
-          <Plane args={[enemy.scale, enemy.scale]}>
-            <meshBasicMaterial
-              transparent
-              map={resolveEnemyTexture(enemy.kind)}
-              toneMapped={false}
-            />
-          </Plane>
-        </Billboard>
+        <EnemySprite
+          key={enemy.id}
+          kind={enemy.kind}
+          position={arenaPointToView(enemy.position, 0.7)}
+          scale={enemy.scale}
+        />
       ))}
-
-      {snapshot.boss ? (
-        <Billboard position={[snapshot.boss.position.x, 0.18, snapshot.boss.position.z]}>
-          <Plane args={[1.95, 1.95]}>
-            <meshBasicMaterial transparent map={bossCore} toneMapped={false} />
-          </Plane>
-        </Billboard>
-      ) : null}
-
+      <BossSprite snapshot={snapshot} />
       {snapshot.bullets.map((bullet) => (
         <mesh
           key={bullet.id}
-          position={[bullet.position.x, bullet.source === 'player' ? 0.05 : -0.02, bullet.position.z]}
+          position={arenaPointToView(bullet.position, bullet.source === 'player' ? 0.76 : 0.74)}
         >
-          <sphereGeometry args={[bullet.radius, 12, 12]} />
-          <meshStandardMaterial
-            color={bullet.source === 'player' ? '#ffe082' : '#43f1ff'}
-            emissive={bullet.source === 'player' ? '#ff8a3d' : '#00d9ff'}
-            emissiveIntensity={bullet.glow * 2}
+          <circleGeometry args={[Math.max(0.045, bullet.radius * 0.7), 24]} />
+          <meshBasicMaterial
+            color={bullet.source === 'player' ? '#ffd28a' : '#55f0ff'}
+            transparent
+            opacity={Math.min(1, 0.72 + bullet.glow * 0.18)}
             toneMapped={false}
           />
         </mesh>
       ))}
+    </>
+  )
+}
 
+function BattleScene({ snapshot }: { snapshot: BattleSnapshot }) {
+  const laneGuideRef = useRef<THREE.Mesh>(null)
+
+  useFrame((_, delta) => {
+    if (!laneGuideRef.current) {
+      return
+    }
+
+    laneGuideRef.current.rotation.z += delta * 0.9
+  })
+
+  return (
+    <>
+      <color attach="background" args={['#123640']} />
+      <mesh position={[0, 0, -2]}>
+        <planeGeometry args={[7.5, 12]} />
+        <meshBasicMaterial color="#163d47" toneMapped={false} />
+      </mesh>
+      <CloudLayer />
+      <mesh ref={laneGuideRef} position={[0, -2.9, 0.2]}>
+        <ringGeometry args={[0.48, 0.56, 48]} />
+        <meshBasicMaterial color="#5ceee4" toneMapped={false} />
+      </mesh>
+      <RuntimeEntityLayer snapshot={snapshot} />
     </>
   )
 }
@@ -195,11 +269,8 @@ export function BattleView({
   invincible,
   onComplete,
 }: BattleViewProps) {
-  const runtimeState = useBattleRuntime({ difficulty, fastStage, invincible })
-  const { runtime, snapshot } = runtimeState
+  const { runtime, snapshot } = useBattleRuntime({ difficulty, fastStage, invincible })
   const overlayRef = useRef<HTMLDivElement | null>(null)
-  const [completed, setCompleted] = useState(false)
-  const { unlockAudio } = useBattleSoundscape(snapshot, true)
 
   useEffect(() => {
     let frame = 0
@@ -217,83 +288,56 @@ export function BattleView({
   }, [runtime])
 
   useEffect(() => {
-    if (!snapshot.result || completed) {
-      return
+    if (snapshot.result) {
+      onComplete(snapshot.result)
     }
-
-    setCompleted(true)
-    onComplete(snapshot.result)
-  }, [completed, onComplete, snapshot.result])
+  }, [onComplete, snapshot.result])
 
   return (
     <section className="battle-shell" aria-label="Stage 1 battle">
-      <div className="battle-shell__canvas">
-        <Canvas
-          camera={{ position: battleCameraConfig.position, fov: battleCameraConfig.fov }}
-          gl={{ alpha: false }}
-          onCreated={({ gl, camera }) => {
-            gl.setClearColor(battleCanvasFallbackColor, 1)
-            camera.position.set(...battleCameraConfig.position)
-            camera.lookAt(...battleCameraConfig.lookAt)
-            camera.updateProjectionMatrix()
-          }}
-          style={{
-            width: '100%',
-            height: '100%',
-            background: battleCanvasFallbackColor,
-          }}
-        >
-          <StageScene snapshot={snapshot} />
-        </Canvas>
-        <div
-          ref={overlayRef}
-          className="battle-shell__controls"
-          onPointerDown={(event) => {
-            const rect = overlayRef.current?.getBoundingClientRect()
-            if (!rect) {
-              return
-            }
-
-            void unlockAudio()
-            event.currentTarget.setPointerCapture(event.pointerId)
-            runtime.beginDrag(createArenaPoint(event.clientX, event.clientY, rect))
-          }}
-          onPointerMove={(event) => {
-            if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-              return
-            }
-
-            const rect = overlayRef.current?.getBoundingClientRect()
-            if (!rect) {
-              return
-            }
-
-            runtime.moveDrag(createArenaPoint(event.clientX, event.clientY, rect))
-          }}
-          onPointerUp={(event) => {
-            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-              event.currentTarget.releasePointerCapture(event.pointerId)
-            }
-            runtime.endDrag()
-          }}
-          onPointerCancel={() => runtime.endDrag()}
-          role="presentation"
-        />
-      </div>
-
-      <div
-        className="battle-stage-plane"
-        style={
-          {
-            '--player-x': `${projectArenaPointToLayer(snapshot.player.position, 'player').left}%`,
-            pointerEvents: battleInteractionConfig.stagePlanePointerEvents,
-            zIndex: battleInteractionConfig.stagePlaneZIndex,
-          } as CSSProperties
-        }
+      <Canvas
+        camera={{ position: [0, 0, 8], fov: 48 }}
+        gl={{ alpha: false, antialias: true }}
+        onCreated={({ gl }) => {
+          gl.setClearColor('#123640', 1)
+        }}
+        style={{ width: '100%', height: '100%', background: '#123640' }}
       >
-        <BattlePresentationLayer snapshot={snapshot} />
-      </div>
+        <BattleScene snapshot={snapshot} />
+      </Canvas>
+      <div
+        ref={overlayRef}
+        className="battle-shell__controls"
+        onPointerDown={(event) => {
+          const rect = overlayRef.current?.getBoundingClientRect()
+          if (!rect) {
+            return
+          }
 
+          event.currentTarget.setPointerCapture(event.pointerId)
+          runtime.beginDrag(createArenaPoint(event.clientX, event.clientY, rect))
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+            return
+          }
+
+          const rect = overlayRef.current?.getBoundingClientRect()
+          if (!rect) {
+            return
+          }
+
+          runtime.moveDrag(createArenaPoint(event.clientX, event.clientY, rect))
+        }}
+        onPointerUp={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }
+          runtime.endDrag()
+        }}
+        onPointerCancel={() => runtime.endDrag()}
+        role="presentation"
+      />
       <div className="battle-hud" aria-label="Battle status">
         <div className="battle-status">
           <div className="battle-status__phase">
