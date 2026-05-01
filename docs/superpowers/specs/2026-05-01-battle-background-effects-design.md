@@ -2,81 +2,81 @@
 
 ## Goal
 
-Update the battle play screen so the background communicates forward movement instead of a static arena overlay.
+Make the battle screen feel like continuous forward flight without changing gameplay.
 
-The current center oval ring reads as an unnecessary UI/arena decoration. It should be removed. Cloud and atmosphere layers should drift vertically over time so the player character feels like they are traveling through the sky.
+The player, enemies, bullets, boss, drag input, HUD, and runtime coordinates must keep their current behavior. Only the R3F background treatment should move.
 
-## Scope
+## Approved Direction
 
-- Remove the visible center oval arena ring from the DOM presentation layer.
-- Remove the matching oval border overlay from the stage plane so no duplicate ring remains.
-- Rework the battle background into layered vertical motion with slow parallax.
-- Preserve player, enemy, bullet, boss, drag input, HUD, and current runtime behavior.
-- Add or update tests for the removed ring and animated background contract.
+Use a combined approach:
 
-## Recommended Approach
+- Moving cloud loop from approach 1.
+- Additional 3D fixture effects to strengthen depth and speed.
 
-Use the richer background direction: rebuild the visible background treatment around multiple moving layers instead of only adding a small CSS drift to the existing clouds.
-
-The implementation should start with existing assets:
-
-- `cloud-layer-a.png`
-- `cloud-layer-b.png`
-- current Three.js fallback color and lighting
-- current DOM presentation layer structure
-
-If the existing assets cannot make the motion readable enough, create additional project-bound assets:
-
-- Use `imagegen` for raster cloud, fog, or streak texture images.
-- Use `game-studio:web-3d-asset-pipeline` only if a new shipped GLB/glTF asset is genuinely needed for the Three.js scene.
-
-No new asset should be referenced from outside the workspace.
+The fixtures are decorative WebGL objects only. They must not participate in collision, targeting, hit tests, input, scoring, enemy movement, or stage progression.
 
 ## Visual Design
 
-The battle view should feel like a vertical flight lane.
+The battle view should read as a vertical flight lane:
 
-- Clouds move slowly along the vertical screen axis.
-- Nearby layers move faster and with higher opacity.
-- Far layers move slower and stay subtle.
-- The motion loops seamlessly and should not cause jumps.
-- The removed oval ring should not be replaced by another centered geometric decoration.
-- The player halo and entity shadows may remain because they clarify gameplay position.
+- Cloud planes flow downward in a loop, implying the player is flying forward through the sky.
+- A far cloud layer moves slowly and stays soft.
+- A near cloud layer moves faster and appears slightly brighter or larger.
+- 3D fixtures pass through the scene at a lower depth than gameplay entities, such as brass guide posts, small floating gate ribs, or light beacons.
+- Fixtures move with parallax and subtle rotation so the background feels like a real 3D space.
+- Fixtures must stay behind bullets, enemies, player, and HUD.
+- Fixture silhouettes must not be mistaken for enemies or bullets.
+
+The current player halo may remain if it helps spatial readability, but the effect should avoid adding a new centered arena UI ring.
 
 ## Technical Design
 
-The DOM presentation layer remains responsible for the most visible sprite/background composition. CSS animations are preferred for the visible cloud drift because they are simple, low-risk, and independent of battle runtime state.
+All new motion lives inside `src/game/ui/BattleView.tsx` and the R3F canvas.
 
-The Three.js scene may keep or lightly adjust its distant cloud planes, but the primary readable movement should come from the DOM layer. If Three.js background motion is added, it should be bounded to decorative backdrop planes and must not affect gameplay positions.
+Expected scene structure:
 
-Expected changes:
+- Replace the static `CloudLayer` with a moving background group.
+- Use `cloud-layer-a.png` and `cloud-layer-b.png` as separate planes.
+- Spawn two or more plane instances per cloud layer so one plane can wrap above the viewport when it exits below.
+- Animate cloud positions with `useFrame`; do not route this through React state.
+- Add a `BackgroundFixtureLayer` component for simple Three.js geometry, such as cylinders, torus arcs, or low-opacity beacon meshes.
+- Move fixtures downward on a repeating path and reset them above the viewport when they exit.
+- Keep fixtures at negative or lower z-depth than gameplay entities.
+- Use simple materials and bounded geometry counts to avoid hurting frame rate.
 
-- Remove the `.battle-entities__arena` element from `BattlePresentationLayer`.
-- Remove the `.battle-entities__arena` CSS block.
-- Remove or neutralize `.battle-stage-plane::before`.
-- Add background layer animation styles and keyframes.
-- Add test coverage that the arena ring no longer renders and the cloud layer contract remains intact.
+Motion should be deterministic enough for tests and screenshots. A small set of fixture seeds can be hard-coded as static config.
+
+## Data Flow
+
+Battle runtime state stays unchanged:
+
+- `useBattleRuntime` continues to own gameplay simulation.
+- `BattleScene` owns visual-only background motion.
+- Background motion uses elapsed time and local refs only.
+- DOM overlay remains responsible only for drag input and HUD.
 
 ## Testing
 
-Run focused tests for the presentation layer and scene config. Run the full test suite and build if time permits.
+Automated checks:
 
-Suggested commands:
+- `npm test`
+- `npm run build`
+- Existing BattleView test should continue proving:
+  - one R3F canvas exists
+  - transparent drag overlay exists
+  - old DOM entity layers are absent
 
-```powershell
-npm test
-npm run build
-```
+Browser verification with Playwright:
 
-If browser verification is needed, run the app locally and inspect the battle screen for:
-
-- no center oval ring
-- clouds drifting vertically over time
-- no overlap or input regression
-- player/enemy/bullet readability preserved
+- Enter battle with `?fastStage=1&invincible=1`.
+- Capture at least two screenshots separated by time.
+- Confirm clouds and fixtures visibly move while player/enemies/bullets remain playable.
+- Confirm canvas count remains `1` and old DOM battle layers remain `0`.
 
 ## Out Of Scope
 
-- Changing gameplay rules or spawn patterns.
-- Replacing the player, enemy, boss, or bullet assets.
-- Adding a new 3D model unless the existing 2D/cloud assets fail to achieve the requested effect.
+- Changing enemy spawn patterns.
+- Changing bullet or collision behavior.
+- Adding physics.
+- Adding imported GLB assets.
+- Moving HUD into WebGL.
