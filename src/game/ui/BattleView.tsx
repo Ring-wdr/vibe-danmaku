@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 import { gameAssets } from '../assets'
@@ -32,7 +32,6 @@ function useLoadedTexture(url: string, configure?: (texture: THREE.Texture) => v
         return
       }
 
-      loadedTexture.colorSpace = THREE.SRGBColorSpace
       configure?.(loadedTexture)
       setTexture(loadedTexture)
     })
@@ -49,20 +48,103 @@ function useLoadedTexture(url: string, configure?: (texture: THREE.Texture) => v
   return texture
 }
 
-function PlayerSprite({ position }: { position: [number, number, number] }) {
-  const configurePlayerTexture = useCallback((loadedTexture: THREE.Texture) => {
-    loadedTexture.wrapS = THREE.RepeatWrapping
-    loadedTexture.repeat.set(0.25, 1)
-  }, [])
-  const texture = useLoadedTexture(gameAssets.playerSheetUrl, configurePlayerTexture)
+function RestoredTextureMaterial({
+  texture,
+  opacity = 1,
+  exposure = 1.85,
+  saturation = 1.42,
+  contrast = 1.08,
+  frameColumns = 1,
+  frameRate = 8,
+}: {
+  texture: THREE.Texture
+  opacity?: number
+  exposure?: number
+  saturation?: number
+  contrast?: number
+  frameColumns?: number
+  frameRate?: number
+}) {
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        map: { value: texture },
+        opacity: { value: opacity },
+        exposure: { value: exposure },
+        saturation: { value: saturation },
+        contrast: { value: contrast },
+        alphaCutoff: { value: 0.02 },
+        uvScale: { value: new THREE.Vector2(1 / frameColumns, 1) },
+        uvOffset: { value: new THREE.Vector2(0, 0) },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D map;
+        uniform float opacity;
+        uniform float exposure;
+        uniform float saturation;
+        uniform float contrast;
+        uniform float alphaCutoff;
+        uniform vec2 uvScale;
+        uniform vec2 uvOffset;
+        varying vec2 vUv;
+
+        void main() {
+          vec2 sampleUv = vUv * uvScale + uvOffset;
+          vec4 texel = texture2D(map, sampleUv);
+          float alpha = texel.a * opacity;
+
+          if (alpha < alphaCutoff) {
+            discard;
+          }
+
+          vec3 color = texel.rgb / max(texel.a, 0.18);
+          color = clamp((color - 0.5) * contrast + 0.5, 0.0, 1.0);
+
+          float luma = dot(color, vec3(0.299, 0.587, 0.114));
+          color = mix(vec3(luma), color, saturation);
+          color = clamp(color * exposure, 0.0, 1.0);
+
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+    })
+  }, [frameColumns, texture])
 
   useFrame(({ clock }) => {
-    if (!texture) {
+    if (frameColumns <= 1) {
       return
     }
 
-    texture.offset.x = (Math.floor(clock.elapsedTime * 8) % 4) * 0.25
+    const frame = Math.floor(clock.elapsedTime * frameRate) % frameColumns
+    material.uniforms.uvOffset.value.set(frame / frameColumns, 0)
   })
+
+  useEffect(() => {
+    material.uniforms.map.value = texture
+    material.uniforms.opacity.value = opacity
+    material.uniforms.exposure.value = exposure
+    material.uniforms.saturation.value = saturation
+    material.uniforms.contrast.value = contrast
+    material.uniforms.uvScale.value.set(1 / frameColumns, 1)
+    material.needsUpdate = true
+  }, [contrast, exposure, frameColumns, material, opacity, saturation, texture])
+
+  return <primitive object={material} attach="material" />
+}
+
+function PlayerSprite({ position }: { position: [number, number, number] }) {
+  const texture = useLoadedTexture(gameAssets.playerSheetUrl)
 
   if (!texture) {
     return (
@@ -76,12 +158,11 @@ function PlayerSprite({ position }: { position: [number, number, number] }) {
   return (
     <mesh position={position}>
       <planeGeometry args={[1.1, 1.78]} />
-      <meshBasicMaterial
-        map={texture}
-        transparent
-        alphaTest={0.02}
-        depthWrite={false}
-        toneMapped={false}
+      <RestoredTextureMaterial
+        texture={texture}
+        exposure={1.95}
+        saturation={1.48}
+        frameColumns={4}
       />
     </mesh>
   )
@@ -141,13 +222,7 @@ function EnemySprite({
   return (
     <mesh position={position}>
       <planeGeometry args={[scale, scale]} />
-      <meshBasicMaterial
-        map={enemyTexture}
-        transparent
-        alphaTest={0.02}
-        depthWrite={false}
-        toneMapped={false}
-      />
+      <RestoredTextureMaterial texture={enemyTexture} />
     </mesh>
   )
 }
@@ -173,13 +248,7 @@ function BossSprite({ snapshot }: { snapshot: BattleSnapshot }) {
   return (
     <mesh position={position}>
       <planeGeometry args={[1.65, 1.65]} />
-      <meshBasicMaterial
-        map={bossTexture}
-        transparent
-        alphaTest={0.02}
-        depthWrite={false}
-        toneMapped={false}
-      />
+      <RestoredTextureMaterial texture={bossTexture} exposure={1.72} saturation={1.32} />
     </mesh>
   )
 }
