@@ -7,7 +7,11 @@ import type {
   RenderBoss,
   RenderBullet,
   RenderEnemy,
+  RenderSparkle,
+  RenderSpecialBeam,
+  RenderSpecialSlot,
   RunResult,
+  SpecialSlotId,
   StageDefinition,
 } from '../types'
 
@@ -63,6 +67,15 @@ type RuntimeBoss = {
   supportLaserTimer: number
 }
 
+type RuntimeSparkle = {
+  id: string
+  x: number
+  z: number
+  age: number
+  life: number
+  intensity: number
+}
+
 type RuntimeOptions = {
   difficulty: Difficulty
   stage: StageDefinition
@@ -84,6 +97,20 @@ const enemySpawnEntry = {
   rowOffset: 0.16,
   attackLead: 0.85,
   firstShotBuffer: 0.15,
+} as const
+
+const beamLanceConfig = {
+  id: 'beam-lance',
+  icon: 'beam',
+  maxCharge: 100,
+  chargeAtBossRatio: 92,
+  enemyDefeatCharge: 0.85,
+  activeDuration: 2.4,
+  beamWidth: 0.42,
+  beamLength: 7,
+  damagePerSecond: 180,
+  sparkleInterval: 0.08,
+  sparkleLife: 0.36,
 } as const
 
 function clamp(value: number, min: number, max: number) {
@@ -138,10 +165,18 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
   const pilot = stagePilot
   const bullets: RuntimeBullet[] = []
   const enemies: RuntimeEnemy[] = []
+  const sparkles: RuntimeSparkle[] = []
   let boss: RuntimeBoss | null = null
   const waveQueue = [...stage.waves]
+  const specialChargeRate =
+    stage.boss.startAt > 0
+      ? beamLanceConfig.chargeAtBossRatio / stage.boss.startAt
+      : beamLanceConfig.maxCharge
   let dragActive = false
   let elapsed = 0
+  let specialCharge = 0
+  let specialActiveFor = 0
+  let specialSparkleTimer = 0
   let playerShots = 0
   let hitsTaken = 0
   let bossEnteredCount = 0
@@ -149,6 +184,7 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
   let result: RunResult | null = null
   let lastBulletId = 0
   let lastEnemyId = 0
+  let lastSparkleId = 0
   let cachedSnapshot: BattleSnapshot | null = null
 
   const getBossPhase = () => {
@@ -162,6 +198,32 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
       stage.boss.phases[stage.boss.phases.length - 1] ??
       null
     )
+  }
+
+  const getSpecialSlot = (): RenderSpecialSlot => ({
+    id: beamLanceConfig.id,
+    icon: beamLanceConfig.icon,
+    charge: Number(specialCharge.toFixed(2)),
+    maxCharge: beamLanceConfig.maxCharge,
+    ready: specialCharge >= beamLanceConfig.maxCharge && specialActiveFor <= 0,
+    active: specialActiveFor > 0,
+    activeRatio:
+      specialActiveFor > 0
+        ? clamp(specialActiveFor / beamLanceConfig.activeDuration, 0, 1)
+        : 0,
+  })
+
+  const getSpecialBeam = (): RenderSpecialBeam | null => {
+    if (specialActiveFor <= 0) {
+      return null
+    }
+
+    return {
+      origin: { x: player.x, z: player.z + 0.18 },
+      angle: 0,
+      width: beamLanceConfig.beamWidth,
+      length: beamLanceConfig.beamLength,
+    }
   }
 
   const buildSnapshot = (): BattleSnapshot => {
@@ -208,6 +270,15 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
       enemies: renderEnemies,
       boss: renderBoss,
       bullets: renderBullets,
+      specialSlots: [getSpecialSlot()],
+      specialBeam: getSpecialBeam(),
+      sparkles: sparkles.map((sparkle) => ({
+        id: sparkle.id,
+        position: { x: sparkle.x, z: sparkle.z },
+        age: sparkle.age,
+        life: sparkle.life,
+        intensity: sparkle.intensity,
+      })),
       playerShots,
       hitsTaken,
       bossEnteredCount,
@@ -410,6 +481,84 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
     emit()
   }
 
+  const addSpecialCharge = (amount: number) => {
+    if (specialActiveFor > 0 || result) {
+      return
+    }
+
+    specialCharge = clamp(specialCharge + amount, 0, beamLanceConfig.maxCharge)
+  }
+
+  const spawnSparkle = (x: number, z: number, intensity = 1) => {
+    sparkles.push({
+      id: `sparkle-${lastSparkleId++}`,
+      x,
+      z,
+      age: 0,
+      life: beamLanceConfig.sparkleLife,
+      intensity,
+    })
+  }
+
+  const isInsideBeam = (target: ArenaPoint, radius: number) => {
+    const beam = getSpecialBeam()
+    if (!beam) {
+      return false
+    }
+
+    const dz = target.z - beam.origin.z
+    return (
+      Math.abs(target.x - beam.origin.x) <= beam.width / 2 + radius &&
+      dz >= 0 &&
+      dz <= beam.length
+    )
+  }
+
+  const updateSpecial = (delta: number) => {
+    for (let index = sparkles.length - 1; index >= 0; index -= 1) {
+      const sparkle = sparkles[index]
+      sparkle.age += delta
+      if (sparkle.age >= sparkle.life) {
+        sparkles.splice(index, 1)
+      }
+    }
+
+    if (specialActiveFor <= 0) {
+      addSpecialCharge(specialChargeRate * delta)
+      return
+    }
+
+    specialActiveFor = Math.max(0, specialActiveFor - delta)
+    specialSparkleTimer -= delta
+    const canSpawnSparkle = specialSparkleTimer <= 0
+    let spawnedSparkle = false
+    const damage = beamLanceConfig.damagePerSecond * delta
+
+    for (const enemy of enemies) {
+      if (!isInsideBeam({ x: enemy.x, z: enemy.z }, enemy.hitRadius)) {
+        continue
+      }
+
+      enemy.hp -= damage
+      if (canSpawnSparkle) {
+        spawnSparkle(enemy.x, enemy.z, 1)
+        spawnedSparkle = true
+      }
+    }
+
+    if (boss && isInsideBeam({ x: boss.x, z: boss.z }, 0.44)) {
+      boss.hp -= damage
+      if (canSpawnSparkle) {
+        spawnSparkle(boss.x, boss.z, 1.25)
+        spawnedSparkle = true
+      }
+    }
+
+    if (spawnedSparkle) {
+      specialSparkleTimer = beamLanceConfig.sparkleInterval
+    }
+  }
+
   const updateEnemies = (delta: number) => {
     for (let index = enemies.length - 1; index >= 0; index -= 1) {
       const enemy = enemies[index]
@@ -429,7 +578,13 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
         enemy.shootTimer = enemy.pattern.interval
       }
 
-      if (enemy.z < -3.3 || enemy.hp <= 0) {
+      if (enemy.hp <= 0) {
+        addSpecialCharge(beamLanceConfig.enemyDefeatCharge)
+        enemies.splice(index, 1)
+        continue
+      }
+
+      if (enemy.z < -3.3) {
         enemies.splice(index, 1)
       }
     }
@@ -618,6 +773,7 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
       playerShots += 1
     }
 
+    updateSpecial(delta)
     updateEnemies(delta)
     updateBoss(delta)
     updateBullets(delta)
@@ -652,6 +808,23 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
     },
     endDrag() {
       dragActive = false
+    },
+    activateSpecial(id: SpecialSlotId) {
+      if (
+        id !== beamLanceConfig.id ||
+        result ||
+        specialActiveFor > 0 ||
+        specialCharge < beamLanceConfig.maxCharge
+      ) {
+        return false
+      }
+
+      specialCharge = 0
+      specialActiveFor = beamLanceConfig.activeDuration
+      specialSparkleTimer = 0
+      cuePulse += 1
+      emit()
+      return true
     },
     registerPlayerHit,
     getSnapshot,

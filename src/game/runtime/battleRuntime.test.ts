@@ -421,12 +421,14 @@ describe('special attack runtime', () => {
     const stage = createSpecialChargeBonusStage()
     const runtime = createBattleRuntime({ difficulty: 'normal', stage })
 
-    runtime.update(2)
+    for (let index = 0; index < 25; index += 1) {
+      runtime.update(0.1)
+    }
 
     const slot = runtime
       .getSnapshot()
       .specialSlots.find((candidate) => candidate.id === beamLance)
-    const naturalChargeOnly = (92 / stage.boss.startAt) * 2
+    const naturalChargeOnly = (92 / stage.boss.startAt) * 2.5
 
     expect(slot?.charge).toBeGreaterThan(naturalChargeOnly + 0.5)
   })
@@ -455,7 +457,7 @@ describe('special attack runtime', () => {
   it('damages enemies inside the active beam strip and creates sparkles', () => {
     const runtime = createBattleRuntime({
       difficulty: 'normal',
-      stage: createSpecialEnemyOnlyStage(),
+      stage: createSpecialTestStage(),
     })
 
     runtime.update(0.22)
@@ -514,7 +516,7 @@ describe('special attack runtime', () => {
   it('expires beam-lance sparkles after their lifetime', () => {
     const runtime = createBattleRuntime({
       difficulty: 'normal',
-      stage: createSpecialEnemyOnlyStage(),
+      stage: createSpecialTestStage(),
     })
 
     runtime.update(0.22)
@@ -523,6 +525,7 @@ describe('special attack runtime', () => {
 
     expect(runtime.getSnapshot().sparkles.length).toBeGreaterThan(0)
 
+    runtime.beginDrag({ x: 3, z: -1.85 })
     runtime.update(3)
 
     expect(runtime.getSnapshot().sparkles.length).toBe(0)
