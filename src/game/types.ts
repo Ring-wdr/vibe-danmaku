@@ -1,5 +1,8 @@
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
+export type StageId = 'brass-cloud-gate' | 'burning-ruin-corridor'
+export type StageBackgroundTheme = 'brass-cloud' | 'burning-ruins'
+
 export type AppScreen =
   | 'title'
   | 'difficulty-select'
@@ -89,12 +92,17 @@ export type BossDefinition = {
   phases: BossPhaseDefinition[]
 }
 
+export type MidbossDefinition = BossDefinition & { gateAfterWaveIndex: number }
+
 export type StageDefinition = {
-  id: string
+  id: StageId
+  stageNumber: 1 | 2
+  backgroundTheme: StageBackgroundTheme
   name: string
   lore: string
   duration: number
   waves: EnemyWave[]
+  midboss?: MidbossDefinition
   boss: BossDefinition
 }
 
@@ -118,6 +126,9 @@ export type CharacterDefinition = {
 
 export type RunResult = {
   outcome: 'victory' | 'defeat'
+  stageId: StageId
+  stageName: string
+  stageNumber: 1 | 2
   difficulty: Difficulty
   duration: number
   remainingHp: number
@@ -126,6 +137,7 @@ export type RunResult = {
 
 export type RenderEnemy = {
   id: string
+  waveId: string
   kind: EnemyKind
   archetype: EnemyArchetypeId
   variant: EnemyVariantId

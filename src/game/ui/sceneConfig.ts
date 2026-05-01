@@ -1,3 +1,43 @@
+import type { StageBackgroundTheme } from '../types'
+
+export type BackgroundTextureKey = 'a' | 'b' | 'stage2Smoke' | 'ruinFloor'
+
+export type BackgroundMotionLayerConfig = {
+  textureKey: BackgroundTextureKey
+  x: number
+  startY: number
+  z: number
+  width: number
+  height: number
+  opacity: number
+  speed: number
+  spacing: number
+  rotation: number
+  sway: number
+}
+
+export type BackgroundFixtureConfig = {
+  x: number
+  y: number
+  z: number
+  scale: number
+  speed: number
+  spin: number
+  phase: number
+  ringColor?: string
+  crossColor?: string
+  coreColor?: string
+  ringOpacity?: number
+  crossOpacity?: number
+  coreOpacity?: number
+}
+
+export type StageBackgroundMotionConfig = {
+  cloudLayers: readonly BackgroundMotionLayerConfig[]
+  floorLayers: readonly BackgroundMotionLayerConfig[]
+  fixtures: readonly BackgroundFixtureConfig[]
+}
+
 export const battleCanvasFallbackColor = '#0a0d16'
 
 export const battleCameraConfig = {
@@ -77,4 +117,132 @@ export const battleBackgroundMotionConfig = {
     { x: -1.65, y: -0.82, z: -1.18, scale: 0.4, speed: 0.75, spin: 0.42, phase: 2.3 },
     { x: 1.55, y: 4.2, z: -1.28, scale: 0.34, speed: 1.09, spin: -0.5, phase: 3.1 },
   ],
-} as const
+} as const satisfies Omit<StageBackgroundMotionConfig, 'floorLayers'>
+
+export const stageBackgroundMotionConfigs = {
+  'brass-cloud': {
+    cloudLayers: battleBackgroundMotionConfig.cloudLayers,
+    floorLayers: [],
+    fixtures: battleBackgroundMotionConfig.fixtures,
+  },
+  'burning-ruins': {
+    floorLayers: [
+      {
+        textureKey: 'ruinFloor',
+        x: -0.28,
+        startY: 0.9,
+        z: -1.92,
+        width: 8.2,
+        height: 5.4,
+        opacity: 0.58,
+        speed: 0.44,
+        spacing: 5.35,
+        rotation: -0.03,
+        sway: 0.035,
+      },
+      {
+        textureKey: 'ruinFloor',
+        x: 0.34,
+        startY: 3.9,
+        z: -1.98,
+        width: 8.7,
+        height: 5.6,
+        opacity: 0.44,
+        speed: 0.58,
+        spacing: 5.55,
+        rotation: 0.04,
+        sway: 0.045,
+      },
+    ],
+    cloudLayers: [
+      {
+        textureKey: 'stage2Smoke',
+        x: -0.22,
+        startY: 1.35,
+        z: -1.68,
+        width: 9.4,
+        height: 4.8,
+        opacity: 0.24,
+        speed: 0.34,
+        spacing: 4.95,
+        rotation: -0.06,
+        sway: 0.1,
+      },
+      {
+        textureKey: 'stage2Smoke',
+        x: 0.26,
+        startY: 2.8,
+        z: -1.5,
+        width: 10.1,
+        height: 5.05,
+        opacity: 0.18,
+        speed: 0.52,
+        spacing: 5.25,
+        rotation: 0.05,
+        sway: 0.14,
+      },
+    ],
+    fixtures: [
+      {
+        x: -2.75,
+        y: 3.25,
+        z: -1.1,
+        scale: 0.52,
+        speed: 0.84,
+        spin: 0.28,
+        phase: 0.3,
+        ringColor: '#d06b38',
+        crossColor: '#f2a24e',
+        coreColor: '#ffcf73',
+        ringOpacity: 0.26,
+        crossOpacity: 0.22,
+        coreOpacity: 0.14,
+      },
+      {
+        x: 2.5,
+        y: 1.3,
+        z: -1.02,
+        scale: 0.46,
+        speed: 0.78,
+        spin: -0.24,
+        phase: 1.7,
+        ringColor: '#b94f35',
+        crossColor: '#de7b3b',
+        coreColor: '#ffb15c',
+        ringOpacity: 0.24,
+        crossOpacity: 0.2,
+        coreOpacity: 0.12,
+      },
+      {
+        x: -1.4,
+        y: -0.65,
+        z: -1.16,
+        scale: 0.38,
+        speed: 0.72,
+        spin: 0.36,
+        phase: 2.6,
+        ringColor: '#8f4033',
+        crossColor: '#c8633b',
+        coreColor: '#f2994a',
+        ringOpacity: 0.22,
+        crossOpacity: 0.18,
+        coreOpacity: 0.1,
+      },
+      {
+        x: 1.42,
+        y: 4.1,
+        z: -1.26,
+        scale: 0.32,
+        speed: 0.96,
+        spin: -0.42,
+        phase: 3.2,
+        ringColor: '#d9783e',
+        crossColor: '#f0a14b',
+        coreColor: '#ffc464',
+        ringOpacity: 0.24,
+        crossOpacity: 0.18,
+        coreOpacity: 0.11,
+      },
+    ],
+  },
+} as const satisfies Record<StageBackgroundTheme, StageBackgroundMotionConfig>

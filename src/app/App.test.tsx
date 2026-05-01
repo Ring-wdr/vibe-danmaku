@@ -1,10 +1,53 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import { withNuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from './App'
 import { lastCharacterStorageKey } from './characterSelectionStorage'
+import type { Difficulty, RunResult, StageDefinition } from '../game/types'
+
+const { mockBattleView } = vi.hoisted(() => ({
+  mockBattleView: vi.fn(),
+}))
+
+vi.mock('../game/ui/BattleView', () => ({
+  BattleView: (props: {
+    difficulty: Difficulty
+    stage?: StageDefinition
+    onComplete: (result: RunResult) => void
+  }) => {
+    mockBattleView(props)
+    const stage = props.stage
+
+    if (!stage) {
+      return <section aria-label="Mock battle missing stage" />
+    }
+
+    const createResult = (outcome: RunResult['outcome']): RunResult => ({
+      outcome,
+      stageId: stage.id,
+      stageName: stage.name,
+      stageNumber: stage.stageNumber,
+      difficulty: props.difficulty,
+      duration: 12.5,
+      remainingHp: outcome === 'victory' ? 2 : 0,
+      hitsTaken: outcome === 'victory' ? 1 : 3,
+    })
+
+    return (
+      <section aria-label={`Mock Stage ${stage.stageNumber} battle`}>
+        <span data-testid="mock-battle-stage">{stage.stageNumber}</span>
+        <button type="button" onClick={() => props.onComplete(createResult('victory'))}>
+          Complete Victory
+        </button>
+        <button type="button" onClick={() => props.onComplete(createResult('defeat'))}>
+          Complete Defeat
+        </button>
+      </section>
+    )
+  },
+}))
 
 function renderApp(ui: ReactElement) {
   return render(ui, {
@@ -15,6 +58,7 @@ function renderApp(ui: ReactElement) {
 describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    mockBattleView.mockClear()
   })
 
   it('moves from title to difficulty select to character select before stage intro', () => {
@@ -72,5 +116,80 @@ describe('App', () => {
     renderApp(<App initialViewport={{ width: 900, height: 500 }} />)
 
     expect(screen.getByText(/portrait mode required/i)).toBeInTheDocument()
+  })
+
+  async function deployToBattle(difficulty: Difficulty = 'normal') {
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(difficulty, 'i') }))
+    fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }))
+
+    await screen.findByLabelText(/mock stage 1 battle/i)
+  }
+
+  it('automatically starts stage 2 when stage 1 is cleared without showing results', async () => {
+    await deployToBattle()
+
+    expect(mockBattleView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stage: expect.objectContaining({ stageNumber: 1 }),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+
+    await screen.findByLabelText(/mock stage 2 battle/i)
+    expect(screen.queryByRole('heading', { name: /cloud gate broken/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /burning ruin corridor/i })).not.toBeInTheDocument()
+    expect(mockBattleView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stage: expect.objectContaining({
+          stageNumber: 2,
+          name: 'Burning Ruin Corridor',
+        }),
+      }),
+    )
+  })
+
+  it('shows the final stage result after stage 2 victory', async () => {
+    await deployToBattle('hard')
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+    await screen.findByLabelText(/mock stage 2 battle/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+
+    expect(
+      await screen.findByRole('heading', { name: /burning ruin corridor cleared/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/stage 2/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/burning ruin corridor/i)).toHaveLength(2)
+    expect(screen.getByText('HARD')).toBeInTheDocument()
+  })
+
+  it('retries the current failed stage', async () => {
+    await deployToBattle()
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+    await screen.findByLabelText(/mock stage 2 battle/i)
+
+    fireEvent.click(screen.getByRole('button', { name: /complete defeat/i }))
+
+    expect(
+      await screen.findByRole('heading', { name: /burning ruin corridor failed/i }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /retry stage/i }))
+
+    await waitFor(() => {
+      expect(mockBattleView).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          stage: expect.objectContaining({ stageNumber: 2 }),
+        }),
+      )
+    })
+    expect(screen.getByLabelText(/mock stage 2 battle/i)).toBeInTheDocument()
   })
 })

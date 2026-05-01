@@ -3,15 +3,20 @@ import { createElement, type CSSProperties, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { lyraAerCharacter } from '../content/characters'
+import { gameAssets } from '../assets'
 import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
+import { createStageDefinition } from '../content/stage1'
+import { createStage2Definition } from '../content/stage2'
 import {
   battleDragInputConfig,
   BattleView,
   createArenaPoint,
+  getBossCoreTextureUrl,
   getAtlasFrameUv,
   getFlightAirflowDynamics,
   getPlayerBattleSpritePose,
 } from './BattleView'
+import type { RunResult, StageDefinition } from '../types'
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
@@ -90,6 +95,7 @@ const controlRect = {
   width: 430,
   height: 932,
 } as DOMRect
+const defaultStage = createStageDefinition('normal')
 
 describe('createArenaPoint', () => {
   it('maps horizontal drag input beyond the wider player movement clamp', () => {
@@ -164,6 +170,30 @@ describe('getPlayerBattleSpritePose', () => {
   })
 })
 
+describe('getBossCoreTextureUrl', () => {
+  it('uses the Stage 2 midboss core asset by matching the stage midboss id', () => {
+    const stage = createStage2Definition('normal')
+    if (!stage.midboss) {
+      throw new Error('Stage 2 test fixture must include a midboss')
+    }
+    const stageWithUnprefixedMidboss: StageDefinition = {
+      ...stage,
+      midboss: {
+        ...stage.midboss,
+        id: 'ember-gate',
+      },
+    }
+
+    expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, { id: 'ember-gate' })).toBe(
+      gameAssets.stage2MidbossCoreUrl,
+    )
+    expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, { id: 'midboss-other' })).toBe(
+      gameAssets.bossCoreUrl,
+    )
+    expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, null)).toBe(gameAssets.bossCoreUrl)
+  })
+})
+
 describe('getFlightAirflowDynamics', () => {
   it('raises turn intensity when the player changes lateral direction quickly', () => {
     const dynamics = getFlightAirflowDynamics({
@@ -199,6 +229,7 @@ describe('BattleView', () => {
   beforeEach(() => {
     mockActivateSpecial.mockClear()
     mockUseBattleRuntime.mockReset()
+    mockSnapshot.result = null
     mockSnapshot.specialSlots = [
       {
         id: 'beam-lance',
@@ -226,6 +257,7 @@ describe('BattleView', () => {
     const { container } = render(
       createElement(BattleView, {
         difficulty: 'normal',
+        stage: defaultStage,
         character: lyraAerCharacter,
         onComplete: vi.fn(),
       }),
@@ -244,6 +276,7 @@ describe('BattleView', () => {
     const { container } = render(
       createElement(BattleView, {
         difficulty: 'normal',
+        stage: defaultStage,
         character: lyraAerCharacter,
         onComplete: vi.fn(),
       }),
@@ -275,6 +308,7 @@ describe('BattleView', () => {
     render(
       createElement(BattleView, {
         difficulty: 'normal',
+        stage: defaultStage,
         character: lyraAerCharacter,
         onComplete: vi.fn(),
       }),
@@ -289,10 +323,52 @@ describe('BattleView', () => {
     expect(mockActivateSpecial).toHaveBeenCalledWith('beam-lance')
   })
 
+  it('reports each runtime result only once even when the completion callback changes', () => {
+    const result = {
+      outcome: 'defeat',
+      stageId: defaultStage.id,
+      stageName: defaultStage.name,
+      stageNumber: defaultStage.stageNumber,
+      difficulty: 'normal',
+      duration: 12.5,
+      remainingHp: 0,
+      hitsTaken: 3,
+    } as const
+    const typedSnapshot = mockSnapshot as { result: RunResult | null }
+    typedSnapshot.result = result
+    const firstOnComplete = vi.fn()
+    const secondOnComplete = vi.fn()
+
+    const { rerender } = render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: firstOnComplete,
+      }),
+    )
+
+    rerender(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: secondOnComplete,
+      }),
+    )
+
+    expect(firstOnComplete).toHaveBeenCalledTimes(1)
+    expect(firstOnComplete).toHaveBeenCalledWith(result)
+    expect(secondOnComplete).not.toHaveBeenCalled()
+  })
+
   it('passes the selected character into the battle runtime hook', () => {
+    const stage = createStage2Definition('hard', { fastStage: true })
+
     render(
       createElement(BattleView, {
         difficulty: 'hard',
+        stage,
         character: lyraAerCharacter,
         fastStage: true,
         invincible: true,
@@ -302,9 +378,33 @@ describe('BattleView', () => {
 
     expect(mockUseBattleRuntime).toHaveBeenCalledWith({
       difficulty: 'hard',
+      stage,
       character: lyraAerCharacter,
       fastStage: true,
       invincible: true,
     })
+  })
+
+  it('renders the selected stage background theme marker for Stage 2 battles', () => {
+    const stage = createStage2Definition('normal')
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(mockUseBattleRuntime).toHaveBeenCalledWith({
+      difficulty: 'normal',
+      stage,
+      character: lyraAerCharacter,
+      fastStage: undefined,
+      invincible: undefined,
+    })
+    expect(screen.getByTestId('battle-background-theme')).toHaveTextContent('burning-ruins')
+    expect(screen.getByText('Stage 2')).toBeInTheDocument()
   })
 })

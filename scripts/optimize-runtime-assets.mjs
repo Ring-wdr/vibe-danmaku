@@ -35,6 +35,27 @@ const runtimeAssets = [
     alphaQuality: 86,
   },
   {
+    source: 'stage2-ruin-floor.png',
+    output: 'stage2-ruin-floor.webp',
+    width: 1024,
+    quality: 58,
+    alphaQuality: 72,
+  },
+  {
+    source: 'stage2-smoke-layer.png',
+    output: 'stage2-smoke-layer.webp',
+    width: 1024,
+    quality: 56,
+    alphaQuality: 72,
+  },
+  {
+    source: 'stage2-midboss-core.png',
+    output: 'stage2-midboss-core.webp',
+    width: 512,
+    quality: 74,
+    alphaQuality: 86,
+  },
+  {
     source: 'ui-player-portrait.png',
     output: 'ui-player-portrait.webp',
     width: 480,
