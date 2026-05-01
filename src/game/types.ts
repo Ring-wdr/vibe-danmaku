@@ -151,6 +151,34 @@ export type RenderBullet = {
   glow: number
 }
 
+export type SpecialSlotId = 'beam-lance'
+export type SpecialIconId = 'beam'
+
+export type RenderSpecialSlot = {
+  id: SpecialSlotId
+  icon: SpecialIconId
+  charge: number
+  maxCharge: number
+  ready: boolean
+  active: boolean
+  activeRatio: number
+}
+
+export type RenderSpecialBeam = {
+  origin: ArenaPoint
+  angle: 0
+  width: number
+  length: number
+}
+
+export type RenderSparkle = {
+  id: string
+  position: ArenaPoint
+  age: number
+  life: number
+  intensity: number
+}
+
 export type BattleSnapshot = {
   difficulty: Difficulty
   stageName: string
@@ -165,6 +193,9 @@ export type BattleSnapshot = {
   enemies: RenderEnemy[]
   boss: RenderBoss | null
   bullets: RenderBullet[]
+  specialSlots: RenderSpecialSlot[]
+  specialBeam: RenderSpecialBeam | null
+  sparkles: RenderSparkle[]
   playerShots: number
   hitsTaken: number
   bossEnteredCount: number

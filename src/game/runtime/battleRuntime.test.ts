@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
-import type { BulletPatternConfig, StageDefinition } from '../types'
+import type { BulletPatternConfig, SpecialSlotId, StageDefinition } from '../types'
+
+const beamLance: SpecialSlotId = 'beam-lance'
 
 function createEnemyBulletCleanupStage(): StageDefinition {
   const stage = createStageDefinition('normal', { fastStage: true })
@@ -68,6 +70,81 @@ function createPatternStage(pattern: BulletPatternConfig): StageDefinition {
         hp: 999,
         speed: 0.78,
         pattern,
+      },
+    ],
+    boss: {
+      ...stage.boss,
+      startAt: 999,
+    },
+  }
+}
+
+function createSpecialTestStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+
+  return {
+    ...stage,
+    duration: 999,
+    waves: [
+      {
+        ...stage.waves[0]!,
+        id: 'special-target',
+        startAt: 0,
+        count: 1,
+        hp: 32,
+        speed: 0,
+        pattern: {
+          shape: 'fan',
+          count: 3,
+          interval: 999,
+          speed: 0.5,
+          spread: 0.5,
+          life: 4,
+        },
+      },
+    ],
+    boss: {
+      ...stage.boss,
+      startAt: 0.2,
+      hp: 240,
+    },
+  }
+}
+
+function createSpecialEnemyOnlyStage(): StageDefinition {
+  const stage = createSpecialTestStage()
+
+  return {
+    ...stage,
+    boss: {
+      ...stage.boss,
+      startAt: 999,
+    },
+  }
+}
+
+function createSpecialChargeBonusStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+
+  return {
+    ...stage,
+    duration: 999,
+    waves: [
+      {
+        ...stage.waves[0]!,
+        id: 'charge-bonus-target',
+        startAt: 0,
+        count: 1,
+        hp: 1,
+        speed: 0,
+        pattern: {
+          shape: 'fan',
+          count: 3,
+          interval: 999,
+          speed: 0.5,
+          spread: 0.5,
+          life: 4,
+        },
       },
     ],
     boss: {
@@ -311,5 +388,143 @@ describe('regular enemy bullet patterns', () => {
     expect(firstX).toBeDefined()
     expect(secondX).toBeDefined()
     expect(Math.abs(secondX! - firstX!)).toBeGreaterThan(0.02)
+  })
+})
+
+describe('special attack runtime', () => {
+  it('charges most of the beam-lance gauge by boss arrival', () => {
+    const stage = createStageDefinition('normal')
+    const runtime = createBattleRuntime({ difficulty: 'normal', stage })
+
+    runtime.update(stage.boss.startAt)
+
+    const slot = runtime
+      .getSnapshot()
+      .specialSlots.find((candidate) => candidate.id === beamLance)
+
+    expect(slot?.charge).toBeGreaterThanOrEqual(91)
+    expect(slot?.charge).toBeLessThanOrEqual(94)
+    expect(slot?.ready).toBe(false)
+  })
+
+  it('does not activate beam-lance before full charge', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createStageDefinition('normal'),
+    })
+
+    expect(runtime.activateSpecial(beamLance)).toBe(false)
+    expect(runtime.getSnapshot().specialBeam).toBeNull()
+  })
+
+  it('adds beam-lance charge when a regular enemy is defeated', () => {
+    const stage = createSpecialChargeBonusStage()
+    const runtime = createBattleRuntime({ difficulty: 'normal', stage })
+
+    runtime.update(2)
+
+    const slot = runtime
+      .getSnapshot()
+      .specialSlots.find((candidate) => candidate.id === beamLance)
+    const naturalChargeOnly = (92 / stage.boss.startAt) * 2
+
+    expect(slot?.charge).toBeGreaterThan(naturalChargeOnly + 0.5)
+  })
+
+  it('activates beam-lance at full charge and resets that slot', () => {
+    const stage = createStageDefinition('normal')
+    const runtime = createBattleRuntime({ difficulty: 'normal', stage })
+
+    runtime.update(stage.boss.startAt + 9)
+
+    expect(runtime.activateSpecial(beamLance)).toBe(true)
+
+    const snapshot = runtime.getSnapshot()
+    const slot = snapshot.specialSlots.find((candidate) => candidate.id === beamLance)
+
+    expect(slot?.charge).toBe(0)
+    expect(slot?.active).toBe(true)
+    expect(slot?.activeRatio).toBe(1)
+    expect(snapshot.specialBeam).toMatchObject({
+      angle: 0,
+      width: 0.42,
+      length: 7,
+    })
+  })
+
+  it('damages enemies inside the active beam strip and creates sparkles', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createSpecialEnemyOnlyStage(),
+    })
+
+    runtime.update(0.22)
+    runtime.activateSpecial(beamLance)
+    runtime.update(0.3)
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.enemies.length).toBe(0)
+    expect(snapshot.sparkles.length).toBeGreaterThan(0)
+    expect(snapshot.sparkles[0]?.position.x).toBeCloseTo(0, 1)
+  })
+
+  it('damages the boss while the boss intersects the active beam', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createSpecialTestStage(),
+    })
+
+    runtime.update(0.22)
+
+    const before = runtime.getSnapshot().boss?.hpRatio
+    runtime.activateSpecial(beamLance)
+    runtime.update(0.5)
+    const after = runtime.getSnapshot().boss?.hpRatio
+
+    expect(before).toBeDefined()
+    expect(after).toBeDefined()
+    expect(after!).toBeLessThan(before!)
+  })
+
+  it('misses enemies outside the active beam width or behind the player', () => {
+    const stage = createSpecialTestStage()
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: {
+        ...stage,
+        waves: [
+          {
+            ...stage.waves[0]!,
+            spacing: 0,
+            count: 1,
+          },
+        ],
+      },
+    })
+
+    runtime.beginDrag({ x: 3, z: -1.85 })
+    runtime.update(0.22)
+    runtime.activateSpecial(beamLance)
+    runtime.update(0.3)
+
+    expect(runtime.getSnapshot().enemies.length).toBe(1)
+  })
+
+  it('expires beam-lance sparkles after their lifetime', () => {
+    const runtime = createBattleRuntime({
+      difficulty: 'normal',
+      stage: createSpecialEnemyOnlyStage(),
+    })
+
+    runtime.update(0.22)
+    runtime.activateSpecial(beamLance)
+    runtime.update(0.3)
+
+    expect(runtime.getSnapshot().sparkles.length).toBeGreaterThan(0)
+
+    runtime.update(3)
+
+    expect(runtime.getSnapshot().sparkles.length).toBe(0)
   })
 })
