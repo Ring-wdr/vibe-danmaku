@@ -427,7 +427,15 @@ function EnemySprite({
 }
 
 export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string } | null) {
-  return boss?.id === stage.midboss?.id ? gameAssets.stage2MidbossCoreUrl : gameAssets.bossCoreUrl
+  if (boss?.id === stage.midboss?.id) {
+    return gameAssets.stage2MidbossCoreUrl
+  }
+
+  if (boss?.id === stage.boss.id && stage.backgroundTheme === 'burning-ruins') {
+    return gameAssets.stage2BossCoreUrl
+  }
+
+  return gameAssets.bossCoreUrl
 }
 
 function BossSprite({ stage, snapshot }: { stage: StageDefinition; snapshot: BattleSnapshot }) {

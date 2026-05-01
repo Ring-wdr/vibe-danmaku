@@ -192,6 +192,14 @@ describe('getBossCoreTextureUrl', () => {
     )
     expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, null)).toBe(gameAssets.bossCoreUrl)
   })
+
+  it('uses the Stage 2 final boss core asset by matching the stage boss id', () => {
+    const stage = createStage2Definition('normal')
+
+    expect(getBossCoreTextureUrl(stage, { id: stage.boss.id })).toBe(
+      gameAssets.stage2BossCoreUrl,
+    )
+  })
 })
 
 describe('getFlightAirflowDynamics', () => {

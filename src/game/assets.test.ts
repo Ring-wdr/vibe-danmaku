@@ -13,5 +13,6 @@ describe('gameAssets', () => {
     expect(gameAssets.stage2RuinFloorUrl).toMatch(/stage2-ruin-floor/)
     expect(gameAssets.stage2SmokeLayerUrl).toMatch(/stage2-smoke-layer/)
     expect(gameAssets.stage2MidbossCoreUrl).toMatch(/stage2-midboss-core/)
+    expect(gameAssets.stage2BossCoreUrl).toMatch(/stage2-boss-core/)
   })
 })
