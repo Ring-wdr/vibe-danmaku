@@ -3,6 +3,7 @@ import { createElement, type CSSProperties, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { lyraAerCharacter } from '../content/characters'
+import { gameAssets } from '../assets'
 import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
 import { createStageDefinition } from '../content/stage1'
 import { createStage2Definition } from '../content/stage2'
@@ -10,6 +11,7 @@ import {
   battleDragInputConfig,
   BattleView,
   createArenaPoint,
+  getBossCoreTextureUrl,
   getAtlasFrameUv,
   getFlightAirflowDynamics,
   getPlayerBattleSpritePose,
@@ -165,6 +167,18 @@ describe('getPlayerBattleSpritePose', () => {
       frameIndex: 3,
       flipX: false,
     })
+  })
+})
+
+describe('getBossCoreTextureUrl', () => {
+  it('uses the Stage 2 midboss core asset for midboss encounters', () => {
+    expect(getBossCoreTextureUrl({ id: 'midboss-ember-gate' })).toBe(
+      gameAssets.stage2MidbossCoreUrl,
+    )
+    expect(getBossCoreTextureUrl({ id: 'boss-ash-citadel-core' })).toBe(
+      gameAssets.bossCoreUrl,
+    )
+    expect(getBossCoreTextureUrl(null)).toBe(gameAssets.bossCoreUrl)
   })
 })
 
@@ -357,5 +371,28 @@ describe('BattleView', () => {
       fastStage: true,
       invincible: true,
     })
+  })
+
+  it('renders the selected stage background theme marker for Stage 2 battles', () => {
+    const stage = createStage2Definition('normal')
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(mockUseBattleRuntime).toHaveBeenCalledWith({
+      difficulty: 'normal',
+      stage,
+      character: lyraAerCharacter,
+      fastStage: undefined,
+      invincible: undefined,
+    })
+    expect(screen.getByTestId('battle-background-theme')).toHaveTextContent('burning-ruins')
+    expect(screen.getByText('Stage 2')).toBeInTheDocument()
   })
 })

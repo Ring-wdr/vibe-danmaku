@@ -7,6 +7,7 @@ import {
   battleBackgroundMotionConfig,
   battleInteractionConfig,
   cloudBackdropLayers,
+  stageBackgroundMotionConfigs,
 } from './sceneConfig'
 
 describe('cloudBackdropLayers', () => {
@@ -32,6 +33,23 @@ describe('cloudBackdropLayers', () => {
       0.75,
       1.09,
     ])
+  })
+
+  it('defines distinct motion layers for brass clouds and burning ruins', () => {
+    const burningRuinsConfig = stageBackgroundMotionConfigs['burning-ruins']
+    const brassCloudConfig = stageBackgroundMotionConfigs['brass-cloud']
+
+    expect(burningRuinsConfig.floorLayers).toHaveLength(2)
+    expect(
+      burningRuinsConfig.floorLayers.every((layer) => layer.textureKey === 'ruinFloor'),
+    ).toBe(true)
+    expect(burningRuinsConfig.floorLayers.every((layer) => layer.speed > 0)).toBe(true)
+    expect(
+      burningRuinsConfig.cloudLayers.some((layer) => layer.textureKey === 'stage2Smoke'),
+    ).toBe(true)
+
+    expect(brassCloudConfig.cloudLayers).toBe(battleBackgroundMotionConfig.cloudLayers)
+    expect(brassCloudConfig.floorLayers).toHaveLength(0)
   })
 
   it('aims the battle camera down toward the arena instead of looking over it', () => {

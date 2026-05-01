@@ -8,7 +8,11 @@ import {
   enemyBrassCloudAtlasSize,
   type AtlasFrame,
 } from '../content/enemyBrassCloudAtlas'
-import { battleBackgroundMotionConfig } from './sceneConfig'
+import {
+  stageBackgroundMotionConfigs,
+  type BackgroundFixtureConfig,
+  type BackgroundMotionLayerConfig,
+} from './sceneConfig'
 import { useBattleRuntime } from './useBattleRuntime'
 import type {
   ArenaPoint,
@@ -44,8 +48,6 @@ const backgroundLoop = {
   height: 8.15,
 } as const
 
-const cloudLayerConfigs = battleBackgroundMotionConfig.cloudLayers
-const backgroundFixtureSeeds = battleBackgroundMotionConfig.fixtures
 const flightBodyAirflowCowlConfigs = [
   {
     z: 0.8,
@@ -423,8 +425,12 @@ function EnemySprite({
   )
 }
 
+export function getBossCoreTextureUrl(boss: { id: string } | null) {
+  return boss?.id.startsWith('midboss-') ? gameAssets.stage2MidbossCoreUrl : gameAssets.bossCoreUrl
+}
+
 function BossSprite({ snapshot }: { snapshot: BattleSnapshot }) {
-  const bossTexture = useLoadedTexture(gameAssets.bossCoreUrl)
+  const bossTexture = useLoadedTexture(getBossCoreTextureUrl(snapshot.boss))
 
   if (!snapshot.boss) {
     return null
@@ -488,7 +494,7 @@ function MovingCloudPlane({
   offset,
 }: {
   texture: THREE.Texture
-  config: (typeof cloudLayerConfigs)[number]
+  config: BackgroundMotionLayerConfig
   offset: number
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -525,28 +531,39 @@ function MovingCloudPlane({
   )
 }
 
-function MovingBackgroundLayer() {
+function MovingBackgroundLayer({ stage }: { stage: StageDefinition }) {
+  const config = stageBackgroundMotionConfigs[stage.backgroundTheme]
   const cloudTextureA = useLoadedTexture(gameAssets.cloudLayerAUrl)
   const cloudTextureB = useLoadedTexture(gameAssets.cloudLayerBUrl)
+  const smokeTexture = useLoadedTexture(gameAssets.stage2SmokeLayerUrl)
+  const ruinFloorTexture = useLoadedTexture(gameAssets.stage2RuinFloorUrl)
+  const textures: Partial<Record<BackgroundMotionLayerConfig['textureKey'], THREE.Texture>> = {
+    a: cloudTextureA ?? undefined,
+    b: cloudTextureB ?? undefined,
+    stage2Smoke: smokeTexture ?? undefined,
+    ruinFloor: ruinFloorTexture ?? undefined,
+  }
+  const renderLayer = (layerConfig: BackgroundMotionLayerConfig, layerIndex: number) => {
+    const texture = textures[layerConfig.textureKey]
 
-  if (!cloudTextureA || !cloudTextureB) {
-    return null
+    if (!texture) {
+      return null
+    }
+
+    return [0, layerConfig.spacing].map((offset) => (
+      <MovingCloudPlane
+        key={`${layerConfig.textureKey}-${layerIndex}-${offset}`}
+        texture={texture}
+        config={layerConfig}
+        offset={offset}
+      />
+    ))
   }
 
   return (
     <group name="battle-background-motion" userData={{ testId: 'battle-background-motion' }}>
-      {cloudLayerConfigs.map((config) => {
-        const texture = config.textureKey === 'a' ? cloudTextureA : cloudTextureB
-
-        return [0, config.spacing].map((offset) => (
-          <MovingCloudPlane
-            key={`${config.textureKey}-${offset}`}
-            texture={texture}
-            config={config}
-            offset={offset}
-          />
-        ))
-      })}
+      {config.floorLayers.map(renderLayer)}
+      {config.cloudLayers.map(renderLayer)}
     </group>
   )
 }
@@ -554,7 +571,7 @@ function MovingBackgroundLayer() {
 function BackgroundFixture({
   seed,
 }: {
-  seed: (typeof backgroundFixtureSeeds)[number]
+  seed: BackgroundFixtureConfig
 }) {
   const groupRef = useRef<THREE.Group>(null)
 
@@ -575,9 +592,9 @@ function BackgroundFixture({
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.46, 0.026, 8, 36]} />
         <meshBasicMaterial
-          color="#c99a45"
+          color={seed.ringColor ?? '#c99a45'}
           transparent
-          opacity={0.36}
+          opacity={seed.ringOpacity ?? 0.36}
           depthWrite={false}
           toneMapped={false}
         />
@@ -585,9 +602,9 @@ function BackgroundFixture({
       <mesh rotation={[0, 0, Math.PI / 4]}>
         <boxGeometry args={[0.82, 0.035, 0.035]} />
         <meshBasicMaterial
-          color="#d7ad5b"
+          color={seed.crossColor ?? '#d7ad5b'}
           transparent
-          opacity={0.28}
+          opacity={seed.crossOpacity ?? 0.28}
           depthWrite={false}
           toneMapped={false}
         />
@@ -595,9 +612,9 @@ function BackgroundFixture({
       <mesh>
         <cylinderGeometry args={[0.038, 0.06, 0.78, 10]} />
         <meshBasicMaterial
-          color="#5ceee4"
+          color={seed.coreColor ?? '#5ceee4'}
           transparent
-          opacity={0.18}
+          opacity={seed.coreOpacity ?? 0.18}
           depthWrite={false}
           toneMapped={false}
         />
@@ -606,10 +623,12 @@ function BackgroundFixture({
   )
 }
 
-function BackgroundFixtureLayer() {
+function BackgroundFixtureLayer({ stage }: { stage: StageDefinition }) {
+  const config = stageBackgroundMotionConfigs[stage.backgroundTheme]
+
   return (
     <group name="battle-background-fixtures">
-      {backgroundFixtureSeeds.map((seed) => (
+      {config.fixtures.map((seed) => (
         <BackgroundFixture key={`${seed.x}-${seed.phase}`} seed={seed} />
       ))}
     </group>
@@ -1038,9 +1057,11 @@ function RuntimeEntityLayer({
 
 function BattleScene({
   character,
+  stage,
   snapshot,
 }: {
   character: CharacterDefinition
+  stage: StageDefinition
   snapshot: BattleSnapshot
 }) {
   const laneGuideRef = useRef<THREE.Mesh>(null)
@@ -1060,8 +1081,8 @@ function BattleScene({
         <planeGeometry args={[7.5, 12]} />
         <meshBasicMaterial color="#163d47" toneMapped={false} />
       </mesh>
-      <MovingBackgroundLayer />
-      <BackgroundFixtureLayer />
+      <MovingBackgroundLayer stage={stage} />
+      <BackgroundFixtureLayer stage={stage} />
       <mesh ref={laneGuideRef} position={[0, -2.9, 0.2]}>
         <ringGeometry args={[0.48, 0.56, 48]} />
         <meshBasicMaterial color="#5ceee4" toneMapped={false} />
@@ -1176,10 +1197,13 @@ export function BattleView({
         }}
         style={{ width: '100%', height: '100%', background: '#123640' }}
       >
-        <BattleScene character={character} snapshot={snapshot} />
+        <BattleScene character={character} stage={stage} snapshot={snapshot} />
       </Canvas>
       <span hidden data-testid="battle-background-motion" />
       <span hidden data-testid="battle-airflow-motion" />
+      <span hidden data-testid="battle-background-theme">
+        {stage.backgroundTheme}
+      </span>
       <div
         ref={overlayRef}
         className="battle-shell__controls"
