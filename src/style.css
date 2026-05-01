@@ -122,10 +122,12 @@ p {
 }
 
 .app-shell {
-  min-height: 100dvh;
+  --shell-padding-block: 16px;
+  --shell-frame-height: calc(100dvh - 32px);
+  height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: var(--shell-padding-block) 16px;
   position: relative;
   overflow: hidden;
 }
@@ -141,7 +143,7 @@ p {
 
 .app-shell__phone-frame {
   width: min(100%, 430px);
-  min-height: min(100dvh - 24px, 932px);
+  height: min(var(--shell-frame-height), 932px);
   background: linear-gradient(180deg, rgba(10, 15, 26, 0.95), rgba(5, 8, 15, 0.96));
   border: 1px solid rgba(213, 168, 105, 0.3);
   border-radius: 32px;
@@ -182,7 +184,8 @@ p {
 }
 
 .screen-stack {
-  min-height: min(100dvh - 24px, 932px);
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -193,16 +196,21 @@ p {
 }
 
 .screen {
-  min-height: min(100dvh - 24px, 932px);
+  height: 100%;
+  min-height: 0;
   padding: 92px 22px 26px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .screen--hero {
-  justify-content: space-between;
+  justify-content: flex-start;
+  overflow-y: hidden;
 }
 
 .hero-copy {
@@ -245,7 +253,8 @@ h2 {
 .hero-art {
   position: relative;
   margin-top: 10px;
-  min-height: 42vh;
+  min-height: clamp(160px, 35dvh, 360px);
+  flex: 1 1 160px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -253,6 +262,7 @@ h2 {
 
 .hero-art > img:first-child {
   width: min(100%, 320px);
+  max-height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.45));
 }
@@ -343,12 +353,7 @@ h2 {
 }
 
 .character-select {
-  min-height: 0;
-  height: min(100dvh - 24px, 932px);
   justify-content: flex-start;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
 }
 
 .character-focus {
@@ -752,6 +757,86 @@ h2 {
 
 @media (min-width: 431px) {
   .app-shell {
-    padding: 28px;
+    --shell-padding-block: 28px;
+    --shell-frame-height: calc(100dvh - 56px);
+    padding: var(--shell-padding-block) 28px;
+  }
+}
+
+@media (max-height: 620px) {
+  .top-bar {
+    padding: max(12px, env(safe-area-inset-top)) 18px 10px;
+    font-size: 9px;
+  }
+
+  .screen {
+    padding: 70px 18px 18px;
+    gap: 16px;
+  }
+
+  h1 {
+    font-size: 2.75rem;
+  }
+
+  h2 {
+    font-size: 2rem;
+  }
+
+  .hero-copy {
+    gap: 14px;
+  }
+
+  .screen--hero {
+    gap: 12px;
+  }
+
+  .hero-art {
+    min-height: 0;
+    flex-basis: 80px;
+    overflow: hidden;
+  }
+
+  .screen--hero .hero-copy p:not(.eyebrow) {
+    line-height: 1.45;
+  }
+
+  .hero-art__crest {
+    display: none;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .difficulty-card {
+    min-height: 52px;
+    padding: 13px 16px;
+    border-radius: 18px;
+  }
+
+  .character-focus {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .character-focus__summary {
+    grid-template-columns: minmax(0, 1fr) 88px;
+  }
+
+  .character-focus__summary h3 {
+    font-size: 1.65rem;
+  }
+
+  .character-focus__summary img {
+    width: 88px;
+    height: 104px;
+    border-radius: 16px;
+  }
+
+  .character-slot {
+    min-height: 74px;
+  }
+
+  .result-grid > div {
+    padding: 12px;
+    border-radius: 16px;
   }
 }
