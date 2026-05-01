@@ -323,11 +323,13 @@ function RestoredTextureMaterial({
 
 function PlayerSprite({
   battleElapsed,
+  frameCount,
   position,
   spriteSheetUrl,
   specialActive = false,
 }: {
   battleElapsed: number
+  frameCount: number
   position: [number, number, number]
   spriteSheetUrl: string
   specialActive?: boolean
@@ -377,7 +379,7 @@ function PlayerSprite({
         texture={texture}
         exposure={1.95}
         saturation={1.48}
-        frameColumns={4}
+        frameColumns={frameCount}
         frameIndex={pose.frameIndex}
         flipX={pose.flipX}
       />
@@ -1006,6 +1008,7 @@ function RuntimeEntityLayer({
       <PlayerFlightAirflow playerPosition={snapshot.player.position} />
       <PlayerSprite
         battleElapsed={snapshot.elapsed}
+        frameCount={character.frameCount}
         position={arenaPointToView(snapshot.player.position, 0.65)}
         spriteSheetUrl={character.spriteSheetUrl}
         specialActive={snapshot.specialSlots.some((slot) => slot.active)}

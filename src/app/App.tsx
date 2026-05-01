@@ -204,6 +204,7 @@ export function App({ initialViewport }: AppProps) {
                       type="button"
                       className={`character-slot ${selected ? 'character-slot--selected' : ''}`}
                       aria-label={`${selected ? 'Selected' : 'Select'} ${character.name}`}
+                      aria-pressed={selected}
                       onClick={() => setSelectedCharacterId(character.id)}
                     >
                       <img src={character.portraitUrl} alt="" />

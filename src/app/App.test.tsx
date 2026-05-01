@@ -43,7 +43,10 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
     fireEvent.click(screen.getByRole('button', { name: /normal/i }))
 
-    expect(screen.getByRole('button', { name: /selected lyra aer/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /selected lyra aer/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   })
 
   it('shows the fallback item when the saved character id is invalid', () => {
