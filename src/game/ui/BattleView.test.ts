@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { createElement, type CSSProperties, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { lyraAerCharacter } from '../content/characters'
 import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
 import {
   battleDragInputConfig,
@@ -18,8 +19,9 @@ vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }))
 
-const { mockActivateSpecial, mockSnapshot } = vi.hoisted(() => ({
+const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted(() => ({
   mockActivateSpecial: vi.fn(),
+  mockUseBattleRuntime: vi.fn(),
   mockSnapshot: {
     difficulty: 'normal',
     stageName: 'Test Stage',
@@ -79,16 +81,7 @@ const { mockActivateSpecial, mockSnapshot } = vi.hoisted(() => ({
 }))
 
 vi.mock('./useBattleRuntime', () => ({
-  useBattleRuntime: () => ({
-    runtime: {
-      update: vi.fn(),
-      beginDrag: vi.fn(),
-      moveDrag: vi.fn(),
-      endDrag: vi.fn(),
-      activateSpecial: mockActivateSpecial,
-    },
-    snapshot: mockSnapshot,
-  }),
+  useBattleRuntime: mockUseBattleRuntime,
 }))
 
 const controlRect = {
@@ -205,6 +198,7 @@ describe('getFlightAirflowDynamics', () => {
 describe('BattleView', () => {
   beforeEach(() => {
     mockActivateSpecial.mockClear()
+    mockUseBattleRuntime.mockReset()
     mockSnapshot.specialSlots = [
       {
         id: 'beam-lance',
@@ -216,11 +210,25 @@ describe('BattleView', () => {
         activeRatio: 0,
       },
     ]
+    mockUseBattleRuntime.mockReturnValue({
+      runtime: {
+        update: vi.fn(),
+        beginDrag: vi.fn(),
+        moveDrag: vi.fn(),
+        endDrag: vi.fn(),
+        activateSpecial: mockActivateSpecial,
+      },
+      snapshot: mockSnapshot,
+    })
   })
 
   it('renders the R3F canvas, HUD, and control overlay with atlas-backed enemies', () => {
     const { container } = render(
-      createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }),
+      createElement(BattleView, {
+        difficulty: 'normal',
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
     )
 
     expect(screen.getByTestId('battle-canvas')).toBeInTheDocument()
@@ -234,7 +242,11 @@ describe('BattleView', () => {
 
   it('renders a circular beam-lance special slot with radial charge state', () => {
     const { container } = render(
-      createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }),
+      createElement(BattleView, {
+        difficulty: 'normal',
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
     )
 
     const button = screen.getByRole('button', {
@@ -260,7 +272,13 @@ describe('BattleView', () => {
       },
     ]
 
-    render(createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }))
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -269,5 +287,24 @@ describe('BattleView', () => {
     )
 
     expect(mockActivateSpecial).toHaveBeenCalledWith('beam-lance')
+  })
+
+  it('passes the selected character into the battle runtime hook', () => {
+    render(
+      createElement(BattleView, {
+        difficulty: 'hard',
+        character: lyraAerCharacter,
+        fastStage: true,
+        invincible: true,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(mockUseBattleRuntime).toHaveBeenCalledWith({
+      difficulty: 'hard',
+      character: lyraAerCharacter,
+      fastStage: true,
+      invincible: true,
+    })
   })
 })

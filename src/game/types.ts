@@ -3,6 +3,7 @@ export type Difficulty = 'easy' | 'normal' | 'hard'
 export type AppScreen =
   | 'title'
   | 'difficulty-select'
+  | 'character-select'
   | 'stage-intro'
   | 'battle'
   | 'result'

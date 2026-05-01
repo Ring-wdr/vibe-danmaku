@@ -1,9 +1,7 @@
-import { gameAssets } from '../assets'
 import { resolveEnemyWave } from './enemies'
 import type {
   BossDefinition,
   BulletPatternConfig,
-  CharacterDefinition,
   Difficulty,
   StageDefinition,
 } from '../types'
@@ -154,22 +152,4 @@ export function createStageDefinition(
       })),
     },
   }
-}
-
-export const stagePilot: CharacterDefinition = {
-  id: 'lyra-aer',
-  name: 'Lyra Aer',
-  title: 'Aether Weaver',
-  spriteSheetUrl: gameAssets.playerSheetUrl,
-  frameCount: 4,
-  moveRadius: {
-    x: 3.85,
-    minZ: -3.15,
-    maxZ: -0.45,
-  },
-  shot: {
-    interval: 0.12,
-    speed: 5.4,
-    power: 12,
-  },
 }
