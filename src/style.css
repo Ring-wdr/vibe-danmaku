@@ -294,7 +294,12 @@ h2 {
 }
 
 .character-select {
-  justify-content: center;
+  min-height: 0;
+  height: min(100dvh - 24px, 932px);
+  justify-content: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .character-focus {
