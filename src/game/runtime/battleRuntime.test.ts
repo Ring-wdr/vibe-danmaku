@@ -202,26 +202,28 @@ describe('createBattleRuntime', () => {
 })
 
 describe('regular enemy bullet patterns', () => {
-  it('fires needle bullets toward the player lane', () => {
+  it('aims needle bullets toward the player lane', () => {
     const runtime = createBattleRuntime({
       difficulty: 'normal',
       stage: createPatternStage({
         shape: 'needle',
-        count: 3,
+        count: 1,
         interval: 999,
         speed: 2,
-        spread: 0.2,
+        spread: 0,
         life: 5,
         aim: 'player',
       }),
     })
 
+    runtime.beginDrag({ x: 2.5, z: -1.85 })
     runtime.update(2)
 
     const enemyBullets = runtime
       .getSnapshot()
       .bullets.filter((bullet) => bullet.source === 'enemy')
-    expect(enemyBullets.length).toBe(3)
+    expect(enemyBullets.length).toBe(1)
+    expect(enemyBullets[0]?.position.x).toBeGreaterThan(0.4)
     expect(Math.max(...enemyBullets.map((bullet) => bullet.glow))).toBeGreaterThan(1.1)
   })
 
@@ -282,28 +284,26 @@ describe('regular enemy bullet patterns', () => {
       difficulty: 'normal',
       stage: createPatternStage({
         shape: 'wave',
-        count: 4,
+        count: 1,
         interval: 999,
         speed: 1,
-        spread: 0.8,
+        spread: 0,
         life: 6,
         wave: { amplitude: 0.55, frequency: 2.4 },
       }),
     })
 
     runtime.update(2)
-    const firstXs = runtime
+    const firstX = runtime
       .getSnapshot()
-      .bullets.filter((bullet) => bullet.source === 'enemy')
-      .map((bullet) => bullet.position.x)
+      .bullets.find((bullet) => bullet.source === 'enemy')?.position.x
     runtime.update(0.4)
-    const secondXs = runtime
+    const secondX = runtime
       .getSnapshot()
-      .bullets.filter((bullet) => bullet.source === 'enemy')
-      .map((bullet) => bullet.position.x)
+      .bullets.find((bullet) => bullet.source === 'enemy')?.position.x
 
-    expect(secondXs.some((x, index) => Math.abs(x - firstXs[index]!) > 0.02)).toBe(
-      true,
-    )
+    expect(firstX).toBeDefined()
+    expect(secondX).toBeDefined()
+    expect(Math.abs(secondX! - firstX!)).toBeGreaterThan(0.02)
   })
 })

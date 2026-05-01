@@ -72,4 +72,19 @@ describe('enemy content resolver', () => {
     expect(hard.speed).toBeGreaterThan(easy.speed)
     expect(hard.interval).toBeLessThan(easy.interval)
   })
+
+  it('rejects placements whose variant belongs to a different archetype', () => {
+    expect(() =>
+      resolveEnemyWave('normal', {
+        id: 'mismatched-wave',
+        startAt: 4,
+        archetype: 'scout',
+        variant: 'brass-cloud-lancer',
+        count: 1,
+        spacing: 1,
+      }),
+    ).toThrow(
+      'Enemy placement mismatched-wave uses archetype scout with variant brass-cloud-lancer for archetype lancer',
+    )
+  })
 })

@@ -224,6 +224,13 @@ export function resolveEnemyWave(
 ): EnemyWave {
   const archetype = enemyArchetypes[placement.archetype]
   const variant = brassCloudEnemyVariants[placement.variant]
+
+  if (variant.archetype !== archetype.id) {
+    throw new Error(
+      `Enemy placement ${placement.id} uses archetype ${archetype.id} with variant ${variant.id} for archetype ${variant.archetype}`,
+    )
+  }
+
   const mergedPattern = {
     ...archetype.pattern,
     ...variant.patternOverride,
