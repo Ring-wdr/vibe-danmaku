@@ -373,6 +373,126 @@ describe('BattleView', () => {
     expect(runtime.update).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps pause setting changes as a draft until Apply is pressed', () => {
+    const runtime = createMockRuntime()
+    mockUseBattleRuntime.mockReturnValue({
+      runtime,
+      snapshot: mockSnapshot,
+    })
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
+    fireEvent.click(screen.getByRole('radio', { name: '2x' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+
+    const controls = screen.getByTestId('battle-controls')
+    Object.defineProperty(controls, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => controlRect,
+    })
+    controls.setPointerCapture = vi.fn()
+    controls.hasPointerCapture = vi.fn(() => true)
+    controls.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: 466 })
+    fireEvent.pointerMove(controls, { pointerId: 1, clientX: 258, clientY: 466 })
+
+    expect(runtime.beginDrag).toHaveBeenCalledWith(createArenaPoint(215, 466, controlRect))
+    expect(runtime.moveDrag).toHaveBeenLastCalledWith(createArenaPoint(258, 466, controlRect))
+  })
+
+  it('applies relative drag control from the current player position', () => {
+    const runtime = createMockRuntime()
+    mockUseBattleRuntime.mockReturnValue({
+      runtime,
+      snapshot: mockSnapshot,
+    })
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
+    fireEvent.click(screen.getByRole('radio', { name: '2x' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
+
+    expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+
+    const controls = screen.getByTestId('battle-controls')
+    Object.defineProperty(controls, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => controlRect,
+    })
+    controls.setPointerCapture = vi.fn()
+    controls.hasPointerCapture = vi.fn(() => true)
+    controls.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: 466 })
+    fireEvent.pointerMove(controls, { pointerId: 1, clientX: 258, clientY: 559.2 })
+
+    expect(runtime.beginDrag).toHaveBeenCalledWith(mockSnapshot.player.position)
+    const [relativePoint] = runtime.moveDrag.mock.lastCall ?? []
+    expect(relativePoint?.x).toBeCloseTo(1.84)
+    expect(relativePoint?.z).toBeCloseTo(-4.04)
+  })
+
+  it('applies the selected 30 frame update cadence only after Apply is pressed', () => {
+    const runtime = createMockRuntime()
+    const rafCallbacks: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      rafCallbacks.push(callback)
+      return rafCallbacks.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+    mockUseBattleRuntime.mockReturnValue({
+      runtime,
+      snapshot: mockSnapshot,
+    })
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    fireEvent.click(screen.getByRole('radio', { name: '30 FPS' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+
+    rafCallbacks.at(-1)?.(performance.now() + 16)
+    expect(runtime.update).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    fireEvent.click(screen.getByRole('radio', { name: '30 FPS' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
+
+    runtime.update.mockClear()
+    const baseline = performance.now()
+    rafCallbacks.at(-1)?.(baseline + 16)
+    expect(runtime.update).not.toHaveBeenCalled()
+
+    rafCallbacks.at(-1)?.(baseline + 34)
+    expect(runtime.update).toHaveBeenCalledTimes(1)
+  })
+
   it('toggles pause and resume with Escape for desktop players', () => {
     render(
       createElement(BattleView, {

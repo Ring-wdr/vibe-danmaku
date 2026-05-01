@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 
 import { BattleHud } from './BattleHud'
 import { BattleScene } from './BattleScene'
-import { createArenaPoint } from './battleViewMath'
+import { battleDragInputConfig, createArenaPoint } from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
 import styles from './BattleView.module.css'
-import type { CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
+import type { ArenaPoint, CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
 
 export { battleDragInputConfig, createArenaPoint, getFlightAirflowDynamics } from './battleViewMath'
 export { getBackgroundTextureUrls } from './battleBackground'
@@ -19,6 +19,54 @@ type BattleViewProps = {
   fastStage?: boolean
   invincible?: boolean
   onComplete: (result: RunResult) => void
+}
+
+type FrameRate = 30 | 60
+type ControlMode = 'position' | 'drag'
+type DragSensitivity = 1 | 2 | 3
+
+type BattleSettings = {
+  frameRate: FrameRate
+  controlMode: ControlMode
+  dragSensitivity: DragSensitivity
+}
+
+const defaultBattleSettings: BattleSettings = {
+  frameRate: 60,
+  controlMode: 'position',
+  dragSensitivity: 1,
+}
+
+function createRelativeArenaPoint({
+  currentX,
+  currentY,
+  originX,
+  originY,
+  originPlayer,
+  rect,
+  sensitivity,
+}: {
+  currentX: number
+  currentY: number
+  originX: number
+  originY: number
+  originPlayer: ArenaPoint
+  rect: DOMRect
+  sensitivity: DragSensitivity
+}): ArenaPoint {
+  const xDelta =
+    ((currentX - originX) / rect.width) *
+    battleDragInputConfig.horizontalWorldSpan *
+    sensitivity
+  const zDelta =
+    ((currentY - originY) / rect.height) *
+    battleDragInputConfig.verticalWorldSpan *
+    sensitivity
+
+  return {
+    x: originPlayer.x + xDelta,
+    z: originPlayer.z - zDelta,
+  }
 }
 
 export function BattleView({
@@ -39,31 +87,57 @@ export function BattleView({
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const deliveredResultRef = useRef<RunResult | null>(null)
   const isPausedRef = useRef(false)
+  const settingsRef = useRef(defaultBattleSettings)
+  const relativeDragRef = useRef<{
+    originX: number
+    originY: number
+    originPlayer: ArenaPoint
+  } | null>(null)
+  const [settings, setSettings] = useState<BattleSettings>(defaultBattleSettings)
+  const [draftSettings, setDraftSettings] = useState<BattleSettings>(defaultBattleSettings)
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
     isPausedRef.current = isPaused
     if (isPaused) {
+      setDraftSettings(settings)
       runtime.endDrag()
     }
-  }, [isPaused, runtime])
+  }, [isPaused, runtime, settings])
+
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
 
   useEffect(() => {
     let frame = 0
     let lastTime = performance.now()
+    let accumulatedDelta = 0
+    const frameInterval = 1 / settings.frameRate
+    const frameTolerance = 0.001
 
     const tick = (time: number) => {
       const delta = Math.min((time - lastTime) / 1000, 0.033)
       lastTime = time
       if (!isPausedRef.current) {
-        runtime.update(delta)
+        if (settings.frameRate === 60) {
+          runtime.update(delta)
+        } else {
+          accumulatedDelta += delta
+          if (accumulatedDelta + frameTolerance >= frameInterval) {
+            runtime.update(Math.min(accumulatedDelta, 0.033))
+            accumulatedDelta = 0
+          }
+        }
+      } else {
+        accumulatedDelta = 0
       }
       frame = window.requestAnimationFrame(tick)
     }
 
     frame = window.requestAnimationFrame(tick)
     return () => window.cancelAnimationFrame(frame)
-  }, [runtime])
+  }, [runtime, settings.frameRate])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -72,7 +146,13 @@ export function BattleView({
       }
 
       event.preventDefault()
-      setIsPaused((current) => !current)
+      setIsPaused((current) => {
+        if (!current) {
+          setDraftSettings(settingsRef.current)
+        }
+
+        return !current
+      })
     }
 
     window.addEventListener('keydown', onKeyDown)
@@ -117,7 +197,19 @@ export function BattleView({
             return
           }
 
+          const activeSettings = settingsRef.current
           event.currentTarget.setPointerCapture(event.pointerId)
+          if (activeSettings.controlMode === 'drag') {
+            relativeDragRef.current = {
+              originX: event.clientX,
+              originY: event.clientY,
+              originPlayer: { ...snapshot.player.position },
+            }
+            runtime.beginDrag(snapshot.player.position)
+            return
+          }
+
+          relativeDragRef.current = null
           runtime.beginDrag(createArenaPoint(event.clientX, event.clientY, rect))
         }}
         onPointerMove={(event) => {
@@ -134,15 +226,40 @@ export function BattleView({
             return
           }
 
+          const activeSettings = settingsRef.current
+          if (activeSettings.controlMode === 'drag') {
+            const relativeDrag = relativeDragRef.current
+            if (!relativeDrag) {
+              return
+            }
+
+            runtime.moveDrag(
+              createRelativeArenaPoint({
+                currentX: event.clientX,
+                currentY: event.clientY,
+                originX: relativeDrag.originX,
+                originY: relativeDrag.originY,
+                originPlayer: relativeDrag.originPlayer,
+                rect,
+                sensitivity: activeSettings.dragSensitivity,
+              }),
+            )
+            return
+          }
+
           runtime.moveDrag(createArenaPoint(event.clientX, event.clientY, rect))
         }}
         onPointerUp={(event) => {
           if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId)
           }
+          relativeDragRef.current = null
           runtime.endDrag()
         }}
-        onPointerCancel={() => runtime.endDrag()}
+        onPointerCancel={() => {
+          relativeDragRef.current = null
+          runtime.endDrag()
+        }}
         role="presentation"
       />
       <BattleHud
@@ -158,6 +275,93 @@ export function BattleView({
           <div className={styles.pausePanel}>
             <p className={styles.pauseEyebrow}>Paused</p>
             <h1 className={styles.pauseTitle}>Battle paused</h1>
+            <form
+              className={styles.settingsForm}
+              onSubmit={(event) => {
+                event.preventDefault()
+                setSettings(draftSettings)
+                setIsPaused(false)
+              }}
+            >
+              <fieldset className={styles.settingGroup}>
+                <legend>Frame</legend>
+                <div className={styles.optionRow}>
+                  <label className={styles.option}>
+                    <input
+                      type="radio"
+                      name="frame-rate"
+                      checked={draftSettings.frameRate === 30}
+                      onChange={() =>
+                        setDraftSettings((current) => ({ ...current, frameRate: 30 }))
+                      }
+                    />
+                    <span>30 FPS</span>
+                  </label>
+                  <label className={styles.option}>
+                    <input
+                      type="radio"
+                      name="frame-rate"
+                      checked={draftSettings.frameRate === 60}
+                      onChange={() =>
+                        setDraftSettings((current) => ({ ...current, frameRate: 60 }))
+                      }
+                    />
+                    <span>60 FPS</span>
+                  </label>
+                </div>
+              </fieldset>
+              <fieldset className={styles.settingGroup}>
+                <legend>Control</legend>
+                <div className={styles.optionStack}>
+                  <label className={styles.option}>
+                    <input
+                      type="radio"
+                      name="control-mode"
+                      checked={draftSettings.controlMode === 'position'}
+                      onChange={() =>
+                        setDraftSettings((current) => ({ ...current, controlMode: 'position' }))
+                      }
+                    />
+                    <span>Position</span>
+                  </label>
+                  <label className={styles.option}>
+                    <input
+                      type="radio"
+                      name="control-mode"
+                      checked={draftSettings.controlMode === 'drag'}
+                      onChange={() =>
+                        setDraftSettings((current) => ({ ...current, controlMode: 'drag' }))
+                      }
+                    />
+                    <span>Drag</span>
+                  </label>
+                </div>
+              </fieldset>
+              <fieldset className={styles.settingGroup}>
+                <legend>Drag sensitive</legend>
+                <div className={styles.optionRow}>
+                  {[1, 2, 3].map((sensitivity) => (
+                    <label className={styles.option} key={sensitivity}>
+                      <input
+                        type="radio"
+                        name="drag-sensitivity"
+                        checked={draftSettings.dragSensitivity === sensitivity}
+                        onChange={() =>
+                          setDraftSettings((current) => ({
+                            ...current,
+                            dragSensitivity: sensitivity as DragSensitivity,
+                          }))
+                        }
+                      />
+                      <span>{sensitivity}x</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <button type="submit" className={styles.applyButton} aria-label="Apply settings">
+                Apply
+              </button>
+            </form>
             <button
               type="button"
               className={styles.resumeButton}

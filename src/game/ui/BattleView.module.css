@@ -32,11 +32,11 @@
 }
 
 .pausePanel {
-  width: min(100%, 320px);
+  width: min(100%, 360px);
   display: grid;
-  gap: 18px;
+  gap: 16px;
   padding: 24px;
-  border-radius: 24px;
+  border-radius: 16px;
   text-align: center;
   background: rgba(8, 14, 24, 0.88);
   border: 1px solid rgba(213, 168, 105, 0.28);
@@ -60,16 +60,84 @@
   font-size: 2.2rem;
 }
 
+.settingsForm {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.settingGroup {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settingGroup legend {
+  padding: 0;
+  color: rgba(243, 232, 210, 0.72);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.optionRow,
+.optionStack {
+  display: flex;
+  gap: 8px;
+}
+
+.optionStack {
+  flex-direction: column;
+}
+
+.option {
+  min-width: 0;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 1px solid rgba(243, 232, 210, 0.16);
+  border-radius: 8px;
+  color: rgba(255, 250, 239, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.option input {
+  flex: 0 0 auto;
+  accent-color: #fbcb81;
+}
+
+.option span {
+  overflow-wrap: anywhere;
+}
+
+.applyButton,
 .resumeButton {
   border: 0;
   cursor: pointer;
   font: inherit;
-  border-radius: 22px;
-  min-height: 58px;
-  padding: 16px 18px;
+  border-radius: 8px;
+  min-height: 48px;
+  padding: 12px 16px;
+  font-weight: 800;
+}
+
+.applyButton {
+  background: rgba(105, 240, 227, 0.16);
+  color: #e9fffb;
+  border: 1px solid rgba(105, 240, 227, 0.34);
+}
+
+.resumeButton {
   background: linear-gradient(135deg, #fbcb81, #bb6a31);
   color: #1b100b;
-  font-weight: 800;
   box-shadow: 0 12px 32px rgba(210, 118, 43, 0.35);
   transition:
     transform 180ms ease,
