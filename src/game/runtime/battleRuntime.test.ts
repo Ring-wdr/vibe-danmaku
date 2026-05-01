@@ -242,6 +242,25 @@ function advanceWhileBossActive(
   }
 }
 
+function advanceUntilResult(
+  runtime: ReturnType<typeof createRuntime>,
+  options: { step?: number; maxSteps?: number } = {},
+) {
+  const step = options.step ?? 0.1
+  const maxSteps = options.maxSteps ?? 200
+
+  for (let index = 0; index < maxSteps; index += 1) {
+    const result = runtime.getSnapshot().result
+    if (result) {
+      return result
+    }
+
+    runtime.update(step)
+  }
+
+  return runtime.getSnapshot().result
+}
+
 describe('createBattleRuntime', () => {
   it('uses the injected character movement radius while dragging', () => {
     const runtime = createRuntime({ character: testPilot })
@@ -482,11 +501,10 @@ describe('midboss gate runtime', () => {
 
     expect(runtime.getSnapshot().boss?.id).toBe(stage.boss.id)
 
-    while (!runtime.getSnapshot().result) {
-      runtime.update(0.05)
-    }
+    const result = advanceUntilResult(runtime, { step: 0.05 })
 
-    expect(runtime.getSnapshot().result?.outcome).toBe('victory')
+    expect(result).not.toBeNull()
+    expect(result?.outcome).toBe('victory')
   })
 })
 
