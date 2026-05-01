@@ -79,7 +79,7 @@ export function resolvePlayableCharacter(id?: string | null): PlayableCharacter 
 }
 
 export function getCharacterSelectRoster(selectedId: string): PlayableCharacter[] {
-  if (selectedId === fallbackCharacter.id) {
+  if (resolveCharacterId(selectedId) === fallbackCharacter.id) {
     return [fallbackCharacter, ...playableCharacters]
   }
 

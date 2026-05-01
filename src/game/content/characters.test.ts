@@ -51,5 +51,9 @@ describe('character catalog', () => {
       fallbackCharacter.id,
       'lyra-aer',
     ])
+    expect(getCharacterSelectRoster('deleted-character').map((character) => character.id)).toEqual([
+      fallbackCharacter.id,
+      'lyra-aer',
+    ])
   })
 })
