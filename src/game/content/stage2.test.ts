@@ -8,6 +8,10 @@ describe('createStage2Definition', () => {
     const stage = createStage2Definition('normal')
 
     expect(stage.id).toBe('burning-ruin-corridor')
+    expect(stage.name).toBe('Burning Ruin Corridor')
+    expect(stage.lore).toBe(
+      '전쟁 뒤 불타는 폐허 회랑을 돌파하고 잿빛 성채 코어를 붕괴시킨다.',
+    )
     expect(stage.stageNumber).toBe(2)
     expect(stage.backgroundTheme).toBe('burning-ruins')
     expect(stage.waves).toHaveLength(12)
@@ -33,10 +37,11 @@ describe('createStage2Definition', () => {
   it('starts waves 7-12 after the midboss and starts the final boss after the final wave', () => {
     const stage = createStage2Definition('normal')
     const midbossStart = stage.midboss?.startAt ?? 0
-    const finalWaveStart = stage.waves[stage.waves.length - 1]!.startAt
+    const finalWave = stage.waves[stage.waves.length - 1]!
+    const finalWaveSpanEnd = finalWave.startAt + (finalWave.count - 1) * finalWave.spacing
 
     expect(stage.waves.slice(6).every((wave) => wave.startAt > midbossStart)).toBe(true)
-    expect(stage.boss.startAt).toBeGreaterThan(finalWaveStart)
+    expect(stage.boss.startAt).toBeGreaterThan(finalWaveSpanEnd)
   })
 
   it('scales timing for fast stages while preserving wave count and midboss gate index', () => {
@@ -48,7 +53,10 @@ describe('createStage2Definition', () => {
     expect(fast.waves.map((wave) => wave.count)).toEqual(
       regular.waves.map((wave) => wave.count),
     )
-    expect(fast.waves[0]?.startAt).toBeCloseTo((regular.waves[0]?.startAt ?? 0) * 0.22)
+    fast.waves.forEach((wave, index) => {
+      expect(wave.startAt).toBeCloseTo(regular.waves[index]!.startAt * 0.22)
+    })
+    expect(fast.duration).toBeCloseTo(regular.duration * 0.22)
     expect(fast.midboss?.startAt).toBeCloseTo((regular.midboss?.startAt ?? 0) * 0.22)
     expect(fast.boss.startAt).toBeCloseTo(regular.boss.startAt * 0.22)
   })
