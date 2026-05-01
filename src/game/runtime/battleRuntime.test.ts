@@ -1,10 +1,50 @@
 import { describe, expect, it } from 'vitest'
 
+import { lyraAerCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
-import type { BulletPatternConfig, SpecialSlotId, StageDefinition } from '../types'
+import type {
+  BulletPatternConfig,
+  CharacterDefinition,
+  Difficulty,
+  SpecialSlotId,
+  StageDefinition,
+} from '../types'
 
 const beamLance: SpecialSlotId = 'beam-lance'
+
+const testPilot: CharacterDefinition = {
+  ...lyraAerCharacter,
+  id: 'test-pilot',
+  name: 'Test Pilot',
+  title: 'Runtime Fixture',
+  moveRadius: {
+    x: 1.25,
+    minZ: -2.4,
+    maxZ: -1.2,
+  },
+  shot: {
+    interval: 0.5,
+    speed: 6.2,
+    power: 99,
+  },
+}
+
+function createRuntime(options?: {
+  difficulty?: Difficulty
+  stage?: StageDefinition
+  character?: CharacterDefinition
+  invincible?: boolean
+}) {
+  const difficulty = options?.difficulty ?? 'normal'
+
+  return createBattleRuntime({
+    difficulty,
+    stage: options?.stage ?? createStageDefinition(difficulty),
+    character: options?.character ?? lyraAerCharacter,
+    invincible: options?.invincible,
+  })
+}
 
 function createEnemyBulletCleanupStage(): StageDefinition {
   const stage = createStageDefinition('normal', { fastStage: true })
@@ -143,11 +183,41 @@ function createSpecialChargeBonusStage(): StageDefinition {
 }
 
 describe('createBattleRuntime', () => {
-  it('lets the player reach wider side lanes while dragging', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createStageDefinition('normal'),
+  it('uses the injected character movement radius while dragging', () => {
+    const runtime = createRuntime({ character: testPilot })
+
+    runtime.beginDrag({ x: 9, z: 0.8 })
+    runtime.update(0.016)
+
+    expect(runtime.getSnapshot().player.position).toEqual({
+      x: 1.25,
+      z: -1.2,
     })
+
+    runtime.moveDrag({ x: -9, z: -9 })
+    runtime.update(0.016)
+
+    expect(runtime.getSnapshot().player.position).toEqual({
+      x: -1.25,
+      z: -2.4,
+    })
+  })
+
+  it('uses the injected character shot cadence for auto fire', () => {
+    const runtime = createRuntime({ character: testPilot })
+
+    runtime.update(0.49)
+    expect(runtime.getSnapshot().playerShots).toBe(1)
+
+    runtime.update(0.49)
+    expect(runtime.getSnapshot().playerShots).toBe(1)
+
+    runtime.update(0.02)
+    expect(runtime.getSnapshot().playerShots).toBe(2)
+  })
+
+  it('lets the player reach wider side lanes while dragging', () => {
+    const runtime = createRuntime()
 
     runtime.beginDrag({ x: 0, z: -0.85 })
     runtime.moveDrag({ x: 9, z: 0.8 })
@@ -166,10 +236,7 @@ describe('createBattleRuntime', () => {
   })
 
   it('allows drag movement into the former bottom instruction area', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createStageDefinition('normal'),
-    })
+    const runtime = createRuntime()
 
     runtime.beginDrag({ x: 0, z: -3.15 })
     runtime.update(0.016)
@@ -178,10 +245,7 @@ describe('createBattleRuntime', () => {
   })
 
   it('applies invulnerability frames after taking a hit', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createStageDefinition('normal'),
-    })
+    const runtime = createRuntime()
 
     runtime.registerPlayerHit()
     runtime.registerPlayerHit()
@@ -195,10 +259,7 @@ describe('createBattleRuntime', () => {
   })
 
   it('keeps auto fire running during drag movement', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createStageDefinition('normal'),
-    })
+    const runtime = createRuntime()
 
     runtime.beginDrag({ x: 0, z: -1.8 })
     runtime.moveDrag({ x: 0.8, z: -1.6 })
@@ -209,10 +270,7 @@ describe('createBattleRuntime', () => {
 
   it('spawns enemies above the visible arena before they drift into view', () => {
     const stage = createImmediateWaveStage()
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage,
-    })
+    const runtime = createRuntime({ stage })
 
     runtime.update(0.016)
 
@@ -222,10 +280,7 @@ describe('createBattleRuntime', () => {
   })
 
   it('keeps wave enemies from firing immediately while they are far offscreen', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createImmediateWaveStage(),
-    })
+    const runtime = createRuntime({ stage: createImmediateWaveStage() })
 
     runtime.update(0.6)
 
@@ -235,10 +290,7 @@ describe('createBattleRuntime', () => {
   })
 
   it('starts wave enemy fire while enemies are entering from the upper edge', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createImmediateWaveStage(),
-    })
+    const runtime = createRuntime({ stage: createImmediateWaveStage() })
 
     runtime.update(2)
 
@@ -248,10 +300,7 @@ describe('createBattleRuntime', () => {
   })
 
   it('lets enemy bullets leave the viewport before cleaning them up after a grace period', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createEnemyBulletCleanupStage(),
-    })
+    const runtime = createRuntime({ stage: createEnemyBulletCleanupStage() })
 
     runtime.update(0.5)
     runtime.update(0.7)
@@ -274,8 +323,7 @@ describe('createBattleRuntime', () => {
 
 describe('regular enemy bullet patterns', () => {
   it('aims needle bullets toward the player lane', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
+    const runtime = createRuntime({
       stage: createPatternStage({
         shape: 'needle',
         count: 1,
@@ -299,8 +347,7 @@ describe('regular enemy bullet patterns', () => {
   })
 
   it('creates secondary bullets from split patterns', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
+    const runtime = createRuntime({
       stage: createPatternStage({
         shape: 'split',
         count: 2,
@@ -327,8 +374,7 @@ describe('regular enemy bullet patterns', () => {
   })
 
   it('keeps mine bullets slower and larger than needle bullets', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
+    const runtime = createRuntime({
       stage: createPatternStage({
         shape: 'mine',
         count: 3,
@@ -351,8 +397,7 @@ describe('regular enemy bullet patterns', () => {
   })
 
   it('adds horizontal variation to wave bullets over time', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
+    const runtime = createRuntime({
       stage: createPatternStage({
         shape: 'wave',
         count: 1,
@@ -382,7 +427,7 @@ describe('regular enemy bullet patterns', () => {
 describe('special attack runtime', () => {
   it('charges most of the beam-lance gauge by boss arrival', () => {
     const stage = createStageDefinition('normal')
-    const runtime = createBattleRuntime({ difficulty: 'normal', stage })
+    const runtime = createRuntime({ stage })
 
     runtime.update(stage.boss.startAt)
 
@@ -396,10 +441,7 @@ describe('special attack runtime', () => {
   })
 
   it('does not activate beam-lance before full charge', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createStageDefinition('normal'),
-    })
+    const runtime = createRuntime()
 
     expect(runtime.activateSpecial(beamLance)).toBe(false)
     expect(runtime.getSnapshot().specialBeam).toBeNull()
@@ -407,7 +449,7 @@ describe('special attack runtime', () => {
 
   it('adds beam-lance charge when a regular enemy is defeated', () => {
     const stage = createSpecialChargeBonusStage()
-    const runtime = createBattleRuntime({ difficulty: 'normal', stage })
+    const runtime = createRuntime({ stage })
 
     for (let index = 0; index < 25; index += 1) {
       runtime.update(0.1)
@@ -423,7 +465,7 @@ describe('special attack runtime', () => {
 
   it('activates beam-lance at full charge and resets that slot', () => {
     const stage = createStageDefinition('normal')
-    const runtime = createBattleRuntime({ difficulty: 'normal', stage })
+    const runtime = createRuntime({ stage })
 
     runtime.update(stage.boss.startAt + 9)
 
@@ -443,10 +485,7 @@ describe('special attack runtime', () => {
   })
 
   it('damages enemies inside the active beam strip and creates sparkles', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createSpecialTestStage(),
-    })
+    const runtime = createRuntime({ stage: createSpecialTestStage() })
 
     runtime.update(0.22)
     runtime.activateSpecial(beamLance)
@@ -460,10 +499,7 @@ describe('special attack runtime', () => {
   })
 
   it('damages the boss while the boss intersects the active beam', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createSpecialTestStage(),
-    })
+    const runtime = createRuntime({ stage: createSpecialTestStage() })
 
     runtime.update(0.22)
 
@@ -479,8 +515,7 @@ describe('special attack runtime', () => {
 
   it('misses enemies outside the active beam width or behind the player', () => {
     const stage = createSpecialTestStage()
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
+    const runtime = createRuntime({
       stage: {
         ...stage,
         waves: [
@@ -502,10 +537,7 @@ describe('special attack runtime', () => {
   })
 
   it('expires beam-lance sparkles after their lifetime', () => {
-    const runtime = createBattleRuntime({
-      difficulty: 'normal',
-      stage: createSpecialTestStage(),
-    })
+    const runtime = createRuntime({ stage: createSpecialTestStage() })
 
     runtime.update(0.22)
     runtime.activateSpecial(beamLance)

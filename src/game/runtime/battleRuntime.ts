@@ -1,7 +1,7 @@
-import { stagePilot } from '../content/stage1'
 import type {
   ArenaPoint,
   BattleSnapshot,
+  CharacterDefinition,
   Difficulty,
   EnemyWave,
   RenderBoss,
@@ -78,6 +78,7 @@ type RuntimeSparkle = {
 type RuntimeOptions = {
   difficulty: Difficulty
   stage: StageDefinition
+  character: CharacterDefinition
   invincible?: boolean
 }
 
@@ -152,7 +153,12 @@ function getEnemyEntryShootDelay(spawnZ: number, speed: number) {
   return timeToVisibleArena + enemySpawnEntry.firstShotBuffer
 }
 
-export function createBattleRuntime({ difficulty, stage, invincible = false }: RuntimeOptions) {
+export function createBattleRuntime({
+  difficulty,
+  stage,
+  character,
+  invincible = false,
+}: RuntimeOptions) {
   const listeners = new Set<Listener>()
   const player = {
     x: 0,
@@ -161,7 +167,7 @@ export function createBattleRuntime({ difficulty, stage, invincible = false }: R
     invulnerableFor: 0,
     shotTimer: 0,
   }
-  const pilot = stagePilot
+  const pilot = character
   const bullets: RuntimeBullet[] = []
   const enemies: RuntimeEnemy[] = []
   const sparkles: RuntimeSparkle[] = []
