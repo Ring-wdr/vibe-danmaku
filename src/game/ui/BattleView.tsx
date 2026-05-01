@@ -3,13 +3,18 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 import { gameAssets } from '../assets'
+import {
+  brassCloudEnemyFrames,
+  enemyBrassCloudAtlasSize,
+  type AtlasFrame,
+} from '../content/enemyBrassCloudAtlas'
 import { useBattleRuntime } from './useBattleRuntime'
 import type {
   ArenaPoint,
   BattleSnapshot,
   Difficulty,
-  EnemyKind,
   RenderBullet,
+  RenderEnemy,
   RunResult,
 } from '../types'
 
@@ -104,6 +109,19 @@ function useLoadedTexture(url: string, configure?: (texture: THREE.Texture) => v
   return texture
 }
 
+export function getAtlasFrameUv(frame: AtlasFrame) {
+  const uvScale = new THREE.Vector2(
+    frame.w / enemyBrassCloudAtlasSize.width,
+    frame.h / enemyBrassCloudAtlasSize.height,
+  )
+  const uvOffset = new THREE.Vector2(
+    frame.x / enemyBrassCloudAtlasSize.width,
+    1 - (frame.y + frame.h) / enemyBrassCloudAtlasSize.height,
+  )
+
+  return { uvScale, uvOffset }
+}
+
 function RestoredTextureMaterial({
   texture,
   opacity = 1,
@@ -112,6 +130,8 @@ function RestoredTextureMaterial({
   contrast = 1.08,
   frameColumns = 1,
   frameRate = 8,
+  uvScale,
+  uvOffset,
 }: {
   texture: THREE.Texture
   opacity?: number
@@ -120,8 +140,13 @@ function RestoredTextureMaterial({
   contrast?: number
   frameColumns?: number
   frameRate?: number
+  uvScale?: THREE.Vector2
+  uvOffset?: THREE.Vector2
 }) {
   const material = useMemo(() => {
+    const initialUvScale = uvScale ?? new THREE.Vector2(1 / frameColumns, 1)
+    const initialUvOffset = uvOffset ?? new THREE.Vector2(0, 0)
+
     return new THREE.ShaderMaterial({
       uniforms: {
         map: { value: texture },
@@ -130,8 +155,8 @@ function RestoredTextureMaterial({
         saturation: { value: saturation },
         contrast: { value: contrast },
         alphaCutoff: { value: 0.02 },
-        uvScale: { value: new THREE.Vector2(1 / frameColumns, 1) },
-        uvOffset: { value: new THREE.Vector2(0, 0) },
+        uvScale: { value: initialUvScale.clone() },
+        uvOffset: { value: initialUvOffset.clone() },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -175,7 +200,7 @@ function RestoredTextureMaterial({
       depthWrite: false,
       toneMapped: false,
     })
-  }, [frameColumns, texture])
+  }, [frameColumns, texture, uvOffset, uvScale])
 
   useFrame(({ clock }) => {
     if (frameColumns <= 1) {
@@ -183,18 +208,35 @@ function RestoredTextureMaterial({
     }
 
     const frame = Math.floor(clock.elapsedTime * frameRate) % frameColumns
-    material.uniforms.uvOffset.value.set(frame / frameColumns, 0)
+    material.uniforms.uvOffset.value.set(
+      (uvOffset?.x ?? 0) + frame / frameColumns,
+      uvOffset?.y ?? 0,
+    )
   })
 
   useEffect(() => {
+    const nextUvScale = uvScale ?? new THREE.Vector2(1 / frameColumns, 1)
+    const nextUvOffset = uvOffset ?? new THREE.Vector2(0, 0)
+
     material.uniforms.map.value = texture
     material.uniforms.opacity.value = opacity
     material.uniforms.exposure.value = exposure
     material.uniforms.saturation.value = saturation
     material.uniforms.contrast.value = contrast
-    material.uniforms.uvScale.value.set(1 / frameColumns, 1)
+    material.uniforms.uvScale.value.copy(nextUvScale)
+    material.uniforms.uvOffset.value.copy(nextUvOffset)
     material.needsUpdate = true
-  }, [contrast, exposure, frameColumns, material, opacity, saturation, texture])
+  }, [
+    contrast,
+    exposure,
+    frameColumns,
+    material,
+    opacity,
+    saturation,
+    texture,
+    uvOffset,
+    uvScale,
+  ])
 
   return <primitive object={material} attach="material" />
 }
@@ -224,26 +266,18 @@ function PlayerSprite({ position }: { position: [number, number, number] }) {
   )
 }
 
-function resolveEnemyAssetUrl(kind: EnemyKind) {
-  if (kind === 'boss-core') {
-    return gameAssets.bossCoreUrl
-  }
-  if (kind === 'brass-cloud-sentinel' || kind === 'brass-cloud-weaver') {
-    return gameAssets.enemyFeatherUrl
-  }
-  return gameAssets.enemyScoutUrl
-}
-
 function EnemySprite({
-  kind,
+  enemyTexture,
+  frameId,
   position,
   scale,
 }: {
-  kind: EnemyKind
+  enemyTexture: THREE.Texture | null
+  frameId: RenderEnemy['frameId']
   position: [number, number, number]
   scale: number
 }) {
-  const enemyTexture = useLoadedTexture(resolveEnemyAssetUrl(kind))
+  const atlasUv = useMemo(() => getAtlasFrameUv(brassCloudEnemyFrames[frameId]), [frameId])
 
   if (!enemyTexture) {
     return (
@@ -257,7 +291,11 @@ function EnemySprite({
   return (
     <mesh position={position}>
       <planeGeometry args={[scale, scale]} />
-      <RestoredTextureMaterial texture={enemyTexture} />
+      <RestoredTextureMaterial
+        texture={enemyTexture}
+        uvScale={atlasUv.uvScale}
+        uvOffset={atlasUv.uvOffset}
+      />
     </mesh>
   )
 }
@@ -535,6 +573,8 @@ function BulletMesh({ bullet }: { bullet: RenderBullet }) {
 }
 
 function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
+  const enemyTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
+
   return (
     <>
       <PlayerSprite
@@ -543,7 +583,8 @@ function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
       {snapshot.enemies.map((enemy) => (
         <EnemySprite
           key={enemy.id}
-          kind={enemy.kind}
+          enemyTexture={enemyTexture}
+          frameId={enemy.frameId}
           position={arenaPointToView(enemy.position, 0.7)}
           scale={enemy.scale}
         />
@@ -642,6 +683,9 @@ export function BattleView({
         <BattleScene snapshot={snapshot} />
       </Canvas>
       <span hidden data-testid="battle-background-motion" />
+      <span hidden data-testid="battle-enemy-atlas-frames">
+        {snapshot.enemies.map((enemy) => enemy.frameId).join(' ')}
+      </span>
       <div
         ref={overlayRef}
         className="battle-shell__controls"

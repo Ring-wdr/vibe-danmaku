@@ -2,12 +2,72 @@ import { render, screen } from '@testing-library/react'
 import { createElement, type CSSProperties, type ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { battleDragInputConfig, BattleView, createArenaPoint } from './BattleView'
+import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
+import {
+  battleDragInputConfig,
+  BattleView,
+  createArenaPoint,
+  getAtlasFrameUv,
+} from './BattleView'
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
     createElement('canvas', { 'data-testid': 'battle-canvas', style }),
   useFrame: vi.fn(),
+}))
+
+vi.mock('./useBattleRuntime', () => ({
+  useBattleRuntime: () => ({
+    runtime: {
+      update: vi.fn(),
+      beginDrag: vi.fn(),
+      moveDrag: vi.fn(),
+      endDrag: vi.fn(),
+    },
+    snapshot: {
+      difficulty: 'normal',
+      stageName: 'Test Stage',
+      elapsed: 0,
+      duration: 90,
+      phaseLabel: 'Opening',
+      player: {
+        position: { x: 0, z: -3 },
+        hp: 3,
+        invulnerable: false,
+      },
+      enemies: [
+        {
+          id: 'sentinel-1',
+          kind: 'brass-cloud-sentinel',
+          archetype: 'sentinel',
+          variant: 'brass-cloud-sentinel',
+          atlasId: 'enemy-brass-cloud',
+          frameId: 'sentinel',
+          position: { x: -1, z: 1 },
+          scale: 0.72,
+          hitRadius: 0.28,
+        },
+        {
+          id: 'weaver-1',
+          kind: 'brass-cloud-weaver',
+          archetype: 'weaver',
+          variant: 'brass-cloud-weaver',
+          atlasId: 'enemy-brass-cloud',
+          frameId: 'weaver',
+          position: { x: 1, z: 1 },
+          scale: 0.82,
+          hitRadius: 0.34,
+        },
+      ],
+      boss: null,
+      bullets: [],
+      playerShots: 0,
+      hitsTaken: 0,
+      bossEnteredCount: 0,
+      cuePulse: 0,
+      result: null,
+    },
+  }),
 }))
 
 const controlRect = {
@@ -37,14 +97,28 @@ describe('createArenaPoint', () => {
   })
 })
 
+describe('getAtlasFrameUv', () => {
+  it('maps image-space atlas frames to Three.js bottom-origin texture UVs', () => {
+    const { uvScale, uvOffset } = getAtlasFrameUv(brassCloudEnemyFrames.weaver)
+
+    expect(uvScale.x).toBeCloseTo(1 / 3)
+    expect(uvScale.y).toBeCloseTo(1 / 2)
+    expect(uvOffset.x).toBeCloseTo(2 / 3)
+    expect(uvOffset.y).toBeCloseTo(0)
+  })
+})
+
 describe('BattleView', () => {
-  it('renders the R3F canvas and drag input overlay without old DOM entity layers', () => {
+  it('renders the R3F canvas, HUD, and atlas-backed enemy frame metadata', () => {
     const { container } = render(
       createElement(BattleView, { difficulty: 'normal', onComplete: vi.fn() }),
     )
 
     expect(screen.getByTestId('battle-canvas')).toBeInTheDocument()
     expect(screen.getByTestId('battle-background-motion')).toBeInTheDocument()
+    expect(screen.getByTestId('battle-enemy-atlas-frames')).toHaveTextContent(
+      'sentinel weaver',
+    )
     expect(screen.getByLabelText('Battle status')).toBeInTheDocument()
     expect(container.querySelector('.battle-shell__controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
