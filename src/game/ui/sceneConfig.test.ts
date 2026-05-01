@@ -4,6 +4,7 @@ import {
   arenaVisualConfig,
   battleCameraConfig,
   battleCanvasFallbackColor,
+  battleBackgroundMotionConfig,
   battleInteractionConfig,
   cloudBackdropLayers,
 } from './sceneConfig'
@@ -18,6 +19,19 @@ describe('cloudBackdropLayers', () => {
 
   it('defines a non-white fallback backdrop for the battle canvas', () => {
     expect(battleCanvasFallbackColor).toBe('#0a0d16')
+  })
+
+  it('uses faster scrolling cloud layers and fixture drift for a brisker battle feel', () => {
+    expect(battleBackgroundMotionConfig.cloudLayers.map((layer) => layer.speed)).toEqual([
+      0.38,
+      0.62,
+    ])
+    expect(battleBackgroundMotionConfig.fixtures.map((fixture) => fixture.speed)).toEqual([
+      0.94,
+      0.86,
+      0.75,
+      1.09,
+    ])
   })
 
   it('aims the battle camera down toward the arena instead of looking over it', () => {

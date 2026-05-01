@@ -41,3 +41,40 @@ export const cloudBackdropLayers = [
     opacity: 0.028,
   },
 ] as const
+
+export const battleBackgroundMotionConfig = {
+  cloudLayers: [
+    {
+      textureKey: 'a',
+      x: -0.18,
+      startY: 1.15,
+      z: -1.85,
+      width: 9.4,
+      height: 4.7,
+      opacity: 0.4,
+      speed: 0.38,
+      spacing: 4.85,
+      rotation: -0.08,
+      sway: 0.08,
+    },
+    {
+      textureKey: 'b',
+      x: 0.18,
+      startY: 2.15,
+      z: -1.55,
+      width: 10.6,
+      height: 4.95,
+      opacity: 0.28,
+      speed: 0.62,
+      spacing: 5.1,
+      rotation: 0.06,
+      sway: 0.13,
+    },
+  ],
+  fixtures: [
+    { x: -2.85, y: 3.35, z: -1.12, scale: 0.54, speed: 0.94, spin: 0.35, phase: 0 },
+    { x: 2.62, y: 1.5, z: -1.05, scale: 0.48, speed: 0.86, spin: -0.28, phase: 1.4 },
+    { x: -1.65, y: -0.82, z: -1.18, scale: 0.4, speed: 0.75, spin: 0.42, phase: 2.3 },
+    { x: 1.55, y: 4.2, z: -1.28, scale: 0.34, speed: 1.09, spin: -0.5, phase: 3.1 },
+  ],
+} as const

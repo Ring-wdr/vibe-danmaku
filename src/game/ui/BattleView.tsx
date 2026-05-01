@@ -8,6 +8,7 @@ import {
   enemyBrassCloudAtlasSize,
   type AtlasFrame,
 } from '../content/enemyBrassCloudAtlas'
+import { battleBackgroundMotionConfig } from './sceneConfig'
 import { useBattleRuntime } from './useBattleRuntime'
 import type {
   ArenaPoint,
@@ -26,7 +27,7 @@ type BattleViewProps = {
 }
 
 export const battleDragInputConfig = {
-  horizontalWorldSpan: 8,
+  horizontalWorldSpan: 9.2,
   verticalWorldSpan: 5.2,
   verticalWorldTop: 1.8,
 } as const
@@ -36,41 +37,8 @@ const backgroundLoop = {
   height: 8.15,
 } as const
 
-const cloudLayerConfigs = [
-  {
-    textureKey: 'a',
-    x: -0.18,
-    startY: 1.15,
-    z: -1.85,
-    width: 9.4,
-    height: 4.7,
-    opacity: 0.4,
-    speed: 0.28,
-    spacing: 4.85,
-    rotation: -0.08,
-    sway: 0.08,
-  },
-  {
-    textureKey: 'b',
-    x: 0.18,
-    startY: 2.15,
-    z: -1.55,
-    width: 10.6,
-    height: 4.95,
-    opacity: 0.28,
-    speed: 0.46,
-    spacing: 5.1,
-    rotation: 0.06,
-    sway: 0.13,
-  },
-] as const
-
-const backgroundFixtureSeeds = [
-  { x: -2.85, y: 3.35, z: -1.12, scale: 0.54, speed: 0.72, spin: 0.35, phase: 0 },
-  { x: 2.62, y: 1.5, z: -1.05, scale: 0.48, speed: 0.66, spin: -0.28, phase: 1.4 },
-  { x: -1.65, y: -0.82, z: -1.18, scale: 0.4, speed: 0.58, spin: 0.42, phase: 2.3 },
-  { x: 1.55, y: 4.2, z: -1.28, scale: 0.34, speed: 0.84, spin: -0.5, phase: 3.1 },
-] as const
+const cloudLayerConfigs = battleBackgroundMotionConfig.cloudLayers
+const backgroundFixtureSeeds = battleBackgroundMotionConfig.fixtures
 
 function getLoopingBackgroundY(startY: number, elapsed: number, speed: number) {
   const rawY = startY - elapsed * speed

@@ -53,9 +53,9 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
   scout: {
     id: 'scout',
     hp: 14,
-    speed: 0.78,
+    speed: 0.86,
     scale: 0.82,
-    hitRadius: 0.2,
+    hitRadius: 0.25,
     path: 'swoop-left',
     pattern: {
       shape: 'fan',
@@ -69,9 +69,9 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
   sentinel: {
     id: 'sentinel',
     hp: 26,
-    speed: 0.56,
+    speed: 0.62,
     scale: 0.92,
-    hitRadius: 0.24,
+    hitRadius: 0.3,
     path: 'helix',
     pattern: {
       shape: 'ring',
@@ -85,9 +85,9 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
   lancer: {
     id: 'lancer',
     hp: 18,
-    speed: 0.66,
+    speed: 0.73,
     scale: 0.86,
-    hitRadius: 0.21,
+    hitRadius: 0.26,
     path: 'swoop-right',
     pattern: {
       shape: 'needle',
@@ -102,9 +102,9 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
   splitter: {
     id: 'splitter',
     hp: 20,
-    speed: 0.62,
+    speed: 0.68,
     scale: 0.88,
-    hitRadius: 0.22,
+    hitRadius: 0.28,
     path: 'swoop-left',
     pattern: {
       shape: 'split',
@@ -119,9 +119,9 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
   'mine-layer': {
     id: 'mine-layer',
     hp: 24,
-    speed: 0.52,
+    speed: 0.57,
     scale: 0.9,
-    hitRadius: 0.24,
+    hitRadius: 0.3,
     path: 'helix',
     pattern: {
       shape: 'mine',
@@ -135,9 +135,9 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
   weaver: {
     id: 'weaver',
     hp: 19,
-    speed: 0.7,
+    speed: 0.77,
     scale: 0.84,
-    hitRadius: 0.21,
+    hitRadius: 0.26,
     path: 'helix',
     pattern: {
       shape: 'wave',

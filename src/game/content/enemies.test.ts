@@ -63,6 +63,36 @@ describe('enemy content resolver', () => {
     expect(wave.pattern.count).toBeGreaterThan(enemyArchetypes.lancer.pattern.count)
   })
 
+  it('uses forgiving hit radii for every regular enemy archetype', () => {
+    expect(
+      Object.fromEntries(
+        archetypeIds.map((archetype) => [archetype, enemyArchetypes[archetype].hitRadius]),
+      ),
+    ).toEqual({
+      scout: 0.25,
+      sentinel: 0.3,
+      lancer: 0.26,
+      splitter: 0.28,
+      'mine-layer': 0.3,
+      weaver: 0.26,
+    })
+  })
+
+  it('keeps regular enemy travel speeds brisk without changing player tuning', () => {
+    expect(
+      Object.fromEntries(
+        archetypeIds.map((archetype) => [archetype, enemyArchetypes[archetype].speed]),
+      ),
+    ).toEqual({
+      scout: 0.86,
+      sentinel: 0.62,
+      lancer: 0.73,
+      splitter: 0.68,
+      'mine-layer': 0.57,
+      weaver: 0.77,
+    })
+  })
+
   it('scales pattern count, speed, and interval by difficulty without changing shape', () => {
     const easy = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'easy')
     const hard = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'hard')

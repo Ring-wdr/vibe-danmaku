@@ -163,7 +163,7 @@ export const stagePilot: CharacterDefinition = {
   spriteSheetUrl: gameAssets.playerSheetUrl,
   frameCount: 4,
   moveRadius: {
-    x: 3.3,
+    x: 3.85,
     minZ: -3.15,
     maxZ: -0.45,
   },

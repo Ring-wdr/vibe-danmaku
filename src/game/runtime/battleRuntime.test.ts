@@ -65,6 +65,8 @@ function createPatternStage(pattern: BulletPatternConfig): StageDefinition {
         id: `pattern-${pattern.shape}`,
         startAt: 0,
         count: 1,
+        hp: 999,
+        speed: 0.78,
         pattern,
       },
     ],
@@ -76,7 +78,7 @@ function createPatternStage(pattern: BulletPatternConfig): StageDefinition {
 }
 
 describe('createBattleRuntime', () => {
-  it('keeps the player inside the lower arena band while dragging', () => {
+  it('lets the player reach wider side lanes while dragging', () => {
     const runtime = createBattleRuntime({
       difficulty: 'normal',
       stage: createStageDefinition('normal'),
@@ -86,10 +88,14 @@ describe('createBattleRuntime', () => {
     runtime.moveDrag({ x: 9, z: 0.8 })
     runtime.update(0.016)
 
+    expect(runtime.getSnapshot().player.position.x).toBe(3.85)
+
+    runtime.moveDrag({ x: -9, z: 0.8 })
+    runtime.update(0.016)
+
     const snapshot = runtime.getSnapshot()
 
-    expect(snapshot.player.position.x).toBeLessThanOrEqual(3.3)
-    expect(snapshot.player.position.x).toBeGreaterThanOrEqual(-3.3)
+    expect(snapshot.player.position.x).toBe(-3.85)
     expect(snapshot.player.position.z).toBeLessThanOrEqual(-0.45)
     expect(snapshot.player.position.z).toBeGreaterThanOrEqual(-3.15)
   })
