@@ -14,6 +14,7 @@ import {
   getFlightAirflowDynamics,
   getPlayerBattleSpritePose,
 } from './BattleView'
+import type { RunResult } from '../types'
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
@@ -202,6 +203,7 @@ describe('BattleView', () => {
   beforeEach(() => {
     mockActivateSpecial.mockClear()
     mockUseBattleRuntime.mockReset()
+    mockSnapshot.result = null
     mockSnapshot.specialSlots = [
       {
         id: 'beam-lance',
@@ -293,6 +295,45 @@ describe('BattleView', () => {
     )
 
     expect(mockActivateSpecial).toHaveBeenCalledWith('beam-lance')
+  })
+
+  it('reports each runtime result only once even when the completion callback changes', () => {
+    const result = {
+      outcome: 'defeat',
+      stageId: defaultStage.id,
+      stageName: defaultStage.name,
+      stageNumber: defaultStage.stageNumber,
+      difficulty: 'normal',
+      duration: 12.5,
+      remainingHp: 0,
+      hitsTaken: 3,
+    } as const
+    const typedSnapshot = mockSnapshot as { result: RunResult | null }
+    typedSnapshot.result = result
+    const firstOnComplete = vi.fn()
+    const secondOnComplete = vi.fn()
+
+    const { rerender } = render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: firstOnComplete,
+      }),
+    )
+
+    rerender(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: secondOnComplete,
+      }),
+    )
+
+    expect(firstOnComplete).toHaveBeenCalledTimes(1)
+    expect(firstOnComplete).toHaveBeenCalledWith(result)
+    expect(secondOnComplete).not.toHaveBeenCalled()
   })
 
   it('passes the selected character into the battle runtime hook', () => {

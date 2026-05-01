@@ -1142,6 +1142,7 @@ export function BattleView({
     invincible,
   })
   const overlayRef = useRef<HTMLDivElement | null>(null)
+  const deliveredResultRef = useRef<RunResult | null>(null)
 
   useEffect(() => {
     let frame = 0
@@ -1159,7 +1160,8 @@ export function BattleView({
   }, [runtime])
 
   useEffect(() => {
-    if (snapshot.result) {
+    if (snapshot.result && deliveredResultRef.current !== snapshot.result) {
+      deliveredResultRef.current = snapshot.result
       onComplete(snapshot.result)
     }
   }, [onComplete, snapshot.result])

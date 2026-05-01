@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from './App'
 import { lastCharacterStorageKey } from './characterSelectionStorage'
-import type { RunResult, StageDefinition } from '../game/types'
+import type { Difficulty, RunResult, StageDefinition } from '../game/types'
 
 const { mockBattleView } = vi.hoisted(() => ({
   mockBattleView: vi.fn(),
@@ -13,6 +13,7 @@ const { mockBattleView } = vi.hoisted(() => ({
 
 vi.mock('../game/ui/BattleView', () => ({
   BattleView: (props: {
+    difficulty: Difficulty
     stage?: StageDefinition
     onComplete: (result: RunResult) => void
   }) => {
@@ -28,7 +29,7 @@ vi.mock('../game/ui/BattleView', () => ({
       stageId: stage.id,
       stageName: stage.name,
       stageNumber: stage.stageNumber,
-      difficulty: 'normal',
+      difficulty: props.difficulty,
       duration: 12.5,
       remainingHp: outcome === 'victory' ? 2 : 0,
       hitsTaken: outcome === 'victory' ? 1 : 3,
@@ -117,11 +118,11 @@ describe('App', () => {
     expect(screen.getByText(/portrait mode required/i)).toBeInTheDocument()
   })
 
-  async function deployToBattle() {
+  async function deployToBattle(difficulty: Difficulty = 'normal') {
     renderApp(<App />)
 
     fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
-    fireEvent.click(screen.getByRole('button', { name: /normal/i }))
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(difficulty, 'i') }))
     fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
     fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }))
 
@@ -153,7 +154,7 @@ describe('App', () => {
   })
 
   it('shows the final stage result after stage 2 victory', async () => {
-    await deployToBattle()
+    await deployToBattle('hard')
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
     await screen.findByLabelText(/mock stage 2 battle/i)
@@ -165,6 +166,7 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(/stage 2/i)).toBeInTheDocument()
     expect(screen.getAllByText(/burning ruin corridor/i)).toHaveLength(2)
+    expect(screen.getByText('HARD')).toBeInTheDocument()
   })
 
   it('retries the current failed stage', async () => {
