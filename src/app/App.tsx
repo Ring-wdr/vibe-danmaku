@@ -2,7 +2,13 @@ import { lazy, Suspense, startTransition, useEffect, useState } from 'react'
 import { parseAsBoolean, useQueryStates } from 'nuqs'
 
 import { gameAssets } from '../game/assets'
+import {
+  getCharacterSelectRoster,
+  resolveCharacterId,
+  resolvePlayableCharacter,
+} from '../game/content/characters'
 import type { AppScreen, Difficulty, RunResult } from '../game/types'
+import { readLastCharacterId, writeLastCharacterId } from './characterSelectionStorage'
 
 const BattleView = lazy(async () => {
   const module = await import('../game/ui/BattleView')
@@ -36,6 +42,11 @@ function readViewport(initialViewport?: Viewport): Viewport {
 export function App({ initialViewport }: AppProps) {
   const [screen, setScreen] = useState<AppScreen>('title')
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
+  const [selectedCharacterId, setSelectedCharacterId] = useState(() =>
+    resolveCharacterId(readLastCharacterId()),
+  )
+  const selectedCharacter = resolvePlayableCharacter(selectedCharacterId)
+  const characterRoster = getCharacterSelectRoster(selectedCharacter.id)
   const [result, setResult] = useState<RunResult | null>(null)
   const [battleSeed, setBattleSeed] = useState(0)
   const [viewport, setViewport] = useState(() => readViewport(initialViewport))
@@ -67,8 +78,9 @@ export function App({ initialViewport }: AppProps) {
       <main className="battle-root">
         <Suspense fallback={<div className="battle-root__loading">Loading Battle</div>}>
           <BattleView
-            key={`${difficulty}-${battleSeed}-${debugFlags.fastStage}-${debugFlags.invincible}`}
+            key={`${difficulty}-${selectedCharacter.id}-${battleSeed}-${debugFlags.fastStage}-${debugFlags.invincible}`}
             difficulty={difficulty}
+            character={selectedCharacter}
             fastStage={debugFlags.fastStage}
             invincible={debugFlags.invincible}
             onComplete={(nextResult) => {
@@ -133,7 +145,7 @@ export function App({ initialViewport }: AppProps) {
                     className={`difficulty-card difficulty-card--${level}`}
                     onClick={() => {
                       setDifficulty(level)
-                      startScreen('stage-intro')
+                      startScreen('character-select')
                     }}
                   >
                     <span>{level.toUpperCase()}</span>
@@ -150,11 +162,76 @@ export function App({ initialViewport }: AppProps) {
             </section>
           ) : null}
 
+          {screen === 'character-select' ? (
+            <section className="screen character-select">
+              <div className="section-heading">
+                <p className="eyebrow">Select Pilot</p>
+                <h2>Select Pilot</h2>
+              </div>
+
+              <div className="character-focus">
+                <div className="character-focus__summary">
+                  <div>
+                    <p className="eyebrow">{selectedCharacter.isFallback ? 'Reserve' : 'Playable'}</p>
+                    <h3>{selectedCharacter.name}</h3>
+                    <strong>{selectedCharacter.title}</strong>
+                  </div>
+                  <img src={selectedCharacter.portraitUrl} alt={`${selectedCharacter.name} portrait`} />
+                </div>
+
+                <p className="character-focus__description">{selectedCharacter.description}</p>
+
+                <div className="character-stat-list" aria-label={`${selectedCharacter.name} stats`}>
+                  {selectedCharacter.stats.map((stat) => (
+                    <div key={stat.label} className="character-stat">
+                      <div>
+                        <span>{stat.label}</span>
+                        <strong>{stat.value}</strong>
+                      </div>
+                      <i style={{ width: `${Math.round(stat.ratio * 100)}%` }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="character-roster" aria-label="Playable characters">
+                {characterRoster.map((character) => {
+                  const selected = character.id === selectedCharacter.id
+
+                  return (
+                    <button
+                      key={character.id}
+                      type="button"
+                      className={`character-slot ${selected ? 'character-slot--selected' : ''}`}
+                      aria-label={`${selected ? 'Selected' : 'Select'} ${character.name}`}
+                      onClick={() => setSelectedCharacterId(character.id)}
+                    >
+                      <img src={character.portraitUrl} alt="" />
+                      <span>{character.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  writeLastCharacterId(selectedCharacter.id)
+                  startScreen('stage-intro')
+                }}
+              >
+                Deploy {selectedCharacter.name}
+              </button>
+            </section>
+          ) : null}
+
           {screen === 'stage-intro' ? (
             <section className="screen stage-intro">
               <p className="eyebrow">Stage 1</p>
               <h2>Brass Cloud Gate</h2>
               <p>Difficulty {difficulty.toUpperCase()} engaged</p>
+              <p className="stage-intro__pilot">Pilot {selectedCharacter.name}</p>
               <p className="stage-intro__lore">
                 스팀 날개 정찰기와 마력 깃털 드론을 돌파한 뒤, 황동 비공정 코어의 3페이즈를
                 붕괴시키세요.
