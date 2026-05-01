@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { BattleHud } from './BattleHud'
 import { BattleScene } from './BattleScene'
@@ -37,6 +37,15 @@ export function BattleView({
   })
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const deliveredResultRef = useRef<RunResult | null>(null)
+  const isPausedRef = useRef(false)
+  const [isPaused, setIsPaused] = useState(false)
+
+  useEffect(() => {
+    isPausedRef.current = isPaused
+    if (isPaused) {
+      runtime.endDrag()
+    }
+  }, [isPaused, runtime])
 
   useEffect(() => {
     let frame = 0
@@ -45,13 +54,29 @@ export function BattleView({
     const tick = (time: number) => {
       const delta = Math.min((time - lastTime) / 1000, 0.033)
       lastTime = time
-      runtime.update(delta)
+      if (!isPausedRef.current) {
+        runtime.update(delta)
+      }
       frame = window.requestAnimationFrame(tick)
     }
 
     frame = window.requestAnimationFrame(tick)
     return () => window.cancelAnimationFrame(frame)
   }, [runtime])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+
+      event.preventDefault()
+      setIsPaused((current) => !current)
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   useEffect(() => {
     if (snapshot.result && deliveredResultRef.current !== snapshot.result) {
@@ -70,7 +95,7 @@ export function BattleView({
         }}
         style={{ width: '100%', height: '100%', background: '#123640' }}
       >
-        <BattleScene character={character} stage={stage} snapshot={snapshot} />
+        <BattleScene character={character} stage={stage} snapshot={snapshot} isPaused={isPaused} />
       </Canvas>
       <span hidden data-testid="battle-background-motion" />
       <span hidden data-testid="battle-airflow-motion" />
@@ -81,6 +106,10 @@ export function BattleView({
         ref={overlayRef}
         className="battle-shell__controls"
         onPointerDown={(event) => {
+          if (isPausedRef.current) {
+            return
+          }
+
           const rect = overlayRef.current?.getBoundingClientRect()
           if (!rect) {
             return
@@ -90,6 +119,10 @@ export function BattleView({
           runtime.beginDrag(createArenaPoint(event.clientX, event.clientY, rect))
         }}
         onPointerMove={(event) => {
+          if (isPausedRef.current) {
+            return
+          }
+
           if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
             return
           }
@@ -114,8 +147,25 @@ export function BattleView({
         difficulty={difficulty}
         stage={stage}
         snapshot={snapshot}
+        isPaused={isPaused}
+        onPause={() => setIsPaused(true)}
         onActivateSpecial={(slotId) => runtime.activateSpecial(slotId)}
       />
+      {isPaused ? (
+        <div className="battle-pause-overlay" role="dialog" aria-modal="true" aria-label="Battle paused">
+          <div className="battle-pause-panel">
+            <p className="eyebrow">Paused</p>
+            <h1>Battle paused</h1>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setIsPaused(false)}
+            >
+              Resume
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

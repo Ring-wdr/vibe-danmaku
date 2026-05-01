@@ -33,15 +33,17 @@ function MovingCloudPlane({
   texture,
   config,
   offset,
+  isPaused,
 }: {
   texture: THREE.Texture
   config: BackgroundMotionLayerConfig
   offset: number
+  isPaused: boolean
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
 
   useFrame(({ clock }) => {
-    if (!meshRef.current) {
+    if (isPaused || !meshRef.current) {
       return
     }
 
@@ -72,7 +74,13 @@ function MovingCloudPlane({
   )
 }
 
-export function MovingBackgroundLayer({ stage }: { stage: StageDefinition }) {
+export function MovingBackgroundLayer({
+  stage,
+  isPaused,
+}: {
+  stage: StageDefinition
+  isPaused: boolean
+}) {
   const config = stageBackgroundMotionConfigs[stage.backgroundTheme]
   const textureUrls = useMemo(() => getBackgroundTextureUrls(stage), [stage])
   const textures = useLoadedTextureMap(textureUrls)
@@ -89,6 +97,7 @@ export function MovingBackgroundLayer({ stage }: { stage: StageDefinition }) {
         texture={texture}
         config={layerConfig}
         offset={offset}
+        isPaused={isPaused}
       />
     ))
   }
@@ -103,13 +112,15 @@ export function MovingBackgroundLayer({ stage }: { stage: StageDefinition }) {
 
 function BackgroundFixture({
   seed,
+  isPaused,
 }: {
   seed: BackgroundFixtureConfig
+  isPaused: boolean
 }) {
   const groupRef = useRef<THREE.Group>(null)
 
   useFrame(({ clock }) => {
-    if (!groupRef.current) {
+    if (isPaused || !groupRef.current) {
       return
     }
 
@@ -156,13 +167,19 @@ function BackgroundFixture({
   )
 }
 
-export function BackgroundFixtureLayer({ stage }: { stage: StageDefinition }) {
+export function BackgroundFixtureLayer({
+  stage,
+  isPaused,
+}: {
+  stage: StageDefinition
+  isPaused: boolean
+}) {
   const config = stageBackgroundMotionConfigs[stage.backgroundTheme]
 
   return (
     <group name="battle-background-fixtures">
       {config.fixtures.map((seed) => (
-        <BackgroundFixture key={`${seed.x}-${seed.phase}`} seed={seed} />
+        <BackgroundFixture key={`${seed.x}-${seed.phase}`} seed={seed} isPaused={isPaused} />
       ))}
     </group>
   )

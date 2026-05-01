@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createElement, type CSSProperties, type ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { lyraAerCharacter } from '../content/characters'
 import { gameAssets } from '../assets'
@@ -97,6 +97,16 @@ const controlRect = {
   height: 932,
 } as DOMRect
 const defaultStage = createStageDefinition('normal')
+
+function createMockRuntime() {
+  return {
+    update: vi.fn(),
+    beginDrag: vi.fn(),
+    moveDrag: vi.fn(),
+    endDrag: vi.fn(),
+    activateSpecial: mockActivateSpecial,
+  }
+}
 
 describe('createArenaPoint', () => {
   it('maps horizontal drag input beyond the wider player movement clamp', () => {
@@ -264,6 +274,10 @@ describe('getFlightAirflowDynamics', () => {
 })
 
 describe('BattleView', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   beforeEach(() => {
     mockActivateSpecial.mockClear()
     mockUseBattleRuntime.mockReset()
@@ -280,13 +294,7 @@ describe('BattleView', () => {
       },
     ]
     mockUseBattleRuntime.mockReturnValue({
-      runtime: {
-        update: vi.fn(),
-        beginDrag: vi.fn(),
-        moveDrag: vi.fn(),
-        endDrag: vi.fn(),
-        activateSpecial: mockActivateSpecial,
-      },
+      runtime: createMockRuntime(),
       snapshot: mockSnapshot,
     })
   })
@@ -328,6 +336,60 @@ describe('BattleView', () => {
     expect(button).toHaveAttribute('aria-valuenow', '50')
     expect(container.querySelector('.battle-special-slot')).toBeInTheDocument()
     expect(container.querySelector('.battle-special-slot__icon')).toBeInTheDocument()
+  })
+
+  it('pauses battle updates from the HUD button until Resume is pressed', () => {
+    const runtime = createMockRuntime()
+    const rafCallbacks: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      rafCallbacks.push(callback)
+      return rafCallbacks.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+    mockUseBattleRuntime.mockReturnValue({
+      runtime,
+      snapshot: mockSnapshot,
+    })
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+
+    expect(screen.getByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
+    rafCallbacks.at(-1)?.(performance.now() + 16)
+    expect(runtime.update).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+    rafCallbacks.at(-1)?.(performance.now() + 32)
+
+    expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+    expect(runtime.update).toHaveBeenCalledTimes(1)
+  })
+
+  it('toggles pause and resume with Escape for desktop players', () => {
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    expect(screen.getByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
   })
 
   it('activates beam-lance from the ready circular slot', () => {

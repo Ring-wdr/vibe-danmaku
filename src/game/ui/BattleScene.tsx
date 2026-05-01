@@ -10,15 +10,17 @@ export function BattleScene({
   character,
   stage,
   snapshot,
+  isPaused,
 }: {
   character: CharacterDefinition
   stage: StageDefinition
   snapshot: BattleSnapshot
+  isPaused: boolean
 }) {
   const laneGuideRef = useRef<THREE.Mesh>(null)
 
   useFrame((_, delta) => {
-    if (!laneGuideRef.current) {
+    if (isPaused || !laneGuideRef.current) {
       return
     }
 
@@ -32,13 +34,18 @@ export function BattleScene({
         <planeGeometry args={[7.5, 12]} />
         <meshBasicMaterial color="#163d47" toneMapped={false} />
       </mesh>
-      <MovingBackgroundLayer stage={stage} />
-      <BackgroundFixtureLayer stage={stage} />
+      <MovingBackgroundLayer stage={stage} isPaused={isPaused} />
+      <BackgroundFixtureLayer stage={stage} isPaused={isPaused} />
       <mesh ref={laneGuideRef} position={[0, -2.9, 0.2]}>
         <ringGeometry args={[0.48, 0.56, 48]} />
         <meshBasicMaterial color="#5ceee4" toneMapped={false} />
       </mesh>
-      <RuntimeEntityLayer character={character} stage={stage} snapshot={snapshot} />
+      <RuntimeEntityLayer
+        character={character}
+        stage={stage}
+        snapshot={snapshot}
+        isPaused={isPaused}
+      />
     </>
   )
 }

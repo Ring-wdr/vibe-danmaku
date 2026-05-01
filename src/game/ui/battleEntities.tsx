@@ -194,16 +194,18 @@ export function RuntimeEntityLayer({
   character,
   stage,
   snapshot,
+  isPaused,
 }: {
   character: CharacterDefinition
   stage: StageDefinition
   snapshot: BattleSnapshot
+  isPaused: boolean
 }) {
   const enemyTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
 
   return (
     <>
-      <PlayerFlightAirflow playerPosition={snapshot.player.position} />
+      <PlayerFlightAirflow playerPosition={snapshot.player.position} isPaused={isPaused} />
       <PlayerSprite
         battleElapsed={snapshot.elapsed}
         frameCount={character.frameCount}
@@ -222,9 +224,11 @@ export function RuntimeEntityLayer({
       ))}
       <BossSprite stage={stage} snapshot={snapshot} />
       {snapshot.bullets.map((bullet) => (
-        <BulletMesh key={bullet.id} bullet={bullet} />
+        <BulletMesh key={bullet.id} bullet={bullet} isPaused={isPaused} />
       ))}
-      {snapshot.specialBeam ? <SpecialBeamMesh beam={snapshot.specialBeam} /> : null}
+      {snapshot.specialBeam ? (
+        <SpecialBeamMesh beam={snapshot.specialBeam} isPaused={isPaused} />
+      ) : null}
       {snapshot.sparkles.map((sparkle) => (
         <SparkleMesh key={sparkle.id} sparkle={sparkle} />
       ))}

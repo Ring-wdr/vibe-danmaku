@@ -47,15 +47,28 @@ export function BattleHud({
   difficulty,
   stage,
   snapshot,
+  isPaused,
+  onPause,
   onActivateSpecial,
 }: {
   difficulty: Difficulty
   stage: StageDefinition
   snapshot: BattleSnapshot
+  isPaused: boolean
+  onPause: () => void
   onActivateSpecial: (slotId: RenderSpecialSlot['id']) => void
 }) {
   return (
     <>
+      <button
+        type="button"
+        className="battle-pause-button"
+        aria-label="Pause battle"
+        aria-pressed={isPaused}
+        onClick={onPause}
+      >
+        ||
+      </button>
       <div className="battle-hud" aria-label="Battle status">
         <div className="battle-status">
           <div className="battle-status__phase">

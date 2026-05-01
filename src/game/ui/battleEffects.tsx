@@ -39,7 +39,7 @@ function getBulletPhase(id: string) {
   return hash / 997
 }
 
-export function BulletMesh({ bullet }: { bullet: RenderBullet }) {
+export function BulletMesh({ bullet, isPaused }: { bullet: RenderBullet; isPaused: boolean }) {
   const groupRef = useRef<THREE.Group>(null)
   const palette = getBulletPalette(bullet)
   const phase = getBulletPhase(bullet.id)
@@ -48,7 +48,7 @@ export function BulletMesh({ bullet }: { bullet: RenderBullet }) {
   const isHeavyEnemyBullet = bullet.source === 'enemy' && bullet.glow >= 1.35
 
   useFrame(({ clock }) => {
-    if (!groupRef.current) {
+    if (isPaused || !groupRef.current) {
       return
     }
 
@@ -118,14 +118,20 @@ export function BulletMesh({ bullet }: { bullet: RenderBullet }) {
   )
 }
 
-export function SpecialBeamMesh({ beam }: { beam: RenderSpecialBeam }) {
+export function SpecialBeamMesh({
+  beam,
+  isPaused,
+}: {
+  beam: RenderSpecialBeam
+  isPaused: boolean
+}) {
   const groupRef = useRef<THREE.Group>(null)
   const origin = arenaPointToView(beam.origin, 0.82)
   const viewWidth = Math.max(0.16, beam.width * 0.55)
   const viewLength = beam.length * 0.9
 
   useFrame(({ clock }) => {
-    if (!groupRef.current) {
+    if (isPaused || !groupRef.current) {
       return
     }
 
@@ -228,14 +234,20 @@ export function SparkleMesh({ sparkle }: { sparkle: RenderSparkle }) {
 function TurnWakeRing({
   config,
   wakeRef,
+  isPaused,
 }: {
   config: (typeof flightTurnWakeConfigs)[number]
   wakeRef: RefObject<{ speed: number; turn: number; direction: -1 | 0 | 1 }>
+  isPaused: boolean
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const materialRef = useRef<THREE.MeshBasicMaterial>(null)
 
   useFrame(({ clock }) => {
+    if (isPaused) {
+      return
+    }
+
     const wake = wakeRef.current
     const sideMatchesTurn = wake.direction === 0 ? 0.42 : wake.direction === config.side ? 1 : 0.34
     const pulse = Math.max(0.08, wake.turn * sideMatchesTurn + wake.speed * 0.16)
@@ -272,9 +284,11 @@ function TurnWakeRing({
 function BodyAirflowCowl({
   config,
   wakeRef,
+  isPaused,
 }: {
   config: (typeof flightBodyAirflowCowlConfigs)[number]
   wakeRef: RefObject<{ speed: number; turn: number; direction: -1 | 0 | 1 }>
+  isPaused: boolean
 }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const materialRef = useRef<THREE.ShaderMaterial>(null)
@@ -326,6 +340,10 @@ function BodyAirflowCowl({
   )
 
   useFrame(({ clock }) => {
+    if (isPaused) {
+      return
+    }
+
     const wake = wakeRef.current
     const directionPull = wake.direction * wake.turn
 
@@ -359,7 +377,13 @@ function BodyAirflowCowl({
   )
 }
 
-export function PlayerFlightAirflow({ playerPosition }: { playerPosition: ArenaPoint }) {
+export function PlayerFlightAirflow({
+  playerPosition,
+  isPaused,
+}: {
+  playerPosition: ArenaPoint
+  isPaused: boolean
+}) {
   const groupRef = useRef<THREE.Group>(null)
   const previousPositionRef = useRef(playerPosition)
   const previousHorizontalVelocityRef = useRef(0)
@@ -370,6 +394,10 @@ export function PlayerFlightAirflow({ playerPosition }: { playerPosition: ArenaP
   })
 
   useFrame((_, delta) => {
+    if (isPaused) {
+      return
+    }
+
     const dynamics = getFlightAirflowDynamics({
       currentPosition: playerPosition,
       previousPosition: previousPositionRef.current,
@@ -406,6 +434,7 @@ export function PlayerFlightAirflow({ playerPosition }: { playerPosition: ArenaP
           key={`${config.z}-${config.phase}`}
           config={config}
           wakeRef={wakeRef}
+          isPaused={isPaused}
         />
       ))}
       {flightTurnWakeConfigs.map((config) => (
@@ -413,6 +442,7 @@ export function PlayerFlightAirflow({ playerPosition }: { playerPosition: ArenaP
           key={config.side}
           config={config}
           wakeRef={wakeRef}
+          isPaused={isPaused}
         />
       ))}
     </group>
