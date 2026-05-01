@@ -2,169 +2,173 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove the center oval battle ring and make cloud/background layers drift vertically so the play screen feels like forward flight.
+**Goal:** Add continuous forward-flight background motion to the R3F battle screen without changing gameplay.
 
-**Architecture:** Keep gameplay state unchanged. The visible battle composition stays in `BattlePresentationLayer`, while CSS owns the decorative background motion. Existing cloud PNG assets are used first; new raster or GLB assets are only introduced if visual verification shows the current assets cannot communicate motion.
+**Architecture:** Keep gameplay runtime state untouched. Replace the static cloud plane with ref-driven R3F background layers that loop downward, and add deterministic decorative 3D fixtures behind gameplay entities. DOM remains limited to drag input and HUD.
 
-**Tech Stack:** React 19, TypeScript, Vite, React Testing Library, Vitest, CSS animations, existing PNG game assets.
+**Tech Stack:** React 19, React Three Fiber, Three.js, Vite, Vitest, Playwright CLI.
 
 ---
 
 ## File Structure
 
-- Modify `src/game/ui/battlePresentation.tsx`: remove the decorative `.battle-entities__arena` element while preserving cloud, player, enemy, boss, and bullet rendering.
-- Modify `src/game/ui/battlePresentation.test.ts`: assert that generated cloud assets still render, old placeholder cores remain absent, and the center arena ring is absent.
-- Modify `src/style.css`: remove the oval ring CSS, remove the stage-plane oval pseudo-element, add layered vertical cloud drift and subtle atmospheric streaks using CSS only.
-- Optional after visual check: add files under `src/assets/generated/` only if current cloud assets are insufficient. Use `imagegen` for PNG/WebP textures; use `game-studio:web-3d-asset-pipeline` only for GLB/glTF assets.
+- Modify `src/game/ui/BattleView.tsx`: add moving cloud planes, fixture seed config, and fixture animation components.
+- Modify `src/game/ui/BattleView.test.ts`: assert the Canvas contract still exists and expose a testable background marker.
+- Update `output/playwright/battle-r3f-final.png`: final visual evidence after Playwright verification.
 
 ---
 
-### Task 1: Remove Center Oval Ring Contract
+### Task 1: Expose A Battle Background Motion Contract In The BattleView Test
 
 **Files:**
-- Modify: `src/game/ui/battlePresentation.test.ts`
-- Modify: `src/game/ui/battlePresentation.tsx`
+- Modify: `src/game/ui/BattleView.test.ts`
 
-- [ ] **Step 1: Add the failing test assertion**
+- [x] **Step 1: Keep the Canvas mock focused on the canvas contract**
 
-In `src/game/ui/battlePresentation.test.ts`, extend the existing asset-connection test with this assertion:
-
-```ts
-expect(container.querySelector('.battle-entities__arena')).not.toBeInTheDocument()
-```
-
-Run: `npx vitest run src/game/ui/battlePresentation.test.ts`
-Expected before implementation: FAIL because `.battle-entities__arena` is still rendered.
-
-- [ ] **Step 2: Remove the arena element**
-
-In `src/game/ui/battlePresentation.tsx`, delete this JSX line from `BattlePresentationLayer`:
+Keep the mock as a lightweight canvas stand-in so React DOM does not need to render R3F-only elements:
 
 ```tsx
-<div className="battle-entities__arena" />
+vi.mock('@react-three/fiber', () => ({
+  Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
+    createElement('canvas', { 'data-testid': 'battle-canvas', style }),
+  useFrame: vi.fn(),
+}))
 ```
 
-- [ ] **Step 3: Verify the focused test passes**
+- [x] **Step 2: Add a background marker assertion**
 
-Run: `npx vitest run src/game/ui/battlePresentation.test.ts`
+Add this assertion to the existing `BattleView` render test:
+
+```tsx
+expect(screen.getByTestId('battle-background-motion')).toBeInTheDocument()
+```
+
+- [x] **Step 3: Run the focused test**
+
+Run:
+
+```powershell
+npm test -- BattleView
+```
+
+Expected: PASS after the hidden battle background motion marker is added.
+
+---
+
+### Task 2: Add Moving Cloud Loop
+
+**Files:**
+- Modify: `src/game/ui/BattleView.tsx`
+
+- [x] **Step 1: Replace `CloudLayer` with `MovingCloudLayer`**
+
+Add a component that loads both cloud textures, stores a group ref, and updates child mesh positions in `useFrame`:
+
+```tsx
+const cloudLayerConfigs = [
+  { texture: 'a', x: -0.15, z: -1.85, width: 6.3, height: 3.15, opacity: 0.34, speed: 0.28, gap: 3.05, rotation: -0.08 },
+  { texture: 'b', x: 0.2, z: -1.55, width: 6.9, height: 3.25, opacity: 0.26, speed: 0.46, gap: 3.2, rotation: 0.06 },
+] as const
+```
+
+Use two plane instances per layer and wrap them when local y falls below `-3.9`.
+
+- [x] **Step 2: Add a test marker wrapper**
+
+Wrap the moving background in:
+
+```tsx
+<group name="battle-background-motion" userData={{ testId: 'battle-background-motion' }}>
+```
+
+Add a tiny DOM marker only in tests by rendering:
+
+```tsx
+<object3D userData={{ testId: 'battle-background-motion' }} />
+```
+
+If the mocked Canvas cannot expose `object3D`, render a hidden sibling marker from `BattleView`:
+
+```tsx
+<span hidden data-testid="battle-background-motion" />
+```
+
+- [x] **Step 3: Replace `<CloudLayer />` in `BattleScene`**
+
+Use:
+
+```tsx
+<MovingBackgroundLayer />
+```
+
+- [x] **Step 4: Run focused test**
+
+Run:
+
+```powershell
+npm test -- BattleView
+```
+
 Expected: PASS.
 
 ---
 
-### Task 2: Replace Static Ring Background With Vertical Motion
+### Task 3: Add Decorative 3D Fixtures
 
 **Files:**
-- Modify: `src/style.css`
+- Modify: `src/game/ui/BattleView.tsx`
 
-- [ ] **Step 1: Remove remaining oval decorations**
+- [x] **Step 1: Add deterministic fixture seeds**
 
-In `src/style.css`, delete the `.battle-stage-plane::before` rule and delete the `.battle-entities__arena` rule.
+Add a small seed array:
 
-- [ ] **Step 2: Add moving background layers**
-
-Replace the `.battle-stage-plane` background with a vertical atmosphere treatment:
-
-```css
-.battle-stage-plane {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  z-index: 4;
-  background:
-    linear-gradient(180deg, rgba(255, 190, 98, 0.05), transparent 16%),
-    linear-gradient(180deg, rgba(92, 238, 228, 0.08), transparent 42%),
-    radial-gradient(circle at 50% 84%, rgba(92, 238, 228, 0.08), transparent 11%);
-}
+```tsx
+const backgroundFixtureSeeds = [
+  { x: -2.85, y: 3.4, z: -1.15, scale: 0.52, speed: 0.72, spin: 0.35, phase: 0 },
+  { x: 2.65, y: 1.5, z: -1.05, scale: 0.46, speed: 0.66, spin: -0.28, phase: 1.4 },
+  { x: -1.65, y: -0.8, z: -1.2, scale: 0.38, speed: 0.58, spin: 0.42, phase: 2.3 },
+] as const
 ```
 
-Add a subtle moving atmospheric overlay:
+- [x] **Step 2: Add `BackgroundFixtureLayer`**
 
-```css
-.battle-stage-plane::before {
-  content: '';
-  position: absolute;
-  inset: -18% 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, transparent 0 18%, rgba(105, 240, 227, 0.08) 19%, transparent 24%),
-    linear-gradient(180deg, transparent 0 42%, rgba(255, 190, 98, 0.06) 43%, transparent 48%),
-    linear-gradient(180deg, transparent 0 66%, rgba(105, 240, 227, 0.06) 67%, transparent 72%);
-  background-size: 100% 58%;
-  opacity: 0.5;
-  animation: battle-atmosphere-drift 18s linear infinite;
-}
+Create a group ref and update each fixture child in `useFrame` using elapsed time. Fixture y position should wrap from below `-4.1` back to above `3.6`.
+
+- [x] **Step 3: Build each fixture from simple geometry**
+
+Each fixture should use muted brass/cyan materials and simple shapes:
+
+```tsx
+<group>
+  <mesh rotation={[Math.PI / 2, 0, 0]}>
+    <torusGeometry args={[0.32, 0.025, 8, 32]} />
+    <meshBasicMaterial color="#c99a45" transparent opacity={0.34} toneMapped={false} />
+  </mesh>
+  <mesh>
+    <cylinderGeometry args={[0.035, 0.06, 0.7, 10]} />
+    <meshBasicMaterial color="#5ceee4" transparent opacity={0.18} toneMapped={false} />
+  </mesh>
+</group>
 ```
 
-Update cloud styles so both layers drift vertically at different speeds:
+- [x] **Step 4: Render fixtures behind gameplay**
 
-```css
-.battle-entities__cloud {
-  position: absolute;
-  left: 50%;
-  width: 132%;
-  max-width: none;
-  object-fit: contain;
-  opacity: 0.5;
-  filter: saturate(1.08);
-  transform: translate3d(-50%, var(--cloud-drift-start, 0), 0);
-  user-select: none;
-  z-index: 0;
-  animation: battle-cloud-drift var(--cloud-drift-duration, 24s) linear infinite;
-  will-change: transform;
-}
+Place:
 
-.battle-entities__cloud--a {
-  top: -18%;
-  --cloud-drift-start: -14%;
-  --cloud-drift-end: 62%;
-  --cloud-drift-duration: 24s;
-}
-
-.battle-entities__cloud--b {
-  top: 18%;
-  width: 116%;
-  opacity: 0.34;
-  --cloud-drift-start: -8%;
-  --cloud-drift-end: 78%;
-  --cloud-drift-duration: 34s;
-  animation-delay: -12s;
-}
-
-@keyframes battle-cloud-drift {
-  from {
-    transform: translate3d(-50%, var(--cloud-drift-start, 0), 0);
-  }
-
-  to {
-    transform: translate3d(-50%, var(--cloud-drift-end, 60%), 0);
-  }
-}
-
-@keyframes battle-atmosphere-drift {
-  from {
-    transform: translateY(-18%);
-  }
-
-  to {
-    transform: translateY(18%);
-  }
-}
+```tsx
+<BackgroundFixtureLayer />
 ```
 
-- [ ] **Step 3: Verify CSS contract by focused test**
-
-Run: `npx vitest run src/game/ui/battlePresentation.test.ts`
-Expected: PASS.
+after the moving clouds and before the player halo / runtime entity layer.
 
 ---
 
-### Task 3: Full Verification And Visual Decision
+### Task 4: Full Verification And Screenshot
 
 **Files:**
-- No required code files.
-- Optional asset files only if the current assets fail visual verification.
+- Update: `output/playwright/battle-r3f-final.png`
 
-- [ ] **Step 1: Run automated verification**
+- [x] **Step 1: Run automated checks**
 
 Run:
 
@@ -173,35 +177,63 @@ npm test
 npm run build
 ```
 
-Expected: both commands complete successfully.
+Expected: both pass. Vite chunk warning is acceptable.
 
-- [ ] **Step 2: Run the app for visual inspection**
+- [x] **Step 2: Capture two Playwright screenshots**
 
-Run:
+Run the battle flow at `http://127.0.0.1:5173?fastStage=1&invincible=1`, then save:
 
 ```powershell
-npm run dev -- --host 127.0.0.1
+output\playwright\battle-background-motion-a.png
+output\playwright\battle-background-motion-b.png
 ```
 
-Open the Vite URL and start the battle.
+Wait at least 1.4 seconds between captures.
 
-Expected visual result:
+- [x] **Step 3: Confirm DOM contract**
 
-- no center oval arena ring
-- cloud layers drift vertically over time
-- player, enemies, bullets, boss, and HUD remain readable
-- drag input still works because the input overlay remains above decorative layers
+Evaluate:
 
-- [ ] **Step 3: Decide whether assets are needed**
+```js
+() => ({
+  canvas: document.querySelectorAll('canvas').length,
+  oldDom: {
+    battleEntities: document.querySelectorAll('.battle-entities').length,
+    stagePlane: document.querySelectorAll('.battle-stage-plane').length,
+  },
+  hud: document.querySelector('[aria-label="Battle status"]')?.textContent ?? null,
+})
+```
 
-If the existing clouds make the motion readable, do not add assets.
+Expected:
 
-If the sky feels empty or the loop is too obvious, use `imagegen` to generate a transparent or chroma-keyed raster mist/streak texture and save it under `src/assets/generated/`. Only use `game-studio:web-3d-asset-pipeline` if the design requires a shipped GLB/glTF background object, which is not expected for this task.
+```json
+{
+  "canvas": 1,
+  "oldDom": { "battleEntities": 0, "stagePlane": 0 }
+}
+```
+
+- [x] **Step 4: Save final screenshot**
+
+Copy the better visual capture to:
+
+```powershell
+output\playwright\battle-r3f-final.png
+```
 
 ---
 
-## Self-Review
+## Verification Summary
 
-- Spec coverage: ring removal, vertical drift, preservation of gameplay/HUD/input, and optional asset path are covered.
-- Placeholder scan: no placeholders or deferred unknowns.
-- Type consistency: no new TypeScript interfaces are required; CSS variables are scoped to existing battle background classes.
+Required commands:
+
+```powershell
+npm test
+npm run build
+```
+
+Required browser evidence:
+
+- Two screenshots show cloud/fixture movement over time.
+- Final screenshot shows colored sprites, moving background composition, and readable HUD.

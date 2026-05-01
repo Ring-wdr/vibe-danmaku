@@ -44,6 +44,7 @@ describe('BattleView', () => {
     )
 
     expect(screen.getByTestId('battle-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('battle-background-motion')).toBeInTheDocument()
     expect(screen.getByLabelText('Battle status')).toBeInTheDocument()
     expect(container.querySelector('.battle-shell__controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()

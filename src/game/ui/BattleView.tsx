@@ -19,6 +19,55 @@ export const battleDragInputConfig = {
   verticalWorldTop: 1.8,
 } as const
 
+const backgroundLoop = {
+  minY: -4.35,
+  height: 8.15,
+} as const
+
+const cloudLayerConfigs = [
+  {
+    textureKey: 'a',
+    x: -0.18,
+    startY: 1.15,
+    z: -1.85,
+    width: 9.4,
+    height: 4.7,
+    opacity: 0.4,
+    speed: 0.28,
+    spacing: 4.85,
+    rotation: -0.08,
+    sway: 0.08,
+  },
+  {
+    textureKey: 'b',
+    x: 0.18,
+    startY: 2.15,
+    z: -1.55,
+    width: 10.6,
+    height: 4.95,
+    opacity: 0.28,
+    speed: 0.46,
+    spacing: 5.1,
+    rotation: 0.06,
+    sway: 0.13,
+  },
+] as const
+
+const backgroundFixtureSeeds = [
+  { x: -2.85, y: 3.35, z: -1.12, scale: 0.54, speed: 0.72, spin: 0.35, phase: 0 },
+  { x: 2.62, y: 1.5, z: -1.05, scale: 0.48, speed: 0.66, spin: -0.28, phase: 1.4 },
+  { x: -1.65, y: -0.82, z: -1.18, scale: 0.4, speed: 0.58, spin: 0.42, phase: 2.3 },
+  { x: 1.55, y: 4.2, z: -1.28, scale: 0.34, speed: 0.84, spin: -0.5, phase: 3.1 },
+] as const
+
+function getLoopingBackgroundY(startY: number, elapsed: number, speed: number) {
+  const rawY = startY - elapsed * speed
+  const shifted = rawY - backgroundLoop.minY
+  const wrapped = ((shifted % backgroundLoop.height) + backgroundLoop.height) % backgroundLoop.height
+
+  return backgroundLoop.minY + wrapped
+}
+
 function useLoadedTexture(url: string, configure?: (texture: THREE.Texture) => void) {
   const [texture, setTexture] = useState<THREE.Texture | null>(null)
 
@@ -168,27 +217,6 @@ function PlayerSprite({ position }: { position: [number, number, number] }) {
   )
 }
 
-function CloudLayer() {
-  const cloudTexture = useLoadedTexture(gameAssets.cloudLayerAUrl)
-
-  if (!cloudTexture) {
-    return null
-  }
-
-  return (
-    <mesh position={[0, 1.1, -1.7]} rotation={[0, 0, -0.08]}>
-      <planeGeometry args={[5.8, 5.8]} />
-      <meshBasicMaterial
-        map={cloudTexture}
-        transparent
-        opacity={0.42}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </mesh>
-  )
-}
-
 function resolveEnemyAssetUrl(kind: EnemyKind) {
   if (kind === 'feather-drone') {
     return gameAssets.enemyFeatherUrl
@@ -257,6 +285,140 @@ function arenaPointToView(point: ArenaPoint, z = 0.5): [number, number, number] 
   return [point.x * 0.55, point.z * 0.9 - 0.45, z]
 }
 
+function MovingCloudPlane({
+  texture,
+  config,
+  offset,
+}: {
+  texture: THREE.Texture
+  config: (typeof cloudLayerConfigs)[number]
+  offset: number
+}) {
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) {
+      return
+    }
+
+    const elapsed = clock.elapsedTime
+    meshRef.current.position.x = config.x + Math.sin(elapsed * 0.26 + offset) * config.sway
+    meshRef.current.position.y = getLoopingBackgroundY(
+      config.startY + offset,
+      elapsed,
+      config.speed,
+    )
+  })
+
+  return (
+    <mesh
+      ref={meshRef}
+      position={[config.x, config.startY + offset, config.z]}
+      rotation={[0, 0, config.rotation]}
+    >
+      <planeGeometry args={[config.width, config.height]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        opacity={config.opacity}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
+function MovingBackgroundLayer() {
+  const cloudTextureA = useLoadedTexture(gameAssets.cloudLayerAUrl)
+  const cloudTextureB = useLoadedTexture(gameAssets.cloudLayerBUrl)
+
+  if (!cloudTextureA || !cloudTextureB) {
+    return null
+  }
+
+  return (
+    <group name="battle-background-motion" userData={{ testId: 'battle-background-motion' }}>
+      {cloudLayerConfigs.map((config) => {
+        const texture = config.textureKey === 'a' ? cloudTextureA : cloudTextureB
+
+        return [0, config.spacing].map((offset) => (
+          <MovingCloudPlane
+            key={`${config.textureKey}-${offset}`}
+            texture={texture}
+            config={config}
+            offset={offset}
+          />
+        ))
+      })}
+    </group>
+  )
+}
+
+function BackgroundFixture({
+  seed,
+}: {
+  seed: (typeof backgroundFixtureSeeds)[number]
+}) {
+  const groupRef = useRef<THREE.Group>(null)
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) {
+      return
+    }
+
+    const elapsed = clock.elapsedTime
+    groupRef.current.position.x = seed.x + Math.sin(elapsed * 0.42 + seed.phase) * 0.18
+    groupRef.current.position.y = getLoopingBackgroundY(seed.y, elapsed + seed.phase, seed.speed)
+    groupRef.current.rotation.z = seed.phase + elapsed * seed.spin
+    groupRef.current.rotation.x = Math.sin(elapsed * 0.24 + seed.phase) * 0.18
+  })
+
+  return (
+    <group ref={groupRef} position={[seed.x, seed.y, seed.z]} scale={seed.scale}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.46, 0.026, 8, 36]} />
+        <meshBasicMaterial
+          color="#c99a45"
+          transparent
+          opacity={0.36}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.82, 0.035, 0.035]} />
+        <meshBasicMaterial
+          color="#d7ad5b"
+          transparent
+          opacity={0.28}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh>
+        <cylinderGeometry args={[0.038, 0.06, 0.78, 10]} />
+        <meshBasicMaterial
+          color="#5ceee4"
+          transparent
+          opacity={0.18}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+function BackgroundFixtureLayer() {
+  return (
+    <group name="battle-background-fixtures">
+      {backgroundFixtureSeeds.map((seed) => (
+        <BackgroundFixture key={`${seed.x}-${seed.phase}`} seed={seed} />
+      ))}
+    </group>
+  )
+}
+
 function RuntimeEntityLayer({ snapshot }: { snapshot: BattleSnapshot }) {
   return (
     <>
@@ -308,7 +470,8 @@ function BattleScene({ snapshot }: { snapshot: BattleSnapshot }) {
         <planeGeometry args={[7.5, 12]} />
         <meshBasicMaterial color="#163d47" toneMapped={false} />
       </mesh>
-      <CloudLayer />
+      <MovingBackgroundLayer />
+      <BackgroundFixtureLayer />
       <mesh ref={laneGuideRef} position={[0, -2.9, 0.2]}>
         <ringGeometry args={[0.48, 0.56, 48]} />
         <meshBasicMaterial color="#5ceee4" toneMapped={false} />
@@ -374,6 +537,7 @@ export function BattleView({
       >
         <BattleScene snapshot={snapshot} />
       </Canvas>
+      <span hidden data-testid="battle-background-motion" />
       <div
         ref={overlayRef}
         className="battle-shell__controls"
