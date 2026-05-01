@@ -1,4 +1,5 @@
 import { lazy, Suspense, startTransition, useEffect, useState } from 'react'
+import { parseAsBoolean, useQueryStates } from 'nuqs'
 
 import { gameAssets } from '../game/assets'
 import type { AppScreen, Difficulty, RunResult } from '../game/types'
@@ -32,25 +33,16 @@ function readViewport(initialViewport?: Viewport): Viewport {
   }
 }
 
-function readDebugFlags() {
-  if (typeof window === 'undefined') {
-    return { fastStage: false, invincible: false }
-  }
-
-  const query = new URLSearchParams(window.location.search)
-  return {
-    fastStage: query.get('fastStage') === '1',
-    invincible: query.get('invincible') === '1',
-  }
-}
-
 export function App({ initialViewport }: AppProps) {
   const [screen, setScreen] = useState<AppScreen>('title')
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const [result, setResult] = useState<RunResult | null>(null)
   const [battleSeed, setBattleSeed] = useState(0)
   const [viewport, setViewport] = useState(() => readViewport(initialViewport))
-  const debugFlags = readDebugFlags()
+  const [debugFlags] = useQueryStates({
+    fastStage: parseAsBoolean.withDefault(false),
+    invincible: parseAsBoolean.withDefault(false),
+  })
   const portraitOnly = viewport.width > viewport.height
 
   useEffect(() => {
