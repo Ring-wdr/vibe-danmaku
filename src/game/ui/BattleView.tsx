@@ -21,10 +21,12 @@ import type {
   RenderSpecialBeam,
   RenderSpecialSlot,
   RunResult,
+  StageDefinition,
 } from '../types'
 
 type BattleViewProps = {
   difficulty: Difficulty
+  stage: StageDefinition
   character: CharacterDefinition
   fastStage?: boolean
   invincible?: boolean
@@ -1127,12 +1129,14 @@ function SpecialSlotHud({
 export function BattleView({
   character,
   difficulty,
+  stage,
   fastStage,
   invincible,
   onComplete,
 }: BattleViewProps) {
   const { runtime, snapshot } = useBattleRuntime({
     difficulty,
+    stage,
     character,
     fastStage,
     invincible,
@@ -1161,7 +1165,7 @@ export function BattleView({
   }, [onComplete, snapshot.result])
 
   return (
-    <section className="battle-shell" aria-label="Stage 1 battle">
+    <section className="battle-shell" aria-label={`Stage ${stage.stageNumber} battle`}>
       <Canvas
         camera={{ position: [0, 0, 8], fov: 48 }}
         gl={{ alpha: false, antialias: true }}
@@ -1210,7 +1214,7 @@ export function BattleView({
       <div className="battle-hud" aria-label="Battle status">
         <div className="battle-status">
           <div className="battle-status__phase">
-            <span>Stage 1</span>
+            <span>Stage {stage.stageNumber}</span>
             <strong>{snapshot.phaseLabel}</strong>
           </div>
           <div className="battle-status__meta">

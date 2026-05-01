@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { lyraAerCharacter } from '../content/characters'
 import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
+import { createStageDefinition } from '../content/stage1'
+import { createStage2Definition } from '../content/stage2'
 import {
   battleDragInputConfig,
   BattleView,
@@ -90,6 +92,7 @@ const controlRect = {
   width: 430,
   height: 932,
 } as DOMRect
+const defaultStage = createStageDefinition('normal')
 
 describe('createArenaPoint', () => {
   it('maps horizontal drag input beyond the wider player movement clamp', () => {
@@ -226,6 +229,7 @@ describe('BattleView', () => {
     const { container } = render(
       createElement(BattleView, {
         difficulty: 'normal',
+        stage: defaultStage,
         character: lyraAerCharacter,
         onComplete: vi.fn(),
       }),
@@ -244,6 +248,7 @@ describe('BattleView', () => {
     const { container } = render(
       createElement(BattleView, {
         difficulty: 'normal',
+        stage: defaultStage,
         character: lyraAerCharacter,
         onComplete: vi.fn(),
       }),
@@ -275,6 +280,7 @@ describe('BattleView', () => {
     render(
       createElement(BattleView, {
         difficulty: 'normal',
+        stage: defaultStage,
         character: lyraAerCharacter,
         onComplete: vi.fn(),
       }),
@@ -290,9 +296,12 @@ describe('BattleView', () => {
   })
 
   it('passes the selected character into the battle runtime hook', () => {
+    const stage = createStage2Definition('hard', { fastStage: true })
+
     render(
       createElement(BattleView, {
         difficulty: 'hard',
+        stage,
         character: lyraAerCharacter,
         fastStage: true,
         invincible: true,
@@ -302,6 +311,7 @@ describe('BattleView', () => {
 
     expect(mockUseBattleRuntime).toHaveBeenCalledWith({
       difficulty: 'hard',
+      stage,
       character: lyraAerCharacter,
       fastStage: true,
       invincible: true,

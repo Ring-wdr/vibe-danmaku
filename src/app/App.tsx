@@ -1,4 +1,4 @@
-import { lazy, Suspense, startTransition, useEffect, useState } from 'react'
+import { lazy, Suspense, startTransition, useEffect, useMemo, useState } from 'react'
 import { parseAsBoolean, useQueryStates } from 'nuqs'
 
 import { gameAssets } from '../game/assets'
@@ -7,7 +7,9 @@ import {
   resolveCharacterId,
   resolvePlayableCharacter,
 } from '../game/content/characters'
-import type { AppScreen, Difficulty, RunResult } from '../game/types'
+import { createStageDefinition as createStage1Definition } from '../game/content/stage1'
+import { createStage2Definition } from '../game/content/stage2'
+import type { AppScreen, Difficulty, RunResult, StageDefinition } from '../game/types'
 import { readLastCharacterId, writeLastCharacterId } from './characterSelectionStorage'
 
 const BattleView = lazy(async () => {
@@ -49,11 +51,19 @@ export function App({ initialViewport }: AppProps) {
   const characterRoster = getCharacterSelectRoster(selectedCharacter.id)
   const [result, setResult] = useState<RunResult | null>(null)
   const [battleSeed, setBattleSeed] = useState(0)
+  const [currentStageNumber, setCurrentStageNumber] = useState<1 | 2>(1)
   const [viewport, setViewport] = useState(() => readViewport(initialViewport))
   const [debugFlags] = useQueryStates({
     fastStage: parseAsBoolean.withDefault(false),
     invincible: parseAsBoolean.withDefault(false),
   })
+  const currentStage = useMemo<StageDefinition>(
+    () =>
+      currentStageNumber === 1
+        ? createStage1Definition(difficulty, { fastStage: debugFlags.fastStage })
+        : createStage2Definition(difficulty, { fastStage: debugFlags.fastStage }),
+    [currentStageNumber, debugFlags.fastStage, difficulty],
+  )
   const portraitOnly = viewport.width > viewport.height
 
   useEffect(() => {
@@ -78,12 +88,21 @@ export function App({ initialViewport }: AppProps) {
       <main className="battle-root">
         <Suspense fallback={<div className="battle-root__loading">Loading Battle</div>}>
           <BattleView
-            key={`${difficulty}-${selectedCharacter.id}-${battleSeed}-${debugFlags.fastStage}-${debugFlags.invincible}`}
+            key={`${difficulty}-${selectedCharacter.id}-${currentStage.id}-${battleSeed}-${debugFlags.fastStage}-${debugFlags.invincible}`}
             difficulty={difficulty}
+            stage={currentStage}
             character={selectedCharacter}
             fastStage={debugFlags.fastStage}
             invincible={debugFlags.invincible}
             onComplete={(nextResult) => {
+              if (nextResult.outcome === 'victory' && nextResult.stageNumber === 1) {
+                setResult(null)
+                setCurrentStageNumber(2)
+                setBattleSeed((current) => current + 1)
+                startScreen('battle')
+                return
+              }
+
               setResult(nextResult)
               startScreen('result')
             }}
@@ -120,7 +139,15 @@ export function App({ initialViewport }: AppProps) {
                   황동 비공정 항로 위의 마도 구름 회랑을 돌파하고, 거대 비공정 코어가
                   뿜어내는 환광 탄막을 갈라 버리세요.
                 </p>
-                <button type="button" className="primary-button" onClick={() => startScreen('difficulty-select')}>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => {
+                    setCurrentStageNumber(1)
+                    setResult(null)
+                    startScreen('difficulty-select')
+                  }}
+                >
                   Start Sortie
                 </button>
               </div>
@@ -240,7 +267,14 @@ export function App({ initialViewport }: AppProps) {
               <p className="stage-intro__controls">
                 전투 중 화면 어디든 드래그해 회피하세요. 자동 연사는 항상 유지됩니다.
               </p>
-              <button type="button" className="primary-button" onClick={() => startScreen('battle')}>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  setCurrentStageNumber(1)
+                  startScreen('battle')
+                }}
+              >
                 Deploy
               </button>
             </section>
@@ -249,8 +283,18 @@ export function App({ initialViewport }: AppProps) {
           {screen === 'result' && result ? (
             <section className="screen result-screen">
               <p className="eyebrow">{result.outcome === 'victory' ? 'Mission Cleared' : 'Hull Breached'}</p>
-              <h2>{result.outcome === 'victory' ? 'Cloud Gate Broken' : 'Sortie Failed'}</h2>
+              <h2>
+                {result.stageName} {result.outcome === 'victory' ? 'Cleared' : 'Failed'}
+              </h2>
               <div className="result-grid">
+                <div>
+                  <span>Stage</span>
+                  <strong>Stage {result.stageNumber}</strong>
+                </div>
+                <div>
+                  <span>Area</span>
+                  <strong>{result.stageName}</strong>
+                </div>
                 <div>
                   <span>Difficulty</span>
                   <strong>{result.difficulty.toUpperCase()}</strong>
@@ -273,6 +317,7 @@ export function App({ initialViewport }: AppProps) {
                   type="button"
                   className="primary-button"
                   onClick={() => {
+                    setCurrentStageNumber(result.stageNumber)
                     setBattleSeed((current) => current + 1)
                     startScreen('battle')
                   }}
@@ -284,6 +329,7 @@ export function App({ initialViewport }: AppProps) {
                   className="secondary-button"
                   onClick={() => {
                     setResult(null)
+                    setCurrentStageNumber(1)
                     startScreen('title')
                   }}
                 >
