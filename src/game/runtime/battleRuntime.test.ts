@@ -182,6 +182,66 @@ function createSpecialChargeBonusStage(): StageDefinition {
   }
 }
 
+function createMidbossGateStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+
+  return {
+    ...stage,
+    duration: 999,
+    waves: [
+      { ...stage.waves[0]!, id: 'before-gate', startAt: 0, count: 1, hp: 999 },
+      { ...stage.waves[1]!, id: 'after-gate', startAt: 0.1, count: 1, hp: 999 },
+    ],
+    midboss: {
+      ...stage.boss,
+      id: 'test-midboss',
+      gateAfterWaveIndex: 0,
+      startAt: 0.05,
+      hp: 240,
+      phases: [
+        {
+          id: 'midboss-test-phase',
+          threshold: 0,
+          label: 'Midboss Test',
+          supportLaser: false,
+          pattern: {
+            shape: 'fan',
+            count: 3,
+            interval: 999,
+            speed: 0.6,
+            spread: 0.5,
+            life: 4,
+          },
+        },
+      ],
+    },
+    boss: { ...stage.boss, startAt: 999 },
+  }
+}
+
+const midbossSlayerPilot: CharacterDefinition = {
+  ...testPilot,
+  id: 'midboss-slayer',
+  shot: {
+    interval: 0.18,
+    speed: 24,
+    power: 500,
+  },
+}
+
+function advanceWhileBossActive(
+  runtime: ReturnType<typeof createRuntime>,
+  bossId: string,
+) {
+  for (let index = 0; index < 120; index += 1) {
+    if (runtime.getSnapshot().boss?.id !== bossId) {
+      return
+    }
+
+    runtime.update(0.05)
+  }
+}
+
 describe('createBattleRuntime', () => {
   it('uses the injected character movement radius while dragging', () => {
     const runtime = createRuntime({ character: testPilot })
@@ -318,6 +378,87 @@ describe('createBattleRuntime', () => {
         (bullet) => bullet.source === 'enemy' && Math.abs(bullet.position.x) > 3.4,
       ),
     ).toBe(false)
+  })
+})
+
+describe('midboss gate runtime', () => {
+  it('blocks post-gate waves while the midboss is alive', () => {
+    const runtime = createRuntime({ stage: createMidbossGateStage() })
+
+    runtime.update(0.06)
+    runtime.update(0.05)
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.boss?.id).toBe('test-midboss')
+    expect(snapshot.enemies).toHaveLength(1)
+  })
+
+  it('resumes post-gate waves after the midboss is defeated', () => {
+    const runtime = createRuntime({
+      stage: createMidbossGateStage(),
+      character: midbossSlayerPilot,
+    })
+
+    runtime.update(0.11)
+
+    expect(runtime.getSnapshot().boss?.id).toBe('test-midboss')
+
+    advanceWhileBossActive(runtime, 'test-midboss')
+    runtime.update(0.01)
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.result).toBeNull()
+    expect(snapshot.enemies).toHaveLength(2)
+  })
+
+  it('does not set a victory result when the midboss is defeated', () => {
+    const runtime = createRuntime({
+      stage: createMidbossGateStage(),
+      character: midbossSlayerPilot,
+    })
+
+    runtime.update(0.11)
+
+    expect(runtime.getSnapshot().boss?.id).toBe('test-midboss')
+
+    advanceWhileBossActive(runtime, 'test-midboss')
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.boss).toBeNull()
+    expect(snapshot.result).toBeNull()
+  })
+
+  it('still sets a victory result when the final boss is defeated', () => {
+    const baseStage = createMidbossGateStage()
+    const stage = {
+      ...baseStage,
+      waves: [],
+      boss: {
+        ...baseStage.boss,
+        startAt: 0.5,
+        hp: 240,
+      },
+    }
+    const runtime = createRuntime({ stage, character: midbossSlayerPilot })
+
+    runtime.update(0.11)
+
+    expect(runtime.getSnapshot().boss?.id).toBe('test-midboss')
+
+    advanceWhileBossActive(runtime, 'test-midboss')
+
+    runtime.update(0.5)
+
+    expect(runtime.getSnapshot().boss?.id).toBe(stage.boss.id)
+
+    while (!runtime.getSnapshot().result) {
+      runtime.update(0.05)
+    }
+
+    expect(runtime.getSnapshot().result?.outcome).toBe('victory')
   })
 })
 

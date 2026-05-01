@@ -1,6 +1,7 @@
 import type {
   ArenaPoint,
   BattleSnapshot,
+  BossDefinition,
   CharacterDefinition,
   Difficulty,
   EnemyWave,
@@ -172,7 +173,10 @@ export function createBattleRuntime({
   const enemies: RuntimeEnemy[] = []
   const sparkles: RuntimeSparkle[] = []
   let boss: RuntimeBoss | null = null
-  const waveQueue = [...stage.waves]
+  let activeBossRole: 'midboss' | 'final' | null = null
+  let midbossDefeated = !stage.midboss
+  const midbossGateAfterWaveIndex = stage.midboss?.gateAfterWaveIndex ?? -1
+  const waveQueue = stage.waves.map((wave, index) => ({ wave, index }))
   const specialChargeRate =
     stage.boss.startAt > 0
       ? beamLanceConfig.chargeAtBossRatio / stage.boss.startAt
@@ -192,15 +196,29 @@ export function createBattleRuntime({
   let lastSparkleId = 0
   let cachedSnapshot: BattleSnapshot | null = null
 
+  const getActiveBossDefinition = () => {
+    if (activeBossRole === 'midboss') {
+      return stage.midboss ?? null
+    }
+
+    if (activeBossRole === 'final') {
+      return stage.boss
+    }
+
+    return null
+  }
+
   const getBossPhase = () => {
-    if (!boss) {
+    const bossDefinition = getActiveBossDefinition()
+
+    if (!boss || !bossDefinition) {
       return null
     }
 
     const ratio = boss.hp / boss.maxHp
     return (
-      stage.boss.phases.find((phase) => ratio >= phase.threshold) ??
-      stage.boss.phases[stage.boss.phases.length - 1] ??
+      bossDefinition.phases.find((phase) => ratio >= phase.threshold) ??
+      bossDefinition.phases[bossDefinition.phases.length - 1] ??
       null
     )
   }
@@ -437,10 +455,10 @@ export function createBattleRuntime({
     }
   }
 
-  const spawnBoss = () => {
-    const bossHp = invincible ? Math.round(stage.boss.hp * 0.28) : stage.boss.hp
+  const spawnBoss = (definition: BossDefinition, role: 'midboss' | 'final') => {
+    const bossHp = invincible ? Math.round(definition.hp * 0.28) : definition.hp
     boss = {
-      id: stage.boss.id,
+      id: definition.id,
       x: 0,
       z: 2.15,
       hp: bossHp,
@@ -448,6 +466,7 @@ export function createBattleRuntime({
       shootTimer: 0.45,
       supportLaserTimer: 1.1,
     }
+    activeBossRole = role
     bossEnteredCount += 1
     cuePulse += 1
   }
@@ -635,7 +654,16 @@ export function createBattleRuntime({
     }
 
     if (boss.hp <= 0) {
+      if (activeBossRole === 'midboss') {
+        boss = null
+        activeBossRole = null
+        midbossDefeated = true
+        cuePulse += 1
+        return
+      }
+
       boss = null
+      activeBossRole = null
       finish('victory')
     }
   }
@@ -753,15 +781,28 @@ export function createBattleRuntime({
       player.invulnerableFor = Math.max(0, player.invulnerableFor - delta)
     }
 
-    while (waveQueue[0] && elapsed >= waveQueue[0].startAt) {
+    while (waveQueue[0] && elapsed >= waveQueue[0].wave.startAt) {
+      if (!midbossDefeated && waveQueue[0].index > midbossGateAfterWaveIndex) {
+        break
+      }
+
       const nextWave = waveQueue.shift()
       if (nextWave) {
-        spawnWave(nextWave)
+        spawnWave(nextWave.wave)
       }
     }
 
-    if (!boss && elapsed >= stage.boss.startAt) {
-      spawnBoss()
+    if (
+      !boss &&
+      stage.midboss &&
+      !midbossDefeated &&
+      elapsed >= stage.midboss.startAt
+    ) {
+      spawnBoss(stage.midboss, 'midboss')
+    }
+
+    if (!boss && midbossDefeated && elapsed >= stage.boss.startAt) {
+      spawnBoss(stage.boss, 'final')
     }
 
     player.shotTimer -= delta
