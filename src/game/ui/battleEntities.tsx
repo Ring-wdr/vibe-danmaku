@@ -10,7 +10,13 @@ import {
 import { arenaPointToView } from './battleViewMath'
 import { RestoredTextureMaterial, useLoadedTexture } from './battleTexture'
 import { BulletMesh, PlayerFlightAirflow, SparkleMesh, SpecialBeamMesh } from './battleEffects'
-import type { BattleSnapshot, CharacterDefinition, RenderEnemy, StageDefinition } from '../types'
+import type {
+  BattleSnapshot,
+  CharacterDefinition,
+  RenderBoss,
+  RenderEnemy,
+  StageDefinition,
+} from '../types'
 
 export function getAtlasFrameUv(frame: AtlasFrame) {
   const uvScale = new THREE.Vector2(
@@ -182,14 +188,14 @@ export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string
   return gameAssets.bossCoreUrl
 }
 
-function BossSprite({ stage, snapshot }: { stage: StageDefinition; snapshot: BattleSnapshot }) {
-  const bossTexture = useLoadedTexture(getBossCoreTextureUrl(stage, snapshot.boss))
+export function getRenderableBosses(snapshot: BattleSnapshot) {
+  return snapshot.bosses
+}
 
-  if (!snapshot.boss) {
-    return null
-  }
+function BossSprite({ boss, stage }: { boss: RenderBoss; stage: StageDefinition }) {
+  const bossTexture = useLoadedTexture(getBossCoreTextureUrl(stage, boss))
 
-  const position = arenaPointToView(snapshot.boss.position, 0.78)
+  const position = arenaPointToView(boss.position, 0.78)
 
   if (!bossTexture) {
     return (
@@ -240,7 +246,9 @@ export function RuntimeEntityLayer({
           scale={enemy.scale}
         />
       ))}
-      <BossSprite stage={stage} snapshot={snapshot} />
+      {getRenderableBosses(snapshot).map((boss) => (
+        <BossSprite key={boss.id} boss={boss} stage={stage} />
+      ))}
       {snapshot.bullets.map((bullet) => (
         <BulletMesh key={bullet.id} bullet={bullet} isPaused={isPaused} />
       ))}

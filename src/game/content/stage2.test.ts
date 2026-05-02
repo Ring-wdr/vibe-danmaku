@@ -30,6 +30,24 @@ function expectDelayScaled(
   if (
     fastTrigger &&
     regularTrigger &&
+    fastTrigger.type === 'time' &&
+    regularTrigger.type === 'time'
+  ) {
+    expect(fastTrigger.at).toBeCloseTo(regularTrigger.at * 0.22)
+  }
+  if (
+    fastTrigger &&
+    regularTrigger &&
+    fastTrigger.type === 'timeAfterDefeated' &&
+    regularTrigger.type === 'timeAfterDefeated'
+  ) {
+    expect(fastTrigger.at).toBeCloseTo(regularTrigger.at * 0.22)
+    expect(fastTrigger.target).toBe(regularTrigger.target)
+    expect(fastTrigger.delay ?? 0).toBeCloseTo((regularTrigger.delay ?? 0) * 0.22)
+  }
+  if (
+    fastTrigger &&
+    regularTrigger &&
     (fastTrigger.type === 'afterResolved' || fastTrigger.type === 'afterDefeated') &&
     (regularTrigger.type === 'afterResolved' || regularTrigger.type === 'afterDefeated')
   ) {
@@ -70,22 +88,41 @@ describe('createStage2Definition', () => {
     expect(stage2Waves.map((wave) => wave.archetype)).toEqual(expectedArchetypes)
   })
 
-  it('starts waves 7-12 after the midboss and starts the final boss after the final wave', () => {
+  it('preserves old authored wave times while gating waves 7-12 after the midboss', () => {
     const stage = createStage2Definition('normal')
+    const waveEvents = stage.events.filter((event) =>
+      event.actions.some((action) => action.type === 'spawnWave'),
+    )
     const wave7Event = stage.events.find((event) => event.id === 'wave-7-event')
     const finalBossEvent = stage.events.find(
       (event) => event.id === 'boss-ash-citadel-core-spawn',
     )
 
+    expect(waveEvents.map((event) => event.trigger)).toEqual([
+      { type: 'time', at: 1.8 },
+      { type: 'time', at: 8.5 },
+      { type: 'time', at: 15.6 },
+      { type: 'time', at: 23 },
+      { type: 'time', at: 31 },
+      { type: 'time', at: 39 },
+      { type: 'timeAfterDefeated', at: 54, target: 'midboss-ember-gate', delay: 7 },
+      { type: 'timeAfterDefeated', at: 62, target: 'midboss-ember-gate', delay: 15 },
+      { type: 'timeAfterDefeated', at: 70, target: 'midboss-ember-gate', delay: 23 },
+      { type: 'timeAfterDefeated', at: 78, target: 'midboss-ember-gate', delay: 31 },
+      { type: 'timeAfterDefeated', at: 86, target: 'midboss-ember-gate', delay: 39 },
+      { type: 'timeAfterDefeated', at: 94, target: 'midboss-ember-gate', delay: 47 },
+    ])
     expect(wave7Event?.trigger).toEqual({
-      type: 'afterDefeated',
+      type: 'timeAfterDefeated',
+      at: 54,
       target: 'midboss-ember-gate',
-      delay: 1.5,
+      delay: 7,
     })
     expect(finalBossEvent?.trigger).toEqual({
-      type: 'afterResolved',
-      target: 'wave-12',
-      delay: 2,
+      type: 'timeAfterDefeated',
+      at: 106,
+      target: 'midboss-ember-gate',
+      delay: 59,
     })
   })
 
@@ -110,6 +147,12 @@ describe('createStage2Definition', () => {
     expect(fast.duration).toBeCloseTo((regular.duration ?? 0) * 0.22)
     expectDelayScaled(fastMidbossEvent?.trigger, regularMidbossEvent?.trigger)
     expectDelayScaled(fastFinalBossEvent?.trigger, regularFinalBossEvent?.trigger)
+    expect(fast.events.find((event) => event.id === 'wave-7-event')?.trigger).toEqual({
+      type: 'timeAfterDefeated',
+      at: 11.88,
+      target: 'midboss-ember-gate',
+      delay: 1.54,
+    })
   })
 
   it('increases midboss and final boss pattern counts on hard difficulty', () => {
@@ -141,20 +184,18 @@ describe('createStage2Definition', () => {
       (event) => event.id === 'boss-ash-citadel-core-spawn',
     )
 
-    expect(midbossEvent?.trigger).toEqual({
-      type: 'afterResolved',
-      target: 'wave-6',
-      delay: 1.5,
-    })
+    expect(midbossEvent?.trigger).toEqual({ type: 'time', at: 47 })
     expect(wave7Event?.trigger).toEqual({
-      type: 'afterDefeated',
+      type: 'timeAfterDefeated',
+      at: 54,
       target: 'midboss-ember-gate',
-      delay: 1.5,
+      delay: 7,
     })
     expect(finalBossEvent?.trigger).toEqual({
-      type: 'afterResolved',
-      target: 'wave-12',
-      delay: 2,
+      type: 'timeAfterDefeated',
+      at: 106,
+      target: 'midboss-ember-gate',
+      delay: 59,
     })
   })
 })

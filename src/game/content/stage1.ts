@@ -1,20 +1,19 @@
 import { scaleBossDefinition } from './bossScaling'
 import { resolveEnemyWave } from './enemies'
 import {
-  createBossEventAfterResolved,
-  createSequentialWaveEvents,
+  createTimedWaveEvents,
+  createTimeBossEvent,
   createVictoryEvent,
   scaleEventTime,
 } from './stageEvents'
 import type { BossDefinition, Difficulty, StageDefinition } from '../types'
 
-const firstWaveAt = 1.8
-const waveDelayAfterResolved = 1.5
-const finalBossDelayAfterResolved = 2
+const finalBossAt = 78
 
 const baseWavePlacements = [
   {
     id: 'wave-1',
+    at: 1.8,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 7,
@@ -22,6 +21,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-2',
+    at: 10.5,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 7,
@@ -29,6 +29,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-3',
+    at: 19,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 7,
@@ -36,6 +37,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-4',
+    at: 28,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 9,
@@ -43,6 +45,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-5',
+    at: 38,
     archetype: 'mine-layer',
     variant: 'brass-cloud-mine-layer',
     count: 9,
@@ -50,6 +53,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-6',
+    at: 48,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 9,
@@ -57,6 +61,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-7',
+    at: 58,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 12,
@@ -65,6 +70,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-8',
+    at: 68,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 12,
@@ -110,16 +116,8 @@ export function createStageDefinition(
   const waves = baseWavePlacements.map((placement) => resolveEnemyWave(difficulty, placement))
   const boss = scaleBossDefinition(baseBoss, difficulty)
   const events = [
-    ...createSequentialWaveEvents(waves, {
-      firstAt: firstWaveAt,
-      delayAfterResolved: waveDelayAfterResolved,
-    }),
-    createBossEventAfterResolved(
-      boss,
-      'final',
-      waves[waves.length - 1]!.id,
-      finalBossDelayAfterResolved,
-    ),
+    ...createTimedWaveEvents(baseWavePlacements, waves),
+    createTimeBossEvent(boss, 'final', finalBossAt),
     createVictoryEvent(boss.id),
   ].map((event) => scaleEventTime(event, fastMultiplier))
 

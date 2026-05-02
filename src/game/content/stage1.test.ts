@@ -99,14 +99,17 @@ describe('createStageDefinition', () => {
     )
 
     expect(spawnWaveEvents).toHaveLength(8)
-    expect(spawnWaveEvents.slice(1).every((event) => event.trigger.type === 'afterResolved')).toBe(
-      true,
-    )
-    expect(finalBossEvent?.trigger).toEqual({
-      type: 'afterResolved',
-      target: 'wave-8',
-      delay: 2,
-    })
+    expect(spawnWaveEvents.map((event) => event.trigger)).toEqual([
+      { type: 'time', at: 1.8 },
+      { type: 'time', at: 10.5 },
+      { type: 'time', at: 19 },
+      { type: 'time', at: 28 },
+      { type: 'time', at: 38 },
+      { type: 'time', at: 48 },
+      { type: 'time', at: 58 },
+      { type: 'time', at: 68 },
+    ])
+    expect(finalBossEvent?.trigger).toEqual({ type: 'time', at: 78 })
   })
 
   it('uses every regular enemy archetype in Stage 1', () => {
@@ -125,18 +128,10 @@ describe('createStageDefinition', () => {
 
     expect(spawnWaveEvents).toHaveLength(8)
     expect(spawnWaveEvents[0]?.trigger).toEqual({ type: 'time', at: 1.8 })
-    expect(spawnWaveEvents[1]?.trigger).toEqual({
-      type: 'afterResolved',
-      target: 'wave-1',
-      delay: 1.5,
-    })
+    expect(spawnWaveEvents[1]?.trigger).toEqual({ type: 'time', at: 10.5 })
     expect(spawnBossEvents).toHaveLength(1)
     expect(spawnBossEvents[0]?.id).toBe('boss-brass-core-spawn')
-    expect(spawnBossEvents[0]?.trigger).toEqual({
-      type: 'afterResolved',
-      target: 'wave-8',
-      delay: 2,
-    })
+    expect(spawnBossEvents[0]?.trigger).toEqual({ type: 'time', at: 78 })
     expect(spawnBossEvents[0]?.actions[0]).toMatchObject({
       type: 'spawnBoss',
       role: 'final',

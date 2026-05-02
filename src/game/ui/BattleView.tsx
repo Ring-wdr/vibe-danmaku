@@ -17,7 +17,12 @@ import type { ArenaPoint, CharacterDefinition, Difficulty, RunResult, StageDefin
 
 export { battleDragInputConfig, createArenaPoint, getFlightAirflowDynamics } from './battleViewMath'
 export { getBackgroundTextureUrls } from './battleBackground'
-export { getAtlasFrameUv, getBossCoreTextureUrl, getPlayerBattleSpritePose } from './battleEntities'
+export {
+  getAtlasFrameUv,
+  getBossCoreTextureUrl,
+  getPlayerBattleSpritePose,
+  getRenderableBosses,
+} from './battleEntities'
 
 type BattleViewProps = {
   difficulty: Difficulty

@@ -17,8 +17,9 @@ import {
   getAtlasFrameUv,
   getFlightAirflowDynamics,
   getPlayerBattleSpritePose,
+  getRenderableBosses,
 } from './BattleView'
-import type { StageDefinition } from '../types'
+import type { BattleSnapshot, StageDefinition } from '../types'
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
@@ -43,6 +44,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
     enemies: [
       {
         id: 'sentinel-1',
+        waveId: 'wave-1',
         kind: 'brass-cloud-sentinel',
         archetype: 'sentinel',
         variant: 'brass-cloud-sentinel',
@@ -54,6 +56,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
       },
       {
         id: 'weaver-1',
+        waveId: 'wave-2',
         kind: 'brass-cloud-weaver',
         archetype: 'weaver',
         variant: 'brass-cloud-weaver',
@@ -65,6 +68,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
       },
     ],
     boss: null,
+    bosses: [],
     bullets: [],
     specialSlots: [
       {
@@ -84,7 +88,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
     bossEnteredCount: 0,
     cuePulse: 0,
     result: null,
-  },
+  } as BattleSnapshot,
 }))
 
 vi.mock('./useBattleRuntime', () => ({
@@ -276,6 +280,35 @@ describe('getBossCoreTextureUrl', () => {
   })
 })
 
+describe('getRenderableBosses', () => {
+  it('uses every active boss from the runtime snapshot instead of only the primary boss', () => {
+    const bosses = [
+      {
+        id: 'midboss-ember-gate',
+        position: { x: -0.8, z: 1.2 },
+        hpRatio: 0.7,
+        phaseLabel: 'Midboss',
+        supportLaser: false,
+      },
+      {
+        id: 'boss-ash-citadel-core',
+        position: { x: 0.9, z: 1.1 },
+        hpRatio: 0.4,
+        phaseLabel: 'Final',
+        supportLaser: true,
+      },
+    ]
+
+    expect(
+      getRenderableBosses({
+        ...mockSnapshot,
+        boss: bosses[0],
+        bosses,
+      }),
+    ).toEqual(bosses)
+  })
+})
+
 describe('getBackgroundTextureUrls', () => {
   it('returns only brass-cloud textures for Stage 1', () => {
     const textures = getBackgroundTextureUrls(createStageDefinition('normal'))
@@ -345,6 +378,8 @@ describe('BattleView', () => {
     window.localStorage.clear()
     mockActivateSpecial.mockClear()
     mockUseBattleRuntime.mockReset()
+    mockSnapshot.boss = null
+    mockSnapshot.bosses = []
     mockSnapshot.result = null
     mockSnapshot.specialSlots = [
       {

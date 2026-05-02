@@ -1,8 +1,8 @@
 import { scaleBossDefinition } from './bossScaling'
 import { resolveEnemyWave } from './enemies'
 import {
-  createBossEventAfterResolved,
-  createSequentialWaveEvents,
+  createTimedWaveEvents,
+  createTimeBossEvent,
   createVictoryEvent,
   scaleEventTime,
 } from './stageEvents'
@@ -15,15 +15,13 @@ import type {
 
 type MidbossAuthoringDefinition = BossDefinition & { gateWaveCount: number }
 
-const firstWaveAt = 1.8
-const waveDelayAfterResolved = 1.25
-const midbossDelayAfterResolved = 1.5
-const postMidbossWaveDelayAfterDefeated = 1.5
-const finalBossDelayAfterResolved = 2
+const midbossAt = 47
+const finalBossAt = 106
 
 const baseWavePlacements = [
   {
     id: 'wave-1',
+    at: 1.8,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 14,
@@ -31,6 +29,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-2',
+    at: 8.5,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 14,
@@ -38,6 +37,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-3',
+    at: 15.6,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 14,
@@ -45,6 +45,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-4',
+    at: 23,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 18,
@@ -52,6 +53,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-5',
+    at: 31,
     archetype: 'mine-layer',
     variant: 'brass-cloud-mine-layer',
     count: 18,
@@ -59,6 +61,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-6',
+    at: 39,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 18,
@@ -66,6 +69,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-7',
+    at: 54,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 24,
@@ -74,6 +78,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-8',
+    at: 62,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 24,
@@ -82,6 +87,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-9',
+    at: 70,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 14,
@@ -89,6 +95,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-10',
+    at: 78,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 14,
@@ -96,6 +103,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-11',
+    at: 86,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 14,
@@ -103,6 +111,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-12',
+    at: 94,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 18,
@@ -173,41 +182,33 @@ export function createStage2Definition(
   const { gateWaveCount: _gateWaveCount, ...midboss } = scaledMidboss
   const firstHalf = waves.slice(0, midbossGateWaveCount)
   const secondHalf = waves.slice(midbossGateWaveCount)
-  const firstHalfEvents = createSequentialWaveEvents(firstHalf, {
-    firstAt: firstWaveAt,
-    delayAfterResolved: waveDelayAfterResolved,
-  })
+  const firstHalfPlacements = baseWavePlacements.slice(0, midbossGateWaveCount)
+  const secondHalfPlacements = baseWavePlacements.slice(midbossGateWaveCount)
+  const firstHalfEvents = createTimedWaveEvents(firstHalfPlacements, firstHalf)
   const secondHalfEvents: StageEvent[] = secondHalf.map((wave, index) => ({
     id: `${wave.id}-event`,
-    trigger:
-      index === 0
-        ? {
-            type: 'afterDefeated',
-            target: scaledMidboss.id,
-            delay: postMidbossWaveDelayAfterDefeated,
-          }
-        : {
-            type: 'afterResolved',
-            target: secondHalf[index - 1]!.id,
-            delay: waveDelayAfterResolved,
-          },
+    trigger: {
+      type: 'timeAfterDefeated',
+      at: secondHalfPlacements[index]!.at,
+      target: scaledMidboss.id,
+      delay: secondHalfPlacements[index]!.at - midbossAt,
+    },
     actions: [{ type: 'spawnWave', wave }],
   }))
   const events = [
     ...firstHalfEvents,
-    createBossEventAfterResolved(
-      midboss,
-      'midboss',
-      firstHalf[firstHalf.length - 1]!.id,
-      midbossDelayAfterResolved,
-    ),
+    createTimeBossEvent(midboss, 'midboss', midbossAt),
     ...secondHalfEvents,
-    createBossEventAfterResolved(
-      boss,
-      'final',
-      waves[waves.length - 1]!.id,
-      finalBossDelayAfterResolved,
-    ),
+    {
+      id: `${boss.id}-spawn`,
+      trigger: {
+        type: 'timeAfterDefeated',
+        at: finalBossAt,
+        target: scaledMidboss.id,
+        delay: finalBossAt - midbossAt,
+      },
+      actions: [{ type: 'spawnBoss', boss, role: 'final' }],
+    } satisfies StageEvent,
     createVictoryEvent(boss.id),
   ].map((event) => scaleEventTime(event, fastMultiplier))
 

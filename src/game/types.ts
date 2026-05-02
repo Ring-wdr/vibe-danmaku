@@ -66,6 +66,8 @@ export type StageCondition =
 
 export type StageTrigger =
   | { type: 'time'; at: number }
+  // Keeps authored timeline pacing while requiring a defeated gate target.
+  | { type: 'timeAfterDefeated'; at: number; target: string; delay?: number }
   | { type: 'afterResolved'; target: string; delay: number }
   | { type: 'afterDefeated'; target: string; delay: number }
   | { type: 'bossHp'; bossId: string; atOrBelow: number }
@@ -97,7 +99,7 @@ export type EnemyMovementConfig =
 export type SpawnGroupResolution =
   | { type: 'allInactive' }
   | { type: 'allDefeated' }
-  | { type: 'timeout'; seconds: number; then: 'resolve' | 'fail' | 'forceEscape' }
+  | { type: 'timeout'; seconds: number; then: 'resolve' | 'forceEscape' }
 
 export type EnemyWave = {
   id: string

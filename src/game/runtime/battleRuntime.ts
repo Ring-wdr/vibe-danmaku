@@ -185,7 +185,14 @@ function getFirstFinalBossTriggerTime(events: StageEvent[]) {
     event.actions.some((action) => action.type === 'spawnBoss' && action.role === 'final'),
   )
 
-  return finalBossEvent?.trigger.type === 'time' ? finalBossEvent.trigger.at : null
+  if (
+    finalBossEvent?.trigger.type === 'time' ||
+    finalBossEvent?.trigger.type === 'timeAfterDefeated'
+  ) {
+    return finalBossEvent.trigger.at
+  }
+
+  return null
 }
 
 export function createBattleRuntime({
@@ -969,6 +976,21 @@ export function createBattleRuntime({
 
     if (trigger.type === 'time') {
       return elapsed >= trigger.at
+    }
+
+    if (trigger.type === 'timeAfterDefeated') {
+      if (elapsed < trigger.at) {
+        return false
+      }
+
+      const delay = trigger.delay ?? 0
+      const defeatedAt = defeatedBosses.get(trigger.target)
+      if (defeatedAt !== undefined) {
+        return elapsed >= defeatedAt + delay
+      }
+
+      const group = getSpawnGroupForTarget(trigger.target)
+      return group?.defeatedAt !== undefined && elapsed >= group.defeatedAt + delay
     }
 
     if (trigger.type === 'afterResolved') {

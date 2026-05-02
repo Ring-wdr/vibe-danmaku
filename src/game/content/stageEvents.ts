@@ -9,6 +9,14 @@ function scaleTriggerTime(trigger: StageTrigger, multiplier: number): StageTrigg
     return { ...trigger, at: roundTime(trigger.at * multiplier) }
   }
 
+  if (trigger.type === 'timeAfterDefeated') {
+    return {
+      ...trigger,
+      at: roundTime(trigger.at * multiplier),
+      delay: trigger.delay === undefined ? undefined : roundTime(trigger.delay * multiplier),
+    }
+  }
+
   if (trigger.type === 'afterResolved' || trigger.type === 'afterDefeated') {
     return { ...trigger, delay: roundTime(trigger.delay * multiplier) }
   }
@@ -44,6 +52,17 @@ export function createSequentialWaveEvents(
             target: waves[index - 1]!.id,
             delay: options.delayAfterResolved,
           },
+    actions: [{ type: 'spawnWave', wave }],
+  }))
+}
+
+export function createTimedWaveEvents(
+  placements: readonly { at: number }[],
+  waves: EnemyWave[],
+): StageEvent[] {
+  return waves.map((wave, index) => ({
+    id: `${wave.id}-event`,
+    trigger: { type: 'time', at: placements[index]!.at },
     actions: [{ type: 'spawnWave', wave }],
   }))
 }

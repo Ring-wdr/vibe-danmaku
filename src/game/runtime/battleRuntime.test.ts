@@ -88,6 +88,8 @@ function getFinalBossChargeReferenceTime(stage: StageDefinition) {
 
   return finalBossEvent?.trigger.type === 'time'
     ? finalBossEvent.trigger.at
+    : finalBossEvent?.trigger.type === 'timeAfterDefeated'
+      ? finalBossEvent.trigger.at
     : (stage.duration ?? 0) * 0.5
 }
 
@@ -597,6 +599,55 @@ describe('stage event timeline runtime', () => {
     const snapshot = runtime.getSnapshot()
     expect(snapshot.enemies.some((enemy) => enemy.waveId === escapingWave.id)).toBe(false)
     expect(snapshot.enemies.some((enemy) => enemy.waveId === blockedWave.id)).toBe(false)
+  })
+
+  it('fires timeAfterDefeated only after both the authored time and defeat delay pass', () => {
+    const baseStage = createStageDefinition('normal')
+    const anchorWave = {
+      ...getWaveFromStage(baseStage, 0),
+      id: 'zero-anchor',
+      count: 0,
+      resolution: { type: 'allDefeated' },
+    } satisfies EnemyWave
+    const markerWave = {
+      ...getWaveFromStage(baseStage, 1),
+      id: 'time-after-defeated-marker',
+      count: 1,
+      hp: 99999,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: createEventStage(
+        baseStage,
+        [
+          createWaveEvent('zero-anchor-event', { type: 'time', at: 0 }, anchorWave),
+          createWaveEvent(
+            'time-after-defeated-marker-event',
+            {
+              type: 'timeAfterDefeated',
+              at: 1,
+              target: anchorWave.id,
+              delay: 0.4,
+            },
+            markerWave,
+          ),
+        ],
+      ),
+      character: testPilot,
+    })
+
+    runtime.update(0.01)
+    runtime.update(0.8)
+
+    expect(runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === markerWave.id)).toBe(
+      false,
+    )
+
+    runtime.update(0.2)
+
+    expect(runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === markerWave.id)).toBe(
+      true,
+    )
   })
 
   it('keeps repeated interval summons with the same wave id as distinct active groups', () => {
