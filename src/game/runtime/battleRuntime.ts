@@ -82,6 +82,7 @@ type EventState = {
 
 type SpawnGroupState = {
   id: string
+  authoredWaveId: string
   kind: 'wave' | 'summon'
   resolution: NonNullable<EnemyWave['resolution']>
   spawned: number
@@ -89,6 +90,7 @@ type SpawnGroupState = {
   escaped: number
   forcedResolved: boolean
   spawnedAt: number
+  defeatedAt?: number
   resolvedAt: number | null
 }
 
@@ -231,6 +233,7 @@ export function createBattleRuntime({
   const sparkles: RuntimeSparkle[] = []
   const eventStates = new Map<string, EventState>()
   const spawnGroups = new Map<string, SpawnGroupState>()
+  const spawnGroupCounts = new Map<string, number>()
   const defeatedBosses = new Map<string, number>()
   const stageEvents = stage.events ?? createLegacyStageEvents(stage)
   const specialChargeRate =
@@ -486,8 +489,11 @@ export function createBattleRuntime({
       speed: wave.speed,
     }
     const resolution = wave.resolution ?? { type: 'allInactive' }
+    const groupCount = spawnGroupCounts.get(wave.id) ?? 0
+    const groupId = groupCount === 0 ? wave.id : `${wave.id}#${groupCount}`
     const group: SpawnGroupState = {
-      id: wave.id,
+      id: groupId,
+      authoredWaveId: wave.id,
       kind: groupKind,
       resolution,
       spawned: wave.count,
@@ -495,9 +501,11 @@ export function createBattleRuntime({
       escaped: 0,
       forcedResolved: false,
       spawnedAt: elapsed,
+      defeatedAt: wave.count === 0 ? elapsed : undefined,
       resolvedAt: wave.count === 0 ? elapsed : null,
     }
-    spawnGroups.set(wave.id, group)
+    spawnGroupCounts.set(wave.id, groupCount + 1)
+    spawnGroups.set(groupId, group)
 
     const halfSpread = ((wave.count - 1) * wave.spacing) / 2
     for (let index = 0; index < wave.count; index += 1) {
@@ -506,7 +514,7 @@ export function createBattleRuntime({
       enemies.push({
         id: `enemy-${lastEnemyId++}`,
         waveId: wave.id,
-        groupId: wave.id,
+        groupId,
         kind: wave.kind,
         archetype: wave.archetype,
         variant: wave.variant,
@@ -631,10 +639,17 @@ export function createBattleRuntime({
     group.resolvedAt = elapsed
   }
 
+  const markSpawnGroupDefeated = (group: SpawnGroupState) => {
+    if (group.defeatedAt === undefined && group.defeated >= group.spawned) {
+      group.defeatedAt = elapsed
+    }
+  }
+
   const recordEnemyDefeated = (enemy: RuntimeEnemy) => {
     const group = spawnGroups.get(enemy.groupId)
     if (group) {
       group.defeated += 1
+      markSpawnGroupDefeated(group)
     }
   }
 
@@ -647,6 +662,8 @@ export function createBattleRuntime({
 
   const updateSpawnGroupResolutions = () => {
     for (const group of spawnGroups.values()) {
+      markSpawnGroupDefeated(group)
+
       if (group.resolvedAt !== null) {
         continue
       }
@@ -943,6 +960,21 @@ export function createBattleRuntime({
     return state
   }
 
+  const getSpawnGroupForTarget = (target: string) => {
+    const exactGroup = spawnGroups.get(target)
+    if (exactGroup) {
+      return exactGroup
+    }
+
+    for (const group of spawnGroups.values()) {
+      if (group.authoredWaveId === target) {
+        return group
+      }
+    }
+
+    return undefined
+  }
+
   const isConditionMet = (condition: Extract<StageEvent['trigger'], { type: 'interval' }>['while']) => {
     if (condition.type === 'bossActive') {
       return bosses.some((boss) => boss.id === condition.bossId)
@@ -966,15 +998,14 @@ export function createBattleRuntime({
     }
 
     if (trigger.type === 'afterResolved') {
-      const group = spawnGroups.get(trigger.target)
+      const group = getSpawnGroupForTarget(trigger.target)
       return group?.resolvedAt != null && elapsed >= group.resolvedAt + trigger.delay
     }
 
     if (trigger.type === 'afterDefeated') {
-      const group = spawnGroups.get(trigger.target)
-      if (group && group.spawned > 0 && group.defeated >= group.spawned) {
-        const defeatedAt = group.resolvedAt ?? elapsed
-        return elapsed >= defeatedAt + trigger.delay
+      const group = getSpawnGroupForTarget(trigger.target)
+      if (group?.defeatedAt !== undefined) {
+        return elapsed >= group.defeatedAt + trigger.delay
       }
 
       const defeatedAt = defeatedBosses.get(trigger.target)

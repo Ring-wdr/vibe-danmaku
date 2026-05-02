@@ -579,6 +579,134 @@ describe('stage event timeline runtime', () => {
     expect(snapshot.enemies.some((enemy) => enemy.waveId === escapingWave.id)).toBe(false)
     expect(snapshot.enemies.some((enemy) => enemy.waveId === blockedWave.id)).toBe(false)
   })
+
+  it('keeps repeated interval summons with the same wave id as distinct active groups', () => {
+    const baseStage = createStageDefinition('normal')
+    const boss = {
+      ...baseStage.boss,
+      id: 'interval-anchor',
+      hp: 99999,
+      phases: [
+        {
+          ...baseStage.boss.phases[0]!,
+          id: 'interval-anchor-phase',
+          pattern: {
+            ...baseStage.boss.phases[0]!.pattern,
+            interval: 999,
+          },
+        },
+      ],
+    } satisfies StageDefinition['boss']
+    const summonWave = {
+      ...baseStage.waves[0]!,
+      id: 'repeat-summon',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+      resolution: { type: 'timeout', seconds: 0.25, then: 'forceEscape' },
+    } satisfies EnemyWave
+    const markerWave = {
+      ...baseStage.waves[1]!,
+      id: 'repeat-summon-marker',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss,
+        events: [
+          createBossEvent('interval-anchor-event', { type: 'time', at: 0 }, boss, 'final'),
+          createWaveEvent(
+            'repeat-summon-interval',
+            {
+              type: 'interval',
+              every: 0.1,
+              while: { type: 'bossActive', bossId: boss.id },
+            },
+            summonWave,
+            'summon',
+          ),
+          createWaveEvent(
+            'repeat-summon-marker-event',
+            { type: 'afterResolved', target: summonWave.id, delay: 0 },
+            markerWave,
+          ),
+        ],
+      },
+      character: testPilot,
+    })
+
+    for (let index = 0; index < 6; index += 1) {
+      runtime.update(0.1)
+    }
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.enemies.filter((enemy) => enemy.waveId === summonWave.id).length).toBeGreaterThan(
+      1,
+    )
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === markerWave.id)).toBe(true)
+  })
+
+  it('fires afterDefeated from the defeated timestamp before timeout resolution', () => {
+    const baseStage = createStageDefinition('normal')
+    const timeoutWave = {
+      ...baseStage.waves[0]!,
+      id: 'defeated-before-timeout',
+      count: 1,
+      hp: 1,
+      speed: 0,
+      movement: {
+        type: 'enterAndStrafe',
+        entrySpeed: 48,
+        holdZ: 0,
+        strafeSpeed: 0,
+        strafeRange: 0,
+      },
+      resolution: { type: 'timeout', seconds: 5, then: 'resolve' },
+    } satisfies EnemyWave
+    const markerWave = {
+      ...baseStage.waves[1]!,
+      id: 'defeated-before-timeout-marker',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss: { ...baseStage.boss, startAt: 999 },
+        events: [
+          createWaveEvent('timeout-wave-event', { type: 'time', at: 0 }, timeoutWave),
+          createWaveEvent(
+            'timeout-wave-defeated-event',
+            { type: 'afterDefeated', target: timeoutWave.id, delay: 0.15 },
+            markerWave,
+          ),
+        ],
+      },
+      character: midbossSlayerPilot,
+    })
+
+    for (let index = 0; index < 60; index += 1) {
+      runtime.update(0.02)
+    }
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.elapsed).toBeLessThan(5)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === timeoutWave.id)).toBe(false)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === markerWave.id)).toBe(true)
+  })
 })
 
 describe('midboss gate runtime', () => {
