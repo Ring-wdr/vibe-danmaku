@@ -166,6 +166,8 @@ describe('battleSessionMachine', () => {
     const service = createService()
     deployToBattle(service)
 
+    service.send({ type: 'BATTLE_COMPLETED', result: createResult() })
+    service.send({ type: 'BATTLE_ASSETS_READY' })
     service.send({
       type: 'BATTLE_COMPLETED',
       result: createResult({
@@ -179,7 +181,7 @@ describe('battleSessionMachine', () => {
 
     expect(service.getSnapshot().matches('battleLoading')).toBe(true)
     expect(service.getSnapshot().context.currentStageNumber).toBe(2)
-    expect(service.getSnapshot().context.battleSeed).toBe(1)
+    expect(service.getSnapshot().context.battleSeed).toBe(2)
     expect(service.getSnapshot().context.result).toBeNull()
   })
 
