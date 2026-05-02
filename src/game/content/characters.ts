@@ -128,7 +128,7 @@ export const reinaShiroganeCharacter: PlayableCharacter = {
         angularSpeed: 3.2,
         phase: 0,
         hitRadius: 0.36,
-        damagePerSecond: 88,
+        damagePerSecond: 96,
       },
     },
     {
@@ -142,7 +142,7 @@ export const reinaShiroganeCharacter: PlayableCharacter = {
         angularSpeed: 3.2,
         phase: (Math.PI * 2) / 3,
         hitRadius: 0.36,
-        damagePerSecond: 88,
+        damagePerSecond: 96,
       },
     },
     {
@@ -156,7 +156,7 @@ export const reinaShiroganeCharacter: PlayableCharacter = {
         angularSpeed: 3.2,
         phase: (Math.PI * 4) / 3,
         hitRadius: 0.36,
-        damagePerSecond: 88,
+        damagePerSecond: 96,
       },
     },
   ],

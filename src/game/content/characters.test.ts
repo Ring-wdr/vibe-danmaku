@@ -71,6 +71,7 @@ describe('character catalog', () => {
       expect(panel.orbit?.radiusX).toBeGreaterThanOrEqual(2.04)
       expect(panel.orbit?.radiusZ).toBeGreaterThanOrEqual(0.72)
       expect(panel.orbit?.hitRadius).toBeGreaterThanOrEqual(0.32)
+      expect(panel.orbit?.damagePerSecond).toBe(96)
     }
   })
 
