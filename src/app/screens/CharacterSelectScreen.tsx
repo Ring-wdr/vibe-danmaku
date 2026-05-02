@@ -24,7 +24,6 @@ export function CharacterSelectScreen({ sessionActorRef }: CharacterSelectScreen
   return (
     <section className={styles.screen}>
       <div className={styles.heading}>
-        <p className={styles.eyebrow}>Select Pilot</p>
         <h2 className={styles.title}>Select Pilot</h2>
       </div>
 

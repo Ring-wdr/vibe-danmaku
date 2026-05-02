@@ -128,6 +128,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /hard/i }))
 
     expect(screen.getByRole('heading', { name: /select pilot/i })).toBeInTheDocument()
+    expect(screen.getAllByText(/select pilot/i)).toHaveLength(1)
     expect(screen.getByRole('heading', { name: /lyra aer/i })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: /lyra aer pilot summary/i })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: /playable characters/i })).toBeInTheDocument()
