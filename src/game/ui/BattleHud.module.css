@@ -90,11 +90,6 @@
   color: var(--cream);
 }
 
-.hp {
-  color: var(--teal);
-  letter-spacing: 0.08em;
-}
-
 .boss {
   display: flex;
   align-items: center;

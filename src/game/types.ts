@@ -148,6 +148,7 @@ export type CharacterDefinition = {
   title: string
   spriteSheetUrl: string
   frameCount: number
+  maxHp?: number
   moveRadius: {
     x: number
     minZ: number
@@ -308,6 +309,7 @@ export type BattleSnapshot = {
   player: {
     position: ArenaPoint
     hp: number
+    maxHp: number
     invulnerable: boolean
   }
   enemies: RenderEnemy[]

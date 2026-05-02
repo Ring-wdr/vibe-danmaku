@@ -107,12 +107,6 @@ export function BattleHud({
             <strong className={cx(styles.statusValue, styles.difficulty)}>
               {difficulty.toUpperCase()}
             </strong>
-            <strong
-              className={cx(styles.statusValue, styles.hp)}
-              aria-label={`Hull ${snapshot.player.hp} of 3`}
-            >
-              {'◆'.repeat(snapshot.player.hp).padEnd(3, '◇')}
-            </strong>
           </div>
         </div>
         {snapshot.boss ? (

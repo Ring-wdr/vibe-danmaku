@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 import { BackgroundFixtureLayer, MovingBackgroundLayer } from './battleBackground'
+import { BattleHealthBattery } from './BattleHealthBattery'
 import { RuntimeEntityLayer } from './battleEntities'
 import type { BattleSnapshot, CharacterDefinition, StageDefinition } from '../types'
 
@@ -46,6 +47,7 @@ export function BattleScene({
         snapshot={snapshot}
         isPaused={isPaused}
       />
+      <BattleHealthBattery hp={snapshot.player.hp} maxHp={snapshot.player.maxHp} />
     </>
   )
 }

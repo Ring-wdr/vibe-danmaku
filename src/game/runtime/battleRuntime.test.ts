@@ -495,6 +495,21 @@ describe('createBattleRuntime', () => {
     expect(runtime.getSnapshot().playerShots).toBe(2)
   })
 
+  it('uses the injected character max HP for player durability', () => {
+    const runtime = createRuntime({
+      character: {
+        ...testPilot,
+        maxHp: 4,
+      },
+    })
+
+    expect(runtime.getSnapshot().player.hp).toBe(4)
+
+    runtime.registerPlayerHit()
+
+    expect(runtime.getSnapshot().player.hp).toBe(3)
+  })
+
   it('fires Vesper side panel shots together with the primary shot', () => {
     const runtime = createRuntime({ character: vesperNoireCharacter })
 

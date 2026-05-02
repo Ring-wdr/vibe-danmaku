@@ -39,6 +39,7 @@ const snapshot = {
   player: {
     position: { x: 0, z: -3 },
     hp: 3,
+    maxHp: 3,
     invulnerable: false,
   },
   enemies: [

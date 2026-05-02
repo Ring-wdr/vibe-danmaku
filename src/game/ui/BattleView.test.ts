@@ -39,6 +39,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
     player: {
       position: { x: 0, z: -3 },
       hp: 3,
+      maxHp: 3,
       invulnerable: false,
     },
     enemies: [
@@ -443,6 +444,20 @@ describe('BattleView', () => {
     expect(button).toHaveAttribute('aria-valuenow', '50')
     expect(button).toBeInTheDocument()
     expect(screen.getByTestId('battle-special-slot-icon')).toBeInTheDocument()
+  })
+
+  it('removes player HP text from the top status overlay', () => {
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(screen.getByLabelText('Battle status')).not.toHaveTextContent(/[◆◇]/)
+    expect(screen.queryByTestId('battle-hull-battery')).not.toBeInTheDocument()
   })
 
   it('pauses battle updates from the HUD button until Resume is pressed', async () => {

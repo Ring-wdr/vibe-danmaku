@@ -186,8 +186,14 @@ const itemDropConfig = {
   pickupRadius: 0.28,
 } as const
 
+const defaultPlayerMaxHp = 3
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
+}
+
+function getCharacterMaxHp(character: CharacterDefinition) {
+  return Math.max(1, Math.round(character.maxHp ?? defaultPlayerMaxHp))
 }
 
 function isBulletOutsideViewport(bullet: RuntimeBullet) {
@@ -248,10 +254,11 @@ export function createBattleRuntime({
   invincible = false,
 }: RuntimeOptions) {
   const listeners = new Set<Listener>()
+  const playerMaxHp = getCharacterMaxHp(character)
   const player = {
     x: 0,
     z: -1.85,
-    hp: 3,
+    hp: playerMaxHp,
     invulnerableFor: 0,
     shotTimer: 0,
   }
@@ -391,6 +398,7 @@ export function createBattleRuntime({
       player: {
         position: { x: player.x, z: player.z },
         hp: player.hp,
+        maxHp: playerMaxHp,
         invulnerable: player.invulnerableFor > 0,
       },
       enemies: renderEnemies,
