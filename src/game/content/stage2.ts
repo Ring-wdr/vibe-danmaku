@@ -181,8 +181,9 @@ export function createStage2Definition(
   const boss = scaleBossDefinition(baseBoss, difficulty)
   const scaledMidboss = { ...midboss, startAt: scaleTime(midboss.startAt) }
   const scaledBoss = { ...boss, startAt: scaleTime(boss.startAt) }
-  const firstHalf = waves.slice(0, 6)
-  const secondHalf = waves.slice(6)
+  const midbossGateWaveCount = scaledMidboss.gateAfterWaveIndex + 1
+  const firstHalf = waves.slice(0, midbossGateWaveCount)
+  const secondHalf = waves.slice(midbossGateWaveCount)
   const firstHalfEvents = createSequentialWaveEvents(firstHalf, {
     firstAt: 1.8,
     delayAfterResolved: 1.25,
