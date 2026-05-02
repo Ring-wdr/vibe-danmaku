@@ -130,4 +130,32 @@ describe('RuntimeEntityLayer', () => {
     expect(screen.getByTestId('item-drop-powerup')).toBeInTheDocument()
     expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(gameAssets.itemAtlasUrl)
   })
+
+  it('renders battle bosses at the larger combat scale', () => {
+    const { container } = render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={{
+          ...snapshot,
+          bosses: [
+            {
+              id: 'test-boss',
+              position: { x: 0, z: 1.9 },
+              hpRatio: 1,
+              phaseLabel: 'Boss',
+              supportLaser: false,
+            },
+          ],
+        }}
+        isPaused={false}
+      />,
+    )
+
+    const bossPlane = Array.from(container.querySelectorAll('planegeometry')).find(
+      (element) => element.getAttribute('args') === '2.05,2.05',
+    )
+
+    expect(bossPlane).toBeInTheDocument()
+  })
 })

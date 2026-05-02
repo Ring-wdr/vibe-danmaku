@@ -26,6 +26,9 @@ import type {
   StageDefinition,
 } from '../types'
 
+const bossSpriteSize = 2.05
+const bossFallbackRadius = 0.9
+
 export function getAtlasFrameUv(frame: AtlasFrame) {
   const uvScale = new THREE.Vector2(
     frame.w / enemyBrassCloudAtlasSize.width,
@@ -330,7 +333,7 @@ function BossSprite({ boss, stage }: { boss: RenderBoss; stage: StageDefinition 
   if (!bossTexture) {
     return (
       <mesh position={position}>
-        <circleGeometry args={[0.72, 48]} />
+        <circleGeometry args={[bossFallbackRadius, 48]} />
         <meshBasicMaterial color="#7af0ff" toneMapped={false} />
       </mesh>
     )
@@ -338,7 +341,7 @@ function BossSprite({ boss, stage }: { boss: RenderBoss; stage: StageDefinition 
 
   return (
     <mesh position={position}>
-      <planeGeometry args={[1.65, 1.65]} />
+      <planeGeometry args={[bossSpriteSize, bossSpriteSize]} />
       <RestoredTextureMaterial texture={bossTexture} exposure={1.72} saturation={1.32} />
     </mesh>
   )
