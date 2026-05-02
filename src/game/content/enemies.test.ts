@@ -63,6 +63,52 @@ describe('enemy content resolver', () => {
     expect(wave.pattern.count).toBeGreaterThan(enemyArchetypes.lancer.pattern.count)
   })
 
+  it('resolves regular enemy waves as fly-through spawn groups', () => {
+    const wave = resolveEnemyWave('normal', {
+      id: 'test-scout',
+      startAt: 12,
+      archetype: 'scout',
+      variant: 'brass-cloud-scout',
+      count: 2,
+      spacing: 1,
+    })
+
+    expect(wave.movement).toEqual({
+      type: 'flyThrough',
+      path: enemyArchetypes.scout.path,
+      speed: enemyArchetypes.scout.speed,
+    })
+    expect(wave.resolution).toEqual({ type: 'allInactive' })
+  })
+
+  it('allows placement overrides for guard-style strafe waves', () => {
+    const wave = resolveEnemyWave('normal', {
+      id: 'test-guard',
+      startAt: 12,
+      archetype: 'sentinel',
+      variant: 'brass-cloud-sentinel',
+      count: 2,
+      spacing: 1,
+      movement: {
+        type: 'enterAndStrafe',
+        entrySpeed: 1.1,
+        holdZ: 1.35,
+        strafeSpeed: 0.9,
+        strafeRange: 1.8,
+      },
+      resolution: { type: 'allDefeated' },
+    })
+
+    expect(wave.movement).toEqual({
+      type: 'enterAndStrafe',
+      entrySpeed: 1.1,
+      holdZ: 1.35,
+      strafeSpeed: 0.9,
+      strafeRange: 1.8,
+    })
+    expect(wave.resolution).toEqual({ type: 'allDefeated' })
+  })
+
   it('uses forgiving hit radii for every regular enemy archetype', () => {
     expect(
       Object.fromEntries(

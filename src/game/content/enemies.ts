@@ -3,8 +3,10 @@ import type {
   BulletPatternConfig,
   Difficulty,
   EnemyArchetypeId,
+  EnemyMovementConfig,
   EnemyVariantId,
   EnemyWave,
+  SpawnGroupResolution,
 } from '../types'
 
 type EnemyArchetypeDefinition = {
@@ -37,6 +39,8 @@ type StageEnemyPlacement = {
   hp?: number
   speed?: number
   path?: EnemyWave['path']
+  movement?: EnemyMovementConfig
+  resolution?: SpawnGroupResolution
   pattern?: Partial<BulletPatternConfig>
 }
 
@@ -298,6 +302,14 @@ export function resolveEnemyWave(
     spacing: placement.spacing,
     hp: placement.hp ?? Math.round(archetype.hp * tuning.hp),
     speed: placement.speed ?? archetype.speed,
+    movement:
+      placement.movement ??
+      ({
+        type: 'flyThrough',
+        path: placement.path ?? archetype.path,
+        speed: placement.speed ?? archetype.speed,
+      } satisfies EnemyMovementConfig),
+    resolution: placement.resolution ?? { type: 'allInactive' },
     scale: archetype.scale,
     hitRadius: archetype.hitRadius,
     path: placement.path ?? archetype.path,
