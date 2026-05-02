@@ -9,7 +9,13 @@ import {
 } from '../content/enemyBrassCloudAtlas'
 import { arenaPointToView } from './battleViewMath'
 import { RestoredTextureMaterial, useLoadedTexture } from './battleTexture'
-import { BulletMesh, PlayerFlightAirflow, SparkleMesh, SpecialBeamMesh } from './battleEffects'
+import {
+  BulletMesh,
+  EnemyDestructionEffectMesh,
+  PlayerFlightAirflow,
+  SparkleMesh,
+  SpecialBeamMesh,
+} from './battleEffects'
 import type {
   BattleSnapshot,
   CharacterDefinition,
@@ -127,34 +133,69 @@ function PlayerSprite({
 function EnemySprite({
   enemyTexture,
   frameId,
+  hitFlashRatio,
   position,
   scale,
 }: {
   enemyTexture: THREE.Texture | null
   frameId: RenderEnemy['frameId']
+  hitFlashRatio: number
   position: [number, number, number]
   scale: number
 }) {
   const atlasUv = useMemo(() => getAtlasFrameUv(brassCloudEnemyFrames[frameId]), [frameId])
+  const flashOpacity = Math.min(0.72, Math.max(0, hitFlashRatio) * 0.72)
 
   if (!enemyTexture) {
     return (
-      <mesh position={position}>
-        <circleGeometry args={[0.36, 32]} />
-        <meshBasicMaterial color="#ffbe62" toneMapped={false} />
-      </mesh>
+      <group position={position}>
+        <mesh>
+          <circleGeometry args={[0.36, 32]} />
+          <meshBasicMaterial color="#ffbe62" toneMapped={false} />
+        </mesh>
+        {flashOpacity > 0 ? (
+          <mesh position={[0, 0, 0.018]}>
+            <circleGeometry args={[0.38, 32]} />
+            <meshBasicMaterial
+              color="#ff2828"
+              transparent
+              opacity={flashOpacity}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        ) : null}
+      </group>
     )
   }
 
   return (
-    <mesh position={position}>
-      <planeGeometry args={[scale, scale]} />
-      <RestoredTextureMaterial
-        texture={enemyTexture}
-        uvScale={atlasUv.uvScale}
-        uvOffset={atlasUv.uvOffset}
-      />
-    </mesh>
+    <group position={position}>
+      <mesh>
+        <planeGeometry args={[scale, scale]} />
+        <RestoredTextureMaterial
+          texture={enemyTexture}
+          uvScale={atlasUv.uvScale}
+          uvOffset={atlasUv.uvOffset}
+        />
+      </mesh>
+      {flashOpacity > 0 ? (
+        <mesh position={[0, 0, 0.018]}>
+          <planeGeometry args={[scale, scale]} />
+          <RestoredTextureMaterial
+            texture={enemyTexture}
+            opacity={flashOpacity}
+            exposure={1}
+            saturation={1}
+            contrast={1}
+            tintColor="#ff2a2a"
+            tintStrength={1}
+            uvScale={atlasUv.uvScale}
+            uvOffset={atlasUv.uvOffset}
+          />
+        </mesh>
+      ) : null}
+    </group>
   )
 }
 
@@ -242,6 +283,7 @@ export function RuntimeEntityLayer({
           key={enemy.id}
           enemyTexture={enemyTexture}
           frameId={enemy.frameId}
+          hitFlashRatio={enemy.hitFlashRatio}
           position={arenaPointToView(enemy.position, 0.7)}
           scale={enemy.scale}
         />
@@ -257,6 +299,9 @@ export function RuntimeEntityLayer({
       ) : null}
       {snapshot.sparkles.map((sparkle) => (
         <SparkleMesh key={sparkle.id} sparkle={sparkle} />
+      ))}
+      {snapshot.destructionEffects.map((effect) => (
+        <EnemyDestructionEffectMesh key={effect.id} effect={effect} />
       ))}
     </>
   )

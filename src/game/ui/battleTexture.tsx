@@ -79,6 +79,8 @@ export function RestoredTextureMaterial({
   frameRate = 8,
   frameIndex,
   flipX = false,
+  tintColor = '#ffffff',
+  tintStrength = 0,
   uvScale,
   uvOffset,
 }: {
@@ -91,6 +93,8 @@ export function RestoredTextureMaterial({
   frameRate?: number
   frameIndex?: number
   flipX?: boolean
+  tintColor?: string
+  tintStrength?: number
   uvScale?: THREE.Vector2
   uvOffset?: THREE.Vector2
 }) {
@@ -109,6 +113,8 @@ export function RestoredTextureMaterial({
         exposure: { value: exposure },
         saturation: { value: saturation },
         contrast: { value: contrast },
+        tintColor: { value: new THREE.Color(tintColor) },
+        tintStrength: { value: tintStrength },
         alphaCutoff: { value: 0.02 },
         uvScale: { value: initialUvScale.clone() },
         uvOffset: { value: initialUvOffset.clone() },
@@ -128,6 +134,8 @@ export function RestoredTextureMaterial({
         uniform float exposure;
         uniform float saturation;
         uniform float contrast;
+        uniform vec3 tintColor;
+        uniform float tintStrength;
         uniform float alphaCutoff;
         uniform vec2 uvScale;
         uniform vec2 uvOffset;
@@ -150,6 +158,7 @@ export function RestoredTextureMaterial({
           float luma = dot(color, vec3(0.299, 0.587, 0.114));
           color = mix(vec3(luma), color, saturation);
           color = clamp(color * exposure, 0.0, 1.0);
+          color = mix(color, tintColor, clamp(tintStrength, 0.0, 1.0));
 
           gl_FragColor = vec4(color, alpha);
         }
@@ -158,7 +167,7 @@ export function RestoredTextureMaterial({
       depthWrite: false,
       toneMapped: false,
     })
-  }, [frameColumns, texture, uvOffset, uvScale])
+  }, [frameColumns, texture, tintColor, tintStrength, uvOffset, uvScale])
 
   useFrame(({ clock }) => {
     if (frameColumns <= 1 || hasExplicitUv || hasFixedFrame) {
@@ -183,6 +192,8 @@ export function RestoredTextureMaterial({
     material.uniforms.exposure.value = exposure
     material.uniforms.saturation.value = saturation
     material.uniforms.contrast.value = contrast
+    material.uniforms.tintColor.value.set(tintColor)
+    material.uniforms.tintStrength.value = tintStrength
     material.uniforms.uvScale.value.copy(nextUvScale)
     material.uniforms.uvOffset.value.copy(nextUvOffset)
     material.uniforms.flipX.value = flipX ? 1 : 0
@@ -197,6 +208,8 @@ export function RestoredTextureMaterial({
     opacity,
     saturation,
     texture,
+    tintColor,
+    tintStrength,
     uvOffset,
     uvScale,
   ])

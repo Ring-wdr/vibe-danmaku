@@ -53,6 +53,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
         position: { x: -1, z: 1 },
         scale: 0.72,
         hitRadius: 0.28,
+        hitFlashRatio: 0,
       },
       {
         id: 'weaver-1',
@@ -65,6 +66,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
         position: { x: 1, z: 1 },
         scale: 0.82,
         hitRadius: 0.34,
+        hitFlashRatio: 0,
       },
     ],
     boss: null,
@@ -83,6 +85,7 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
     ],
     specialBeam: null,
     sparkles: [],
+    destructionEffects: [],
     playerShots: 0,
     hitsTaken: 0,
     bossEnteredCount: 0,

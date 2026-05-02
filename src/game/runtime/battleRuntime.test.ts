@@ -248,6 +248,63 @@ function createSpecialChargeBonusStage(): StageDefinition {
   ])
 }
 
+function createEnemyHitFeedbackStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+  const wave = {
+    ...getFirstWave(stage),
+    id: 'hit-feedback-target',
+    count: 1,
+    hp: 99,
+    movement: {
+      type: 'enterAndStrafe',
+      entrySpeed: 32,
+      holdZ: -0.35,
+      strafeSpeed: 0,
+      strafeRange: 0,
+    },
+    pattern: {
+      shape: 'fan',
+      count: 3,
+      interval: 999,
+      speed: 0.5,
+      spread: 0.5,
+      life: 4,
+    },
+  } satisfies EnemyWave
+
+  return createEventStage(stage, [
+    createWaveEvent('hit-feedback-event', { type: 'time', at: 0 }, wave),
+  ])
+}
+
+function createEnemyDestructionFeedbackStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+  const wave = {
+    ...getFirstWave(stage),
+    id: 'destruction-feedback-target',
+    count: 1,
+    hp: 8,
+    movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    pattern: {
+      shape: 'fan',
+      count: 3,
+      interval: 999,
+      speed: 0.5,
+      spread: 0.5,
+      life: 4,
+    },
+  } satisfies EnemyWave
+  const boss = {
+    ...getBossFromStage(stage, 'final'),
+    hp: 240,
+  }
+
+  return createEventStage(stage, [
+    createWaveEvent('destruction-feedback-event', { type: 'time', at: 0 }, wave),
+    createBossEvent('destruction-charge-boss-event', { type: 'time', at: 0.2 }, boss, 'final'),
+  ])
+}
+
 function createMidbossGateStage(): StageDefinition {
   const stage = createStageDefinition('normal')
   const beforeGate = {
@@ -452,6 +509,31 @@ describe('createBattleRuntime', () => {
     expect(
       runtime.getSnapshot().bullets.some((bullet) => bullet.source === 'enemy'),
     ).toBe(false)
+  })
+
+  it('marks a regular enemy with a short hit flash when a player shot connects', () => {
+    const runtime = createRuntime({
+      stage: createEnemyHitFeedbackStage(),
+      character: {
+        ...testPilot,
+        shot: {
+          interval: 0.12,
+          speed: 24,
+          power: 7,
+        },
+      },
+    })
+
+    let hitFlashRatio = 0
+    for (let index = 0; index < 40; index += 1) {
+      runtime.update(0.05)
+      hitFlashRatio = Math.max(
+        hitFlashRatio,
+        runtime.getSnapshot().enemies[0]?.hitFlashRatio ?? 0,
+      )
+    }
+
+    expect(hitFlashRatio).toBeGreaterThan(0)
   })
 
   it('starts wave enemy fire while enemies are entering from the upper edge', () => {
@@ -1473,6 +1555,25 @@ describe('special attack runtime', () => {
     expect(snapshot.enemies.length).toBe(0)
     expect(snapshot.sparkles.length).toBeGreaterThan(0)
     expect(snapshot.sparkles[0]?.position.x).toBeCloseTo(0, 1)
+  })
+
+  it('keeps a 3D destruction effect alive briefly after an enemy is defeated', () => {
+    const runtime = createRuntime({ stage: createEnemyDestructionFeedbackStage() })
+
+    runtime.update(0.22)
+    runtime.activateSpecial(beamLance)
+    runtime.update(0.05)
+
+    let snapshot = runtime.getSnapshot()
+    expect(snapshot.enemies).toHaveLength(0)
+    expect(snapshot.destructionEffects).toHaveLength(1)
+    expect(snapshot.destructionEffects[0]?.position.x).toBeCloseTo(0, 1)
+    expect(snapshot.destructionEffects[0]?.scale).toEqual(expect.any(Number))
+
+    runtime.update(1)
+    snapshot = runtime.getSnapshot()
+
+    expect(snapshot.destructionEffects).toHaveLength(0)
   })
 
   it('damages the boss while the boss intersects the active beam', () => {

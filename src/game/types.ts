@@ -182,6 +182,7 @@ export type RenderEnemy = {
   position: ArenaPoint
   scale: number
   hitRadius: number
+  hitFlashRatio: number
 }
 
 export type RenderBoss = {
@@ -228,6 +229,15 @@ export type RenderSparkle = {
   intensity: number
 }
 
+export type RenderDestructionEffect = {
+  id: string
+  position: ArenaPoint
+  age: number
+  life: number
+  scale: number
+  seed: number
+}
+
 export type BattleSnapshot = {
   difficulty: Difficulty
   stageName: string
@@ -246,6 +256,7 @@ export type BattleSnapshot = {
   specialSlots: RenderSpecialSlot[]
   specialBeam: RenderSpecialBeam | null
   sparkles: RenderSparkle[]
+  destructionEffects: RenderDestructionEffect[]
   playerShots: number
   hitsTaken: number
   bossEnteredCount: number

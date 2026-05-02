@@ -7,6 +7,7 @@ import type {
   EnemyWave,
   RenderBoss,
   RenderBullet,
+  RenderDestructionEffect,
   RenderEnemy,
   RenderSpecialBeam,
   RenderSpecialSlot,
@@ -58,6 +59,7 @@ type RuntimeEnemy = {
   strafeOriginX: number
   scale: number
   hitRadius: number
+  hitFlashFor: number
 }
 
 type RuntimeBoss = {
@@ -102,6 +104,16 @@ type RuntimeSparkle = {
   intensity: number
 }
 
+type RuntimeDestructionEffect = {
+  id: string
+  x: number
+  z: number
+  age: number
+  life: number
+  scale: number
+  seed: number
+}
+
 type RuntimeOptions = {
   difficulty: Difficulty
   stage: StageDefinition
@@ -138,6 +150,11 @@ const beamLanceConfig = {
   damagePerSecond: 180,
   sparkleInterval: 0.08,
   sparkleLife: 0.36,
+} as const
+
+const enemyFeedbackConfig = {
+  hitFlashDuration: 0.06,
+  destructionLife: 0.62,
 } as const
 
 function clamp(value: number, min: number, max: number) {
@@ -214,6 +231,7 @@ export function createBattleRuntime({
   const enemies: RuntimeEnemy[] = []
   const bosses: RuntimeBoss[] = []
   const sparkles: RuntimeSparkle[] = []
+  const destructionEffects: RuntimeDestructionEffect[] = []
   const eventStates = new Map<string, EventState>()
   const spawnGroups = new Map<string, SpawnGroupState>()
   const spawnGroupCounts = new Map<string, number>()
@@ -239,6 +257,7 @@ export function createBattleRuntime({
   let lastBulletId = 0
   let lastEnemyId = 0
   let lastSparkleId = 0
+  let lastDestructionEffectId = 0
   let cachedSnapshot: BattleSnapshot | null = null
 
   const getBossPhase = (boss: RuntimeBoss | null) => {
@@ -294,6 +313,7 @@ export function createBattleRuntime({
       position: { x: enemy.x, z: enemy.z },
       scale: enemy.scale,
       hitRadius: enemy.hitRadius,
+      hitFlashRatio: clamp(enemy.hitFlashFor / enemyFeedbackConfig.hitFlashDuration, 0, 1),
     }))
     const renderBullets: RenderBullet[] = bullets.map((bullet) => ({
       id: bullet.id,
@@ -341,6 +361,16 @@ export function createBattleRuntime({
         life: sparkle.life,
         intensity: sparkle.intensity,
       })),
+      destructionEffects: destructionEffects.map(
+        (effect): RenderDestructionEffect => ({
+          id: effect.id,
+          position: { x: effect.x, z: effect.z },
+          age: effect.age,
+          life: effect.life,
+          scale: effect.scale,
+          seed: effect.seed,
+        }),
+      ),
       playerShots,
       hitsTaken,
       bossEnteredCount,
@@ -513,6 +543,7 @@ export function createBattleRuntime({
         strafeOriginX: -halfSpread + index * wave.spacing,
         scale: wave.scale,
         hitRadius: wave.hitRadius,
+        hitFlashFor: 0,
       })
     }
   }
@@ -596,6 +627,23 @@ export function createBattleRuntime({
       life: beamLanceConfig.sparkleLife,
       intensity,
     })
+  }
+
+  const spawnDestructionEffect = (enemy: RuntimeEnemy) => {
+    destructionEffects.push({
+      id: `destruction-${lastDestructionEffectId++}`,
+      x: enemy.x,
+      z: enemy.z,
+      age: 0,
+      life: enemyFeedbackConfig.destructionLife,
+      scale: enemy.scale,
+      seed: lastDestructionEffectId % 17,
+    })
+  }
+
+  const damageEnemy = (enemy: RuntimeEnemy, damage: number) => {
+    enemy.hp -= damage
+    enemy.hitFlashFor = enemyFeedbackConfig.hitFlashDuration
   }
 
   const isInsideBeam = (target: ArenaPoint, radius: number) => {
@@ -714,7 +762,7 @@ export function createBattleRuntime({
         continue
       }
 
-      enemy.hp -= damage
+      damageEnemy(enemy, damage)
       if (canSpawnSparkle) {
         spawnSparkle(enemy.x, enemy.z, 1)
         spawnedSparkle = true
@@ -739,6 +787,8 @@ export function createBattleRuntime({
   const updateEnemies = (delta: number) => {
     for (let index = enemies.length - 1; index >= 0; index -= 1) {
       const enemy = enemies[index]
+      enemy.hitFlashFor = Math.max(0, enemy.hitFlashFor - delta)
+
       if (enemy.movement.type === 'enterAndStrafe') {
         if (enemy.z > enemy.movement.holdZ) {
           enemy.z = Math.max(enemy.movement.holdZ, enemy.z - enemy.movement.entrySpeed * delta)
@@ -768,6 +818,7 @@ export function createBattleRuntime({
       if (enemy.hp <= 0) {
         recordEnemyDefeated(enemy)
         addSpecialCharge(beamLanceConfig.enemyDefeatCharge)
+        spawnDestructionEffect(enemy)
         enemies.splice(index, 1)
         continue
       }
@@ -888,7 +939,7 @@ export function createBattleRuntime({
               { x: enemy.x, z: enemy.z },
             ) < hitDistance * hitDistance
           ) {
-            enemy.hp -= bullet.damage
+            damageEnemy(enemy, bullet.damage)
             bullets.splice(index, 1)
             consumed = true
             break
@@ -1075,6 +1126,14 @@ export function createBattleRuntime({
     }
 
     elapsed = Number((elapsed + delta).toFixed(4))
+    for (let index = destructionEffects.length - 1; index >= 0; index -= 1) {
+      const effect = destructionEffects[index]
+      effect.age += delta
+      if (effect.age >= effect.life) {
+        destructionEffects.splice(index, 1)
+      }
+    }
+
     if (player.invulnerableFor > 0) {
       player.invulnerableFor = Math.max(0, player.invulnerableFor - delta)
     }

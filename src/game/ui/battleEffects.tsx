@@ -8,7 +8,13 @@ import {
   flightTurnWakeConfigs,
   getFlightAirflowDynamics,
 } from './battleViewMath'
-import type { ArenaPoint, RenderBullet, RenderSparkle, RenderSpecialBeam } from '../types'
+import type {
+  ArenaPoint,
+  RenderBullet,
+  RenderDestructionEffect,
+  RenderSparkle,
+  RenderSpecialBeam,
+} from '../types'
 
 type BulletPalette = {
   aura: string
@@ -227,6 +233,92 @@ export function SparkleMesh({ sparkle }: { sparkle: RenderSparkle }) {
           toneMapped={false}
         />
       </mesh>
+    </group>
+  )
+}
+
+function getDestructionShardConfigs(seed: number) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / 7 + seed * 0.37
+    const speed = 0.18 + ((index + seed) % 3) * 0.07
+
+    return {
+      angle,
+      speed,
+      lift: 0.02 + (index % 2) * 0.04,
+      color: index % 2 === 0 ? '#ff6b55' : '#ffd27b',
+    }
+  })
+}
+
+export function EnemyDestructionEffectMesh({
+  effect,
+}: {
+  effect: RenderDestructionEffect
+}) {
+  const ratio = Math.min(1, effect.age / effect.life)
+  const opacity = Math.max(0, 1 - ratio)
+  const scale = Math.max(0.5, effect.scale)
+  const shockRadius = (0.18 + ratio * 0.72) * scale
+  const coreRadius = (0.18 + ratio * 0.16) * scale
+  const shardConfigs = useMemo(
+    () => getDestructionShardConfigs(effect.seed),
+    [effect.seed],
+  )
+
+  return (
+    <group
+      position={arenaPointToView(effect.position, 0.93)}
+      rotation={[0.22 + ratio * 0.45, 0.18 - ratio * 0.28, effect.seed * 0.17]}
+      scale={[1 + ratio * 0.22, 1 + ratio * 0.22, 1]}
+    >
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[shockRadius * 0.76, shockRadius, 48]} />
+        <meshBasicMaterial
+          color="#ff7a55"
+          transparent
+          opacity={opacity * 0.42}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh position={[0, 0, 0.06 + ratio * 0.08]}>
+        <sphereGeometry args={[coreRadius, 16, 10]} />
+        <meshBasicMaterial
+          color="#fff0c7"
+          transparent
+          opacity={opacity * 0.52}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+      {shardConfigs.map((config, index) => {
+        const distance = config.speed + ratio * scale * (0.62 + config.speed)
+
+        return (
+          <mesh
+            key={`${config.angle}-${index}`}
+            position={[
+              Math.cos(config.angle) * distance,
+              Math.sin(config.angle) * distance,
+              config.lift + ratio * 0.28,
+            ]}
+            rotation={[Math.PI / 2 + ratio * 1.8, 0, config.angle + ratio * 2.6]}
+          >
+            <coneGeometry args={[0.045 * scale, 0.2 * scale, 4]} />
+            <meshBasicMaterial
+              color={config.color}
+              transparent
+              opacity={opacity * 0.68}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              toneMapped={false}
+            />
+          </mesh>
+        )
+      })}
     </group>
   )
 }
