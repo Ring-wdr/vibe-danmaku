@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { lyraAerCharacter } from '../game/content/characters'
+import { lyraAerCharacter, vesperNoireCharacter } from '../game/content/characters'
 import { createStageDefinition } from '../game/content/stage1'
 import { createStage2Definition } from '../game/content/stage2'
 import { getBattleAssetPreloadItems } from './battleAssetPreload'
@@ -41,5 +41,36 @@ describe('getBattleAssetPreloadItems', () => {
     expect(urls.some((url) => url.includes('/bosses/stage2-boss-core'))).toBe(true)
     expect(urls.some((url) => url.includes('/backgrounds/brass-cloud/'))).toBe(false)
     expect(urls.some((url) => url.includes('/bosses/boss-core'))).toBe(false)
+  })
+
+  it('preloads the selected character sprite sheet instead of only Lyra assets', () => {
+    const items = getBattleAssetPreloadItems({
+      stage: createStageDefinition('normal'),
+      character: vesperNoireCharacter,
+    })
+
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        id: 'player-sheet',
+        label: 'Vesper Noire sprite sheet',
+        url: vesperNoireCharacter.spriteSheetUrl,
+      }),
+    )
+    expect(items.map((item) => item.url)).not.toContain(lyraAerCharacter.spriteSheetUrl)
+  })
+
+  it('preloads selected character side panel textures before battle entry', () => {
+    const items = getBattleAssetPreloadItems({
+      stage: createStageDefinition('normal'),
+      character: vesperNoireCharacter,
+    })
+
+    expect(items).toContainEqual(
+      expect.objectContaining({
+        id: 'player-side-panel-1',
+        label: 'Vesper Noire side panel',
+        url: vesperNoireCharacter.sidePanels?.[0]?.textureUrl,
+      }),
+    )
   })
 })

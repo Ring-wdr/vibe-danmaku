@@ -24,5 +24,8 @@ describe('gameAssets', () => {
     expect(gameAssets.playerSheetUrl).toMatch(/players\/player-battle-sprite-sheet/)
     expect(gameAssets.playerPortraitUrl).toMatch(/ui\/ui-player-portrait/)
     expect(gameAssets.uiOrnamentUrl).toMatch(/ui\/ui-ornament/)
+    expect(gameAssets.vesperNoirePanelUrl).toMatch(/players\/vesper-noire-panel/)
+    expect(gameAssets.vesperNoireSheetUrl).toMatch(/players\/vesper-noire-sprite-sheet/)
+    expect(gameAssets.vesperNoirePortraitUrl).toMatch(/ui\/ui-vesper-noire-portrait/)
   })
 })

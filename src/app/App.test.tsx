@@ -155,6 +155,29 @@ describe('App', () => {
     )
   })
 
+  it('lets players select and deploy Vesper Noire without unlock restrictions', () => {
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    fireEvent.click(screen.getByRole('button', { name: /normal/i }))
+
+    expect(screen.getByRole('button', { name: /select vesper noire/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /select vesper noire/i }))
+
+    expect(screen.getByRole('heading', { name: /vesper noire/i })).toBeInTheDocument()
+    expect(screen.getByText(/arcane phantom/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /selected vesper noire/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /deploy vesper noire/i }))
+
+    expect(window.localStorage.getItem(lastCharacterStorageKey)).toBe('vesper-noire')
+    expect(screen.getByText(/pilot vesper noire/i)).toBeInTheDocument()
+  })
+
   it('shows the fallback item when the saved character id is invalid', () => {
     window.localStorage.setItem(lastCharacterStorageKey, 'deleted-character')
 

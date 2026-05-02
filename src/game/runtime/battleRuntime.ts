@@ -20,6 +20,7 @@ import type {
 type RuntimeBullet = {
   id: string
   source: 'player' | 'enemy'
+  kind?: 'primary' | 'panel' | 'special-orb'
   x: number
   z: number
   vx: number
@@ -152,6 +153,12 @@ const beamLanceConfig = {
   sparkleLife: 0.36,
 } as const
 
+const defaultSpecial = {
+  id: 'beam-lance',
+  icon: 'beam',
+  kind: 'beam',
+} as const
+
 const enemyFeedbackConfig = {
   hitFlashDuration: 0.06,
   destructionLife: 0.62,
@@ -238,6 +245,7 @@ export function createBattleRuntime({
   const defeatedBosses = new Map<string, number>()
   const stageEvents = stage.events
   const stageDuration = stage.duration ?? 0
+  const special = pilot.special ?? defaultSpecial
   const finalBossChargeReference =
     getFirstFinalBossTriggerTime(stageEvents) ?? Math.max(1, stageDuration * 0.5)
   const specialChargeRate =
@@ -274,12 +282,16 @@ export function createBattleRuntime({
   }
 
   const getSpecialSlot = (): RenderSpecialSlot => ({
-    id: beamLanceConfig.id,
-    icon: beamLanceConfig.icon,
+    id: special.id,
+    icon: special.icon,
     charge: Number(specialCharge.toFixed(2)),
     maxCharge: beamLanceConfig.maxCharge,
-    ready: specialCharge >= beamLanceConfig.maxCharge && specialActiveFor <= 0,
-    active: specialActiveFor > 0,
+    ready:
+      specialCharge >= beamLanceConfig.maxCharge &&
+      specialActiveFor <= 0 &&
+      !bullets.some((bullet) => bullet.kind === 'special-orb'),
+    active:
+      specialActiveFor > 0 || bullets.some((bullet) => bullet.kind === 'special-orb'),
     activeRatio:
       specialActiveFor > 0
         ? clamp(specialActiveFor / beamLanceConfig.activeDuration, 0, 1)
@@ -287,7 +299,7 @@ export function createBattleRuntime({
   })
 
   const getSpecialBeam = (): RenderSpecialBeam | null => {
-    if (specialActiveFor <= 0) {
+    if (special.kind !== 'beam' || specialActiveFor <= 0) {
       return null
     }
 
@@ -318,6 +330,7 @@ export function createBattleRuntime({
     const renderBullets: RenderBullet[] = bullets.map((bullet) => ({
       id: bullet.id,
       source: bullet.source,
+      kind: bullet.kind,
       position: { x: bullet.x, z: bullet.z },
       radius: bullet.radius,
       glow: bullet.glow,
@@ -396,6 +409,37 @@ export function createBattleRuntime({
 
   const addBullet = (bullet: Omit<RuntimeBullet, 'id' | 'offViewportFor' | 'age'>) => {
     bullets.push({ id: `bullet-${lastBulletId++}`, offViewportFor: 0, age: 0, ...bullet })
+  }
+
+  const addPlayerBullet = ({
+    x,
+    z,
+    kind,
+    speed,
+    power,
+    radius,
+    glow,
+  }: {
+    x: number
+    z: number
+    kind: RuntimeBullet['kind']
+    speed: number
+    power: number
+    radius: number
+    glow: number
+  }) => {
+    addBullet({
+      source: 'player',
+      kind,
+      x,
+      z,
+      vx: 0,
+      vz: speed,
+      radius,
+      glow,
+      life: 2.2,
+      damage: power,
+    })
   }
 
   const firePattern = (originX: number, originZ: number, pattern: EnemyWave['pattern']) => {
@@ -646,6 +690,55 @@ export function createBattleRuntime({
     enemy.hitFlashFor = enemyFeedbackConfig.hitFlashDuration
   }
 
+  const explodeEnergyOrb = (orb: RuntimeBullet) => {
+    if (special.kind !== 'energyOrb') {
+      return
+    }
+
+    const center = { x: orb.x, z: orb.z }
+    const enemyDamageRadiusSquared = special.explosionRadius * special.explosionRadius
+    const bulletClearRadiusSquared = special.bulletClearRadius * special.bulletClearRadius
+
+    for (let bulletIndex = bullets.length - 1; bulletIndex >= 0; bulletIndex -= 1) {
+      const candidate = bullets[bulletIndex]
+      if (
+        candidate.source === 'enemy' &&
+        distanceSquared({ x: candidate.x, z: candidate.z }, center) <= bulletClearRadiusSquared
+      ) {
+        bullets.splice(bulletIndex, 1)
+      }
+    }
+
+    for (let enemyIndex = enemies.length - 1; enemyIndex >= 0; enemyIndex -= 1) {
+      const enemy = enemies[enemyIndex]
+      if (distanceSquared({ x: enemy.x, z: enemy.z }, center) > enemyDamageRadiusSquared) {
+        continue
+      }
+
+      damageEnemy(enemy, special.damage)
+      spawnSparkle(enemy.x, enemy.z, 1.45)
+      if (enemy.hp <= 0) {
+        recordEnemyDefeated(enemy)
+        addSpecialCharge(beamLanceConfig.enemyDefeatCharge)
+        spawnDestructionEffect(enemy)
+        enemies.splice(enemyIndex, 1)
+      }
+    }
+
+    for (const boss of bosses) {
+      if (distanceSquared({ x: boss.x, z: boss.z }, center) <= enemyDamageRadiusSquared) {
+        boss.hp -= special.damage
+        spawnSparkle(boss.x, boss.z, 1.7)
+      }
+    }
+
+    for (const offset of [-0.42, 0, 0.42]) {
+      spawnSparkle(center.x + offset, center.z, 1.5)
+    }
+
+    cuePulse += 1
+  }
+
   const isInsideBeam = (target: ArenaPoint, radius: number) => {
     const beam = getSpecialBeam()
     if (!beam) {
@@ -744,6 +837,13 @@ export function createBattleRuntime({
       if (sparkle.age >= sparkle.life) {
         sparkles.splice(index, 1)
       }
+    }
+
+    if (special.kind !== 'beam') {
+      if (!bullets.some((bullet) => bullet.kind === 'special-orb')) {
+        addSpecialCharge(specialChargeRate * delta)
+      }
+      return
     }
 
     if (specialActiveFor <= 0) {
@@ -877,6 +977,9 @@ export function createBattleRuntime({
   const updateBullets = (delta: number) => {
     for (let index = bullets.length - 1; index >= 0; index -= 1) {
       const bullet = bullets[index]
+      if (!bullet) {
+        continue
+      }
       bullet.age += delta
 
       if (
@@ -915,6 +1018,28 @@ export function createBattleRuntime({
       bullet.x += bullet.vx * delta + waveOffset
       bullet.z += bullet.vz * delta
       bullet.life -= delta
+
+      if (bullet.kind === 'special-orb') {
+        const intersectsBoss = bosses.some((boss) => {
+          const hitDistance = bullet.radius + 0.44
+          return distanceSquared({ x: bullet.x, z: bullet.z }, { x: boss.x, z: boss.z }) <
+            hitDistance * hitDistance
+        })
+        const intersectsEnemy = enemies.some((enemy) => {
+          const hitDistance = bullet.radius + enemy.hitRadius
+          return distanceSquared({ x: bullet.x, z: bullet.z }, { x: enemy.x, z: enemy.z }) <
+            hitDistance * hitDistance
+        })
+
+        if (bullet.z >= 1.85 || bullet.life <= 0 || intersectsBoss || intersectsEnemy) {
+          explodeEnergyOrb(bullet)
+          const orbIndex = bullets.findIndex((candidate) => candidate.id === bullet.id)
+          if (orbIndex >= 0) {
+            bullets.splice(orbIndex, 1)
+          }
+          continue
+        }
+      }
 
       if (bullet.source === 'enemy') {
         const hitDistance = bullet.radius + 0.13
@@ -1145,17 +1270,26 @@ export function createBattleRuntime({
 
     player.shotTimer -= delta
     if (player.shotTimer <= 0) {
-      addBullet({
-        source: 'player',
+      addPlayerBullet({
+        kind: 'primary',
         x: player.x,
         z: player.z + 0.22,
-        vx: 0,
-        vz: pilot.shot.speed,
+        speed: pilot.shot.speed,
         radius: 0.08,
         glow: 1.2,
-        life: 2.2,
-        damage: pilot.shot.power,
+        power: pilot.shot.power,
       })
+      for (const panelShot of pilot.shot.sidePanelShots ?? []) {
+        addPlayerBullet({
+          kind: 'panel',
+          x: player.x + panelShot.offsetX,
+          z: player.z + 0.16,
+          speed: panelShot.speed ?? pilot.shot.speed,
+          radius: panelShot.radius ?? 0.07,
+          glow: panelShot.glow ?? 1.35,
+          power: panelShot.power ?? pilot.shot.power,
+        })
+      }
       player.shotTimer = pilot.shot.interval
       playerShots += 1
     }
@@ -1198,16 +1332,32 @@ export function createBattleRuntime({
     },
     activateSpecial(id: SpecialSlotId) {
       if (
-        id !== beamLanceConfig.id ||
+        id !== special.id ||
         result ||
         specialActiveFor > 0 ||
+        bullets.some((bullet) => bullet.kind === 'special-orb') ||
         specialCharge < beamLanceConfig.maxCharge
       ) {
         return false
       }
 
       specialCharge = 0
-      specialActiveFor = beamLanceConfig.activeDuration
+      if (special.kind === 'beam') {
+        specialActiveFor = beamLanceConfig.activeDuration
+      } else {
+        addBullet({
+          source: 'player',
+          kind: 'special-orb',
+          x: player.x,
+          z: player.z + 0.34,
+          vx: 0,
+          vz: special.projectileSpeed,
+          radius: 0.32,
+          glow: 1.78,
+          life: 1.35,
+          damage: special.damage,
+        })
+      }
       specialSparkleTimer = 0
       cuePulse += 1
       emit()

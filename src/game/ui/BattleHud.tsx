@@ -18,6 +18,7 @@ function SpecialSlotHud({
     <div className={styles.specials} aria-label="Special attacks">
       {slots.map((slot) => {
         const chargeRatio = Math.min(1, slot.charge / slot.maxCharge)
+        const specialLabel = slot.id === 'phantom-orb' ? 'Phantom Orb' : 'Beam Lance'
 
         return (
           <button
@@ -30,7 +31,7 @@ function SpecialSlotHud({
             )}
             style={{ '--special-charge': `${chargeRatio * 360}deg` } as CSSProperties}
             disabled={!slot.ready}
-            aria-label="Activate Beam Lance special"
+            aria-label={`Activate ${specialLabel} special`}
             aria-valuemin={0}
             aria-valuemax={slot.maxCharge}
             aria-valuenow={Math.round(slot.charge)}
@@ -42,9 +43,23 @@ function SpecialSlotHud({
               aria-hidden="true"
             >
               <svg className={styles.specialSlotIconSvg} viewBox="0 0 48 48" focusable="false">
-                <path d="M24 5l7 18-7 20-7-20 7-18z" />
-                <path d="M13 27h22" />
-                <path d="M18 35h12" />
+                {slot.icon === 'orb' ? (
+                  <>
+                    <circle cx="24" cy="24" r="13" />
+                    <path d="M24 6v7" />
+                    <path d="M24 35v7" />
+                    <path d="M6 24h7" />
+                    <path d="M35 24h7" />
+                    <path d="M15 15l-5-5" />
+                    <path d="M33 33l5 5" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M24 5l7 18-7 20-7-20 7-18z" />
+                    <path d="M13 27h22" />
+                    <path d="M18 35h12" />
+                  </>
+                )}
               </svg>
             </span>
           </button>

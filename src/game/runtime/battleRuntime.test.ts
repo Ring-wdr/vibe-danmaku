@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { lyraAerCharacter } from '../content/characters'
+import { lyraAerCharacter, vesperNoireCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
 import type {
@@ -15,6 +15,7 @@ import type {
 } from '../types'
 
 const beamLance: SpecialSlotId = 'beam-lance'
+const phantomOrb: SpecialSlotId = 'phantom-orb'
 
 const testPilot: CharacterDefinition = {
   ...lyraAerCharacter,
@@ -248,6 +249,34 @@ function createSpecialChargeBonusStage(): StageDefinition {
   ])
 }
 
+function createEnergyOrbSpecialStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+  const boss = {
+    ...getBossFromStage(stage, 'final'),
+    hp: 1000,
+    phases: [
+      {
+        id: 'energy-orb-test-phase',
+        threshold: 0,
+        label: 'Orb Target',
+        supportLaser: false,
+        pattern: {
+          shape: 'ring',
+          count: 10,
+          interval: 999,
+          speed: 0.65,
+          spread: 0,
+          life: 12,
+        },
+      },
+    ],
+  } satisfies BossDefinition
+
+  return createEventStage(stage, [
+    createBossEvent('energy-orb-boss-event', { type: 'time', at: 0 }, boss, 'final'),
+  ])
+}
+
 function createEnemyHitFeedbackStage(): StageDefinition {
   const stage = createStageDefinition('normal')
   const wave = {
@@ -436,6 +465,30 @@ describe('createBattleRuntime', () => {
 
     runtime.update(0.02)
     expect(runtime.getSnapshot().playerShots).toBe(2)
+  })
+
+  it('fires Vesper side panel shots together with the primary shot', () => {
+    const runtime = createRuntime({ character: vesperNoireCharacter })
+
+    runtime.update(0.01)
+
+    const playerBullets = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'player')
+      .sort((a, b) => a.position.x - b.position.x)
+
+    expect(playerBullets).toHaveLength(3)
+    expect(playerBullets.map((bullet) => Number(bullet.position.x.toFixed(2)))).toEqual([
+      -0.56,
+      0,
+      0.56,
+    ])
+    expect(playerBullets.map((bullet) => bullet.kind)).toEqual([
+      'panel',
+      'primary',
+      'panel',
+    ])
+    expect(runtime.getSnapshot().playerShots).toBe(1)
   })
 
   it('lets the player reach wider side lanes while dragging', () => {
@@ -1541,6 +1594,44 @@ describe('special attack runtime', () => {
       width: 0.42,
       length: 7,
     })
+  })
+
+  it('launches Vesper phantom orb and clears nearby enemy bullets on explosion', () => {
+    const stage = createEnergyOrbSpecialStage()
+    const runtime = createRuntime({
+      stage,
+      character: {
+        ...vesperNoireCharacter,
+        shot: {
+          ...vesperNoireCharacter.shot,
+          interval: 999,
+          power: 1,
+        },
+      },
+    })
+
+    runtime.update(1)
+
+    const chargedSlot = runtime
+      .getSnapshot()
+      .specialSlots.find((candidate) => candidate.id === phantomOrb)
+    const beforeBossHp = runtime.getSnapshot().boss?.hpRatio
+
+    expect(chargedSlot?.ready).toBe(true)
+    expect(runtime.getSnapshot().bullets.some((bullet) => bullet.source === 'enemy')).toBe(true)
+    expect(runtime.activateSpecial(phantomOrb)).toBe(true)
+    expect(
+      runtime.getSnapshot().bullets.some((bullet) => bullet.kind === 'special-orb'),
+    ).toBe(true)
+
+    runtime.update(0.8)
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.boss?.hpRatio).toBeLessThan(beforeBossHp!)
+    expect(snapshot.bullets.some((bullet) => bullet.source === 'enemy')).toBe(false)
+    expect(snapshot.bullets.some((bullet) => bullet.kind === 'special-orb')).toBe(false)
+    expect(snapshot.sparkles.length).toBeGreaterThan(0)
   })
 
   it('damages enemies inside the active beam strip and creates sparkles', () => {

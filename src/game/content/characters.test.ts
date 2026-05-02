@@ -8,12 +8,13 @@ import {
   playableCharacters,
   resolveCharacterId,
   resolvePlayableCharacter,
+  vesperNoireCharacter,
 } from './characters'
 
 describe('character catalog', () => {
-  it('registers Lyra as the only normal playable character for this pass', () => {
+  it('registers Lyra and Vesper as normal playable characters', () => {
     expect(defaultCharacterId).toBe('lyra-aer')
-    expect(playableCharacters).toHaveLength(1)
+    expect(playableCharacters).toHaveLength(2)
     expect(playableCharacters[0]).toMatchObject({
       id: 'lyra-aer',
       name: 'Lyra Aer',
@@ -21,6 +22,27 @@ describe('character catalog', () => {
       frameCount: 4,
       isFallback: false,
     })
+    expect(playableCharacters[1]).toBe(vesperNoireCharacter)
+    expect(playableCharacters[1]).toMatchObject({
+      id: 'vesper-noire',
+      name: 'Vesper Noire',
+      title: 'Arcane Phantom',
+      frameCount: 4,
+      isFallback: false,
+      special: {
+        id: 'phantom-orb',
+        icon: 'orb',
+        kind: 'energyOrb',
+      },
+    })
+    expect(vesperNoireCharacter.shot.sidePanelShots).toEqual([
+      expect.objectContaining({ offsetX: -0.56 }),
+      expect.objectContaining({ offsetX: 0.56 }),
+    ])
+    expect(vesperNoireCharacter.sidePanels).toEqual([
+      expect.objectContaining({ offsetX: -0.62, textureUrl: expect.stringContaining('vesper-noire-panel') }),
+      expect.objectContaining({ offsetX: 0.62, textureUrl: expect.stringContaining('vesper-noire-panel') }),
+    ])
   })
 
   it('resolves empty selection to the default character and invalid saved ids to fallback', () => {
@@ -32,6 +54,7 @@ describe('character catalog', () => {
 
   it('resolves character definitions with safe fallback stats', () => {
     expect(resolvePlayableCharacter('lyra-aer').name).toBe('Lyra Aer')
+    expect(resolvePlayableCharacter('vesper-noire')).toBe(vesperNoireCharacter)
 
     const resolvedFallback = resolvePlayableCharacter('deleted-character')
 
@@ -43,17 +66,21 @@ describe('character catalog', () => {
 
   it('keeps the fallback out of the normal roster until it is the active selection', () => {
     expect(isPlayableCharacterId('lyra-aer')).toBe(true)
+    expect(isPlayableCharacterId('vesper-noire')).toBe(true)
     expect(isPlayableCharacterId(fallbackCharacter.id)).toBe(false)
     expect(getCharacterSelectRoster('lyra-aer').map((character) => character.id)).toEqual([
       'lyra-aer',
+      'vesper-noire',
     ])
     expect(getCharacterSelectRoster(fallbackCharacter.id).map((character) => character.id)).toEqual([
       fallbackCharacter.id,
       'lyra-aer',
+      'vesper-noire',
     ])
     expect(getCharacterSelectRoster('deleted-character').map((character) => character.id)).toEqual([
       fallbackCharacter.id,
       'lyra-aer',
+      'vesper-noire',
     ])
   })
 })

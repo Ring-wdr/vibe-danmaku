@@ -50,6 +50,11 @@ export function getBattleAssetPreloadItems({
       label: `${character.name} sprite sheet`,
       url: character.spriteSheetUrl,
     },
+    ...(character.sidePanels ?? []).map((panel, index) => ({
+      id: `player-side-panel-${index + 1}`,
+      label: `${character.name} side panel`,
+      url: panel.textureUrl,
+    })),
     {
       id: 'enemy-atlas',
       label: 'Enemy atlas',

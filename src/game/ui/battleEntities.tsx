@@ -199,6 +199,54 @@ function EnemySprite({
   )
 }
 
+function PlayerSidePanel({
+  position,
+  scale,
+  side,
+  battleElapsed,
+  textureUrl,
+}: {
+  position: [number, number, number]
+  scale: number
+  side: -1 | 1
+  battleElapsed: number
+  textureUrl: string
+}) {
+  const texture = useLoadedTexture(textureUrl)
+  const tilt = side * 0.24 + Math.sin(battleElapsed * 4.2 + side) * 0.06
+
+  if (!texture) {
+    return (
+      <group position={position} rotation={[0, 0, tilt]}>
+        <mesh>
+          <planeGeometry args={[scale * 0.38, scale]} />
+          <meshBasicMaterial
+            color="#7d39c8"
+            transparent
+            opacity={0.78}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+    )
+  }
+
+  return (
+    <group position={position} rotation={[0, 0, tilt]}>
+      <mesh>
+        <planeGeometry args={[scale * 0.38, scale]} />
+        <RestoredTextureMaterial
+          texture={texture}
+          exposure={1.6}
+          saturation={1.34}
+          contrast={1.06}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 function getBossDefinitionsByRole(stage: StageDefinition, role: 'midboss' | 'final') {
   return stage.events.flatMap((event) =>
     event.actions.flatMap((action) =>
@@ -278,6 +326,22 @@ export function RuntimeEntityLayer({
         spriteSheetUrl={character.spriteSheetUrl}
         specialActive={snapshot.specialSlots.some((slot) => slot.active)}
       />
+      {(character.sidePanels ?? []).map((panel) => (
+        <PlayerSidePanel
+          key={panel.offsetX}
+          battleElapsed={snapshot.elapsed}
+          position={arenaPointToView(
+            {
+              x: snapshot.player.position.x + panel.offsetX,
+              z: snapshot.player.position.z + panel.offsetZ,
+            },
+            0.68,
+          )}
+          scale={panel.scale}
+          side={panel.offsetX < 0 ? -1 : 1}
+          textureUrl={panel.textureUrl}
+        />
+      ))}
       {snapshot.enemies.map((enemy) => (
         <EnemySprite
           key={enemy.id}

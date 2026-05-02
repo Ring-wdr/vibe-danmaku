@@ -157,8 +157,38 @@ export type CharacterDefinition = {
     interval: number
     speed: number
     power: number
+    sidePanelShots?: {
+      offsetX: number
+      speed?: number
+      power?: number
+      radius?: number
+      glow?: number
+    }[]
   }
+  sidePanels?: {
+    offsetX: number
+    offsetZ: number
+    scale: number
+    textureUrl: string
+  }[]
+  special?: CharacterSpecialDefinition
 }
+
+export type CharacterSpecialDefinition =
+  | {
+      id: 'beam-lance'
+      icon: 'beam'
+      kind: 'beam'
+    }
+  | {
+      id: 'phantom-orb'
+      icon: 'orb'
+      kind: 'energyOrb'
+      projectileSpeed: number
+      explosionRadius: number
+      damage: number
+      bulletClearRadius: number
+    }
 
 export type RunResult = {
   outcome: 'victory' | 'defeat'
@@ -196,13 +226,14 @@ export type RenderBoss = {
 export type RenderBullet = {
   id: string
   source: 'player' | 'enemy'
+  kind?: 'primary' | 'panel' | 'special-orb'
   position: ArenaPoint
   radius: number
   glow: number
 }
 
-export type SpecialSlotId = 'beam-lance'
-export type SpecialIconId = 'beam'
+export type SpecialSlotId = 'beam-lance' | 'phantom-orb'
+export type SpecialIconId = 'beam' | 'orb'
 
 export type RenderSpecialSlot = {
   id: SpecialSlotId

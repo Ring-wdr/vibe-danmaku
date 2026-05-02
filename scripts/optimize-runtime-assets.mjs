@@ -35,6 +35,20 @@ const runtimeAssets = [
     alphaQuality: 86,
   },
   {
+    source: 'players/vesper-noire-sprite-sheet.png',
+    output: 'players/vesper-noire-sprite-sheet.webp',
+    width: 1024,
+    quality: 74,
+    alphaQuality: 86,
+  },
+  {
+    source: 'players/vesper-noire-panel.png',
+    output: 'players/vesper-noire-panel.webp',
+    width: 208,
+    quality: 80,
+    alphaQuality: 92,
+  },
+  {
     source: 'backgrounds/burning-ruins/stage2-ruin-floor.png',
     output: 'backgrounds/burning-ruins/stage2-ruin-floor.webp',
     width: 1024,
@@ -65,6 +79,13 @@ const runtimeAssets = [
   {
     source: 'ui/ui-player-portrait.png',
     output: 'ui/ui-player-portrait.webp',
+    width: 480,
+    quality: 76,
+    alphaQuality: 88,
+  },
+  {
+    source: 'ui/ui-vesper-noire-portrait.png',
+    output: 'ui/ui-vesper-noire-portrait.webp',
     width: 480,
     quality: 76,
     alphaQuality: 88,

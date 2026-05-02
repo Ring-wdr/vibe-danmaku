@@ -24,6 +24,14 @@ type BulletPalette = {
 }
 
 function getBulletPalette(bullet: RenderBullet): BulletPalette {
+  if (bullet.kind === 'special-orb') {
+    return { aura: '#7d4dff', body: '#9b5cff', core: '#f5dcff', accent: '#55f0ff' }
+  }
+
+  if (bullet.kind === 'panel') {
+    return { aura: '#b56bff', body: '#f26bff', core: '#fff0ff', accent: '#65f5ff' }
+  }
+
   if (bullet.source === 'player') {
     return { aura: '#ffb45d', body: '#ffd28a', core: '#fff7d7', accent: '#f8e27a' }
   }
@@ -214,7 +222,7 @@ export function SparkleMesh({ sparkle }: { sparkle: RenderSparkle }) {
         />
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 4]}>
-        <ringGeometry args={[radius * 1.15, radius * 1.38, 4]} />
+        <ringGeometry args={[radius * 1.15, radius * 1.38, 28]} />
         <meshBasicMaterial
           color="#69f0e3"
           transparent
