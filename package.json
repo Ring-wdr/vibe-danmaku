@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "assets:pack-enemies": "node scripts/pack-enemy-atlas.mjs",
-    "assets:optimize": "npm run assets:pack-enemies && node scripts/optimize-runtime-assets.mjs"
+    "assets:normalize-players": "node scripts/normalize-player-sprite-sheets.mjs",
+    "assets:optimize": "npm run assets:pack-enemies && npm run assets:normalize-players && node scripts/optimize-runtime-assets.mjs"
   },
   "devDependencies": {
     "@rolldown/plugin-babel": "^0.2.3",
