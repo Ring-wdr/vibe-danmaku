@@ -954,6 +954,14 @@ describe('stage event timeline runtime', () => {
       character: bossTriggerPilot,
     })
 
+    for (let index = 0; index < 3; index += 1) {
+      runtime.update(0.05)
+    }
+
+    let snapshot = runtime.getSnapshot()
+    expect(snapshot.boss?.hpRatio).toBeGreaterThan(0.5)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === summonWave.id)).toBe(false)
+
     for (let index = 0; index < 20; index += 1) {
       runtime.update(0.05)
       if (runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === summonWave.id)) {
@@ -961,9 +969,9 @@ describe('stage event timeline runtime', () => {
       }
     }
 
-    expect(runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === summonWave.id)).toBe(
-      true,
-    )
+    snapshot = runtime.getSnapshot()
+    expect(snapshot.boss?.hpRatio).toBeLessThanOrEqual(0.5)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === summonWave.id)).toBe(true)
   })
 
   it('spawns summon waves from boss phase triggers', () => {
@@ -1024,14 +1032,22 @@ describe('stage event timeline runtime', () => {
       character: bossTriggerPilot,
     })
 
+    for (let index = 0; index < 3; index += 1) {
+      runtime.update(0.05)
+    }
+
+    let snapshot = runtime.getSnapshot()
+    expect(snapshot.phaseLabel).not.toBe('Critical')
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === summonWave.id)).toBe(false)
+
     for (let index = 0; index < 20; index += 1) {
       runtime.update(0.05)
-      if (runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === summonWave.id)) {
+      if (runtime.getSnapshot().phaseLabel === 'Critical') {
         break
       }
     }
 
-    const snapshot = runtime.getSnapshot()
+    snapshot = runtime.getSnapshot()
     expect(snapshot.phaseLabel).toBe('Critical')
     expect(snapshot.enemies.some((enemy) => enemy.waveId === summonWave.id)).toBe(true)
   })
