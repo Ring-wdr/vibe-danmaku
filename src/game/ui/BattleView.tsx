@@ -192,9 +192,9 @@ export function BattleView({
     character,
     fastStage,
     invincible,
+    onComplete,
   })
   const overlayRef = useRef<HTMLDivElement | null>(null)
-  const deliveredResultRef = useRef<RunResult | null>(null)
   const isPausedRef = useRef(false)
   const [settings, setSettings] = useState<BattleSettings>(readBattleSettings)
   const pauseOverlayOpenRef = useRef(false)
@@ -204,10 +204,6 @@ export function BattleView({
     originPlayer: ArenaPoint
   } | null>(null)
   const [isPaused, setIsPaused] = useState(false)
-
-  const deliverResult = useEffectEvent((result: RunResult) => {
-    onComplete(result)
-  })
 
   const openPauseSettings = useEffectEvent(async () => {
     if (pauseOverlayOpenRef.current) {
@@ -284,13 +280,6 @@ export function BattleView({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
-
-  useEffect(() => {
-    if (snapshot.result && deliveredResultRef.current !== snapshot.result) {
-      deliveredResultRef.current = snapshot.result
-      deliverResult(snapshot.result)
-    }
-  }, [snapshot.result])
 
   return (
     <section className={styles.shell} aria-label={`Stage ${stage.stageNumber} battle`}>
