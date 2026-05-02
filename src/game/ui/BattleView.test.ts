@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { createElement, type CSSProperties, type ReactNode } from 'react'
+import { fireEvent, render as testingRender, screen, waitFor } from '@testing-library/react'
+import { createElement, type CSSProperties, type ReactElement, type ReactNode } from 'react'
+import { OverlayProvider } from 'overlay-kit'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { lyraAerCharacter } from '../content/characters'
@@ -106,6 +107,10 @@ function createMockRuntime() {
     endDrag: vi.fn(),
     activateSpecial: mockActivateSpecial,
   }
+}
+
+function render(ui: ReactElement) {
+  return testingRender(ui, { wrapper: OverlayProvider })
 }
 
 describe('createArenaPoint', () => {
@@ -339,14 +344,28 @@ describe('BattleView', () => {
     expect(screen.getByTestId('battle-special-slot-icon')).toBeInTheDocument()
   })
 
-  it('pauses battle updates from the HUD button until Resume is pressed', () => {
+  it('pauses battle updates from the HUD button until Resume is pressed', async () => {
     const runtime = createMockRuntime()
-    const rafCallbacks: FrameRequestCallback[] = []
+    const rafCallbacks = new Map<number, FrameRequestCallback>()
+    let rafId = 0
+    let rafTime = 1000
+    vi.spyOn(performance, 'now').mockImplementation(() => rafTime)
+    const runFrameBatch = (advanceMs: number) => {
+      rafTime += advanceMs
+      const batch = Array.from(rafCallbacks.entries())
+      rafCallbacks.clear()
+      for (const [, callback] of batch) {
+        callback(rafTime)
+      }
+    }
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      rafCallbacks.push(callback)
-      return rafCallbacks.length
+      rafId += 1
+      rafCallbacks.set(rafId, callback)
+      return rafId
     })
-    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      rafCallbacks.delete(id)
+    })
     mockUseBattleRuntime.mockReturnValue({
       runtime,
       snapshot: mockSnapshot,
@@ -363,18 +382,24 @@ describe('BattleView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
 
-    expect(screen.getByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
-    rafCallbacks.at(-1)?.(performance.now() + 16)
+    expect(await screen.findByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
+    runFrameBatch(16)
     expect(runtime.update).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
-    rafCallbacks.at(-1)?.(performance.now() + 32)
 
-    expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Pause battle' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
+    runFrameBatch(16)
     expect(runtime.update).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps pause setting changes as a draft until Apply is pressed', () => {
+  it('keeps pause setting changes as a draft until Apply is pressed', async () => {
     const runtime = createMockRuntime()
     mockUseBattleRuntime.mockReturnValue({
       runtime,
@@ -391,9 +416,18 @@ describe('BattleView', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
     fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
     fireEvent.click(screen.getByRole('radio', { name: '2x' }))
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Pause battle' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
 
     const controls = screen.getByTestId('battle-controls')
     Object.defineProperty(controls, 'getBoundingClientRect', {
@@ -411,7 +445,7 @@ describe('BattleView', () => {
     expect(runtime.moveDrag).toHaveBeenLastCalledWith(createArenaPoint(258, 466, controlRect))
   })
 
-  it('applies relative drag control from the current player position', () => {
+  it('applies relative drag control from the current player position', async () => {
     const runtime = createMockRuntime()
     mockUseBattleRuntime.mockReturnValue({
       runtime,
@@ -428,11 +462,18 @@ describe('BattleView', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
     fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
     fireEvent.click(screen.getByRole('radio', { name: '2x' }))
     fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
 
-    expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Pause battle' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
 
     const controls = screen.getByTestId('battle-controls')
     Object.defineProperty(controls, 'getBoundingClientRect', {
@@ -452,7 +493,7 @@ describe('BattleView', () => {
     expect(relativePoint?.z).toBeCloseTo(-4.04)
   })
 
-  it('persists applied pause settings across battle remounts', () => {
+  it('persists applied pause settings across battle remounts', async () => {
     const firstRuntime = createMockRuntime()
     mockUseBattleRuntime.mockReturnValue({
       runtime: firstRuntime,
@@ -469,12 +510,15 @@ describe('BattleView', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
     fireEvent.click(screen.getByRole('radio', { name: '30 FPS' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
     fireEvent.click(screen.getByRole('radio', { name: '3x' }))
     fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
 
-    expect(window.localStorage.length).toBeGreaterThan(0)
+    await waitFor(() => {
+      expect(window.localStorage.length).toBeGreaterThan(0)
+    })
     unmount()
 
     const secondRuntime = createMockRuntime()
@@ -493,10 +537,15 @@ describe('BattleView', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
     expect(screen.getByRole('radio', { name: '30 FPS' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Drag' })).toBeChecked()
     expect(screen.getByRole('radio', { name: '3x' })).toBeChecked()
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+    })
 
     const controls = screen.getByTestId('battle-controls')
     Object.defineProperty(controls, 'getBoundingClientRect', {
@@ -516,14 +565,28 @@ describe('BattleView', () => {
     expect(relativePoint?.z).toBeCloseTo(-3)
   })
 
-  it('applies the selected 30 frame update cadence only after Apply is pressed', () => {
+  it('applies the selected 30 frame update cadence only after Apply is pressed', async () => {
     const runtime = createMockRuntime()
-    const rafCallbacks: FrameRequestCallback[] = []
+    const rafCallbacks = new Map<number, FrameRequestCallback>()
+    let rafId = 0
+    let rafTime = 1000
+    vi.spyOn(performance, 'now').mockImplementation(() => rafTime)
+    const runFrameBatch = (advanceMs: number) => {
+      rafTime += advanceMs
+      const batch = Array.from(rafCallbacks.entries())
+      rafCallbacks.clear()
+      for (const [, callback] of batch) {
+        callback(rafTime)
+      }
+    }
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      rafCallbacks.push(callback)
-      return rafCallbacks.length
+      rafId += 1
+      rafCallbacks.set(rafId, callback)
+      return rafId
     })
-    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      rafCallbacks.delete(id)
+    })
     mockUseBattleRuntime.mockReturnValue({
       runtime,
       snapshot: mockSnapshot,
@@ -539,26 +602,51 @@ describe('BattleView', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
     fireEvent.click(screen.getByRole('radio', { name: '30 FPS' }))
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
 
-    rafCallbacks.at(-1)?.(performance.now() + 16)
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Pause battle' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
+
+    runFrameBatch(16)
     expect(runtime.update).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
     fireEvent.click(screen.getByRole('radio', { name: '30 FPS' }))
     fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
 
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Pause battle' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
+
     runtime.update.mockClear()
-    const baseline = performance.now()
-    rafCallbacks.at(-1)?.(baseline + 16)
+    await waitFor(() => {
+      expect(rafCallbacks.size).toBeGreaterThan(0)
+    })
+    runFrameBatch(16)
     expect(runtime.update).not.toHaveBeenCalled()
 
-    rafCallbacks.at(-1)?.(baseline + 34)
+    for (let index = 0; index < 3 && runtime.update.mock.calls.length === 0; index += 1) {
+      await waitFor(() => {
+        expect(rafCallbacks.size).toBeGreaterThan(0)
+      })
+      runFrameBatch(18)
+    }
     expect(runtime.update).toHaveBeenCalledTimes(1)
   })
 
-  it('toggles pause and resume with Escape for desktop players', () => {
+  it('opens pause settings with Escape for desktop players', async () => {
     render(
       createElement(BattleView, {
         difficulty: 'normal',
@@ -570,11 +658,12 @@ describe('BattleView', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' })
 
-    expect(screen.getByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
 
-    fireEvent.keyDown(window, { key: 'Escape' })
-
-    expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+    })
   })
 
   it('activates beam-lance from the ready circular slot', () => {

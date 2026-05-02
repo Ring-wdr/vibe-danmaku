@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { overlay } from 'overlay-kit'
 
 import { BattleHud } from './BattleHud'
 import { BattleScene } from './BattleScene'
@@ -59,6 +60,124 @@ function createRelativeArenaPoint({
   }
 }
 
+function PauseSettingsOverlay({
+  initialSettings,
+  close,
+  unmount,
+}: {
+  initialSettings: BattleSettings
+  close: (settings: BattleSettings | null) => void
+  unmount: () => void
+}) {
+  const [draftSettings, setDraftSettings] = useState<BattleSettings>(initialSettings)
+
+  return (
+    <div className={styles.pauseOverlay} role="dialog" aria-modal="true" aria-label="Battle paused">
+      <div className={styles.pausePanel}>
+        <p className={styles.pauseEyebrow}>Paused</p>
+        <h1 className={styles.pauseTitle}>Battle paused</h1>
+        <form
+          className={styles.settingsForm}
+          onSubmit={(event) => {
+            event.preventDefault()
+            close(draftSettings)
+            unmount()
+          }}
+        >
+          <fieldset className={styles.settingGroup}>
+            <legend>Frame</legend>
+            <div className={styles.optionRow}>
+              <label className={styles.option}>
+                <input
+                  type="radio"
+                  name="frame-rate"
+                  checked={draftSettings.frameRate === 30}
+                  onChange={() =>
+                    setDraftSettings((current) => ({ ...current, frameRate: 30 }))
+                  }
+                />
+                <span>30 FPS</span>
+              </label>
+              <label className={styles.option}>
+                <input
+                  type="radio"
+                  name="frame-rate"
+                  checked={draftSettings.frameRate === 60}
+                  onChange={() =>
+                    setDraftSettings((current) => ({ ...current, frameRate: 60 }))
+                  }
+                />
+                <span>60 FPS</span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset className={styles.settingGroup}>
+            <legend>Control</legend>
+            <div className={styles.optionStack}>
+              <label className={styles.option}>
+                <input
+                  type="radio"
+                  name="control-mode"
+                  checked={draftSettings.controlMode === 'position'}
+                  onChange={() =>
+                    setDraftSettings((current) => ({ ...current, controlMode: 'position' }))
+                  }
+                />
+                <span>Position</span>
+              </label>
+              <label className={styles.option}>
+                <input
+                  type="radio"
+                  name="control-mode"
+                  checked={draftSettings.controlMode === 'drag'}
+                  onChange={() =>
+                    setDraftSettings((current) => ({ ...current, controlMode: 'drag' }))
+                  }
+                />
+                <span>Drag</span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset className={styles.settingGroup}>
+            <legend>Drag sensitive</legend>
+            <div className={styles.optionRow}>
+              {[1, 2, 3].map((sensitivity) => (
+                <label className={styles.option} key={sensitivity}>
+                  <input
+                    type="radio"
+                    name="drag-sensitivity"
+                    checked={draftSettings.dragSensitivity === sensitivity}
+                    onChange={() =>
+                      setDraftSettings((current) => ({
+                        ...current,
+                        dragSensitivity: sensitivity as DragSensitivity,
+                      }))
+                    }
+                  />
+                  <span>{sensitivity}x</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <button type="submit" className={styles.applyButton} aria-label="Apply settings">
+            Apply
+          </button>
+        </form>
+        <button
+          type="button"
+          className={styles.resumeButton}
+          onClick={() => {
+            close(null)
+            unmount()
+          }}
+        >
+          Resume
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function BattleView({
   character,
   difficulty,
@@ -78,8 +197,8 @@ export function BattleView({
   const deliveredResultRef = useRef<RunResult | null>(null)
   const isPausedRef = useRef(false)
   const [settings, setSettings] = useState<BattleSettings>(() => readBattleSettings())
-  const [draftSettings, setDraftSettings] = useState<BattleSettings>(settings)
   const settingsRef = useRef(settings)
+  const pauseOverlayOpenRef = useRef(false)
   const relativeDragRef = useRef<{
     originX: number
     originY: number
@@ -88,16 +207,41 @@ export function BattleView({
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
-    isPausedRef.current = isPaused
-    if (isPaused) {
-      setDraftSettings(settings)
-      runtime.endDrag()
-    }
-  }, [isPaused, runtime, settings])
-
-  useEffect(() => {
     settingsRef.current = settings
   }, [settings])
+
+  const openPauseSettings = useEffectEvent(async () => {
+    if (pauseOverlayOpenRef.current) {
+      return
+    }
+
+    pauseOverlayOpenRef.current = true
+    isPausedRef.current = true
+    setIsPaused(true)
+    runtime.endDrag()
+
+    try {
+      const selectedSettings = await overlay.openAsync<BattleSettings | null>(
+        ({ close, unmount }) => (
+          <PauseSettingsOverlay
+            initialSettings={settingsRef.current}
+            close={close}
+            unmount={unmount}
+          />
+        ),
+      )
+
+      if (selectedSettings) {
+        settingsRef.current = selectedSettings
+        setSettings(selectedSettings)
+        writeBattleSettings(selectedSettings)
+      }
+    } finally {
+      pauseOverlayOpenRef.current = false
+      isPausedRef.current = false
+      setIsPaused(false)
+    }
+  })
 
   useEffect(() => {
     let frame = 0
@@ -136,13 +280,7 @@ export function BattleView({
       }
 
       event.preventDefault()
-      setIsPaused((current) => {
-        if (!current) {
-          setDraftSettings(settingsRef.current)
-        }
-
-        return !current
-      })
+      void openPauseSettings()
     }
 
     window.addEventListener('keydown', onKeyDown)
@@ -257,112 +395,11 @@ export function BattleView({
         stage={stage}
         snapshot={snapshot}
         isPaused={isPaused}
-        onPause={() => setIsPaused(true)}
+        onPause={() => {
+          void openPauseSettings()
+        }}
         onActivateSpecial={(slotId) => runtime.activateSpecial(slotId)}
       />
-      {isPaused ? (
-        <div className={styles.pauseOverlay} role="dialog" aria-modal="true" aria-label="Battle paused">
-          <div className={styles.pausePanel}>
-            <p className={styles.pauseEyebrow}>Paused</p>
-            <h1 className={styles.pauseTitle}>Battle paused</h1>
-            <form
-              className={styles.settingsForm}
-              onSubmit={(event) => {
-                event.preventDefault()
-                setSettings(draftSettings)
-                writeBattleSettings(draftSettings)
-                setIsPaused(false)
-              }}
-            >
-              <fieldset className={styles.settingGroup}>
-                <legend>Frame</legend>
-                <div className={styles.optionRow}>
-                  <label className={styles.option}>
-                    <input
-                      type="radio"
-                      name="frame-rate"
-                      checked={draftSettings.frameRate === 30}
-                      onChange={() =>
-                        setDraftSettings((current) => ({ ...current, frameRate: 30 }))
-                      }
-                    />
-                    <span>30 FPS</span>
-                  </label>
-                  <label className={styles.option}>
-                    <input
-                      type="radio"
-                      name="frame-rate"
-                      checked={draftSettings.frameRate === 60}
-                      onChange={() =>
-                        setDraftSettings((current) => ({ ...current, frameRate: 60 }))
-                      }
-                    />
-                    <span>60 FPS</span>
-                  </label>
-                </div>
-              </fieldset>
-              <fieldset className={styles.settingGroup}>
-                <legend>Control</legend>
-                <div className={styles.optionStack}>
-                  <label className={styles.option}>
-                    <input
-                      type="radio"
-                      name="control-mode"
-                      checked={draftSettings.controlMode === 'position'}
-                      onChange={() =>
-                        setDraftSettings((current) => ({ ...current, controlMode: 'position' }))
-                      }
-                    />
-                    <span>Position</span>
-                  </label>
-                  <label className={styles.option}>
-                    <input
-                      type="radio"
-                      name="control-mode"
-                      checked={draftSettings.controlMode === 'drag'}
-                      onChange={() =>
-                        setDraftSettings((current) => ({ ...current, controlMode: 'drag' }))
-                      }
-                    />
-                    <span>Drag</span>
-                  </label>
-                </div>
-              </fieldset>
-              <fieldset className={styles.settingGroup}>
-                <legend>Drag sensitive</legend>
-                <div className={styles.optionRow}>
-                  {[1, 2, 3].map((sensitivity) => (
-                    <label className={styles.option} key={sensitivity}>
-                      <input
-                        type="radio"
-                        name="drag-sensitivity"
-                        checked={draftSettings.dragSensitivity === sensitivity}
-                        onChange={() =>
-                          setDraftSettings((current) => ({
-                            ...current,
-                            dragSensitivity: sensitivity as DragSensitivity,
-                          }))
-                        }
-                      />
-                      <span>{sensitivity}x</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <button type="submit" className={styles.applyButton} aria-label="Apply settings">
-                Apply
-              </button>
-            </form>
-            <button
-              type="button"
-              className={styles.resumeButton}
-              onClick={() => setIsPaused(false)}
-            >
-              Resume
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   )
 }
