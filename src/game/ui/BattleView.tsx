@@ -196,8 +196,7 @@ export function BattleView({
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const deliveredResultRef = useRef<RunResult | null>(null)
   const isPausedRef = useRef(false)
-  const [settings, setSettings] = useState<BattleSettings>(() => readBattleSettings())
-  const settingsRef = useRef(settings)
+  const [settings, setSettings] = useState<BattleSettings>(readBattleSettings)
   const pauseOverlayOpenRef = useRef(false)
   const relativeDragRef = useRef<{
     originX: number
@@ -209,10 +208,6 @@ export function BattleView({
   const deliverResult = useEffectEvent((result: RunResult) => {
     onComplete(result)
   })
-
-  useEffect(() => {
-    settingsRef.current = settings
-  }, [settings])
 
   const openPauseSettings = useEffectEvent(async () => {
     if (pauseOverlayOpenRef.current) {
@@ -228,7 +223,7 @@ export function BattleView({
       const selectedSettings = await overlay.openAsync<BattleSettings | null>(
         ({ close, unmount }) => (
           <PauseSettingsOverlay
-            initialSettings={settingsRef.current}
+            initialSettings={settings}
             close={close}
             unmount={unmount}
           />
@@ -236,7 +231,6 @@ export function BattleView({
       )
 
       if (selectedSettings) {
-        settingsRef.current = selectedSettings
         setSettings(selectedSettings)
         writeBattleSettings(selectedSettings)
       }
@@ -329,9 +323,8 @@ export function BattleView({
             return
           }
 
-          const activeSettings = settingsRef.current
           event.currentTarget.setPointerCapture(event.pointerId)
-          if (activeSettings.controlMode === 'drag') {
+          if (settings.controlMode === 'drag') {
             relativeDragRef.current = {
               originX: event.clientX,
               originY: event.clientY,
@@ -358,8 +351,7 @@ export function BattleView({
             return
           }
 
-          const activeSettings = settingsRef.current
-          if (activeSettings.controlMode === 'drag') {
+          if (settings.controlMode === 'drag') {
             const relativeDrag = relativeDragRef.current
             if (!relativeDrag) {
               return
@@ -373,7 +365,7 @@ export function BattleView({
                 originY: relativeDrag.originY,
                 originPlayer: relativeDrag.originPlayer,
                 rect,
-                sensitivity: activeSettings.dragSensitivity,
+                sensitivity: settings.dragSensitivity,
               }),
             )
             return
