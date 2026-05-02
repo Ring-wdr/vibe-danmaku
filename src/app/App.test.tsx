@@ -29,9 +29,8 @@ vi.mock('../game/ui/BattleView', () => ({
     onComplete?: (result: RunResult) => void
   }) => {
     mockBattleView(props)
-    const sessionContext = props.sessionActorRef?.getSnapshot().context
-    const stageNumber = sessionContext?.currentStageNumber ?? props.stage?.stageNumber
-    const difficulty = sessionContext?.difficulty ?? props.difficulty
+    const stageNumber = props.stage?.stageNumber
+    const difficulty = props.difficulty
 
     if (!stageNumber || !difficulty) {
       return <section aria-label="Mock battle missing stage" />
@@ -239,10 +238,10 @@ describe('App', () => {
 
     expect(mockBattleView).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        sessionActorRef: expect.objectContaining({ getSnapshot: expect.any(Function) }),
+        difficulty: 'normal',
+        stage: expect.objectContaining({ stageNumber: 1 }),
       }),
     )
-    expect(mockBattleView.mock.lastCall?.[0]).not.toHaveProperty('stage')
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
 
@@ -256,13 +255,10 @@ describe('App', () => {
     expect(screen.queryByRole('heading', { name: /burning ruin corridor/i })).not.toBeInTheDocument()
     expect(mockBattleView).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        sessionActorRef: expect.objectContaining({ getSnapshot: expect.any(Function) }),
+        difficulty: 'normal',
+        stage: expect.objectContaining({ stageNumber: 2 }),
       }),
     )
-    expect(mockBattleView.mock.lastCall?.[0].sessionActorRef.getSnapshot().context).toMatchObject({
-      currentStageNumber: 2,
-      difficulty: 'normal',
-    })
   })
 
   it('shows the final stage result after stage 2 victory', async () => {
@@ -298,7 +294,8 @@ describe('App', () => {
     await waitFor(() => {
       expect(mockBattleView).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          sessionActorRef: expect.objectContaining({ getSnapshot: expect.any(Function) }),
+          difficulty: 'normal',
+          stage: expect.objectContaining({ stageNumber: 2 }),
         }),
       )
     })

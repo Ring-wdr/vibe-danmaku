@@ -179,7 +179,11 @@ export function createStage2Definition(
   const scaledMidboss = scaleBossDefinition(baseMidboss, difficulty)
   const boss = scaleBossDefinition(baseBoss, difficulty)
   const midbossGateWaveCount = scaledMidboss.gateWaveCount
-  const { gateWaveCount: _gateWaveCount, ...midboss } = scaledMidboss
+  const midboss: BossDefinition = {
+    id: scaledMidboss.id,
+    hp: scaledMidboss.hp,
+    phases: scaledMidboss.phases,
+  }
   const firstHalf = waves.slice(0, midbossGateWaveCount)
   const secondHalf = waves.slice(midbossGateWaveCount)
   const firstHalfPlacements = baseWavePlacements.slice(0, midbossGateWaveCount)

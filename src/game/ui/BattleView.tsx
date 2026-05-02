@@ -1,6 +1,5 @@
 import { Canvas } from '@react-three/fiber'
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
-import { useSelector } from '@xstate/react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { overlay } from 'overlay-kit'
 
 import { BattleHud } from './BattleHud'
@@ -14,9 +13,6 @@ import {
 import { battleDragInputConfig, createArenaPoint } from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
 import styles from './BattleView.module.css'
-import type { BattleSessionActorRef } from '../../app/battleSessionMachine'
-import { resolvePlayableCharacter } from '../content/characters'
-import { createBattleStageDefinition } from '../content/battleStage'
 import type { ArenaPoint, CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
 
 export { battleDragInputConfig, createArenaPoint, getFlightAirflowDynamics } from './battleViewMath'
@@ -29,13 +25,12 @@ export {
 } from './battleEntities'
 
 type BattleViewProps = {
-  sessionActorRef?: BattleSessionActorRef
-  difficulty?: Difficulty
-  stage?: StageDefinition
-  character?: CharacterDefinition
+  difficulty: Difficulty
+  stage: StageDefinition
+  character: CharacterDefinition
   fastStage?: boolean
   invincible?: boolean
-  onComplete?: (result: RunResult) => void
+  onComplete: (result: RunResult) => void
 }
 
 type BattleViewRuntimeProps = {
@@ -198,55 +193,21 @@ function PauseSettingsOverlay({
 }
 
 export function BattleView({
-  character: providedCharacter,
-  sessionActorRef,
-  difficulty: providedDifficulty,
-  stage: providedStage,
+  character,
+  difficulty,
+  stage,
   fastStage,
   invincible,
   onComplete,
 }: BattleViewProps) {
-  const selectedStageNumber = useSelector(
-    sessionActorRef,
-    (snapshot) => snapshot?.context.currentStageNumber,
-  )
-  const selectedCharacterId = useSelector(
-    sessionActorRef,
-    (snapshot) => snapshot?.context.selectedCharacterId,
-  )
-  const selectedDifficulty = useSelector(
-    sessionActorRef,
-    (snapshot) => snapshot?.context.difficulty,
-  )
-  const selectedBattleSeed = useSelector(sessionActorRef, (snapshot) => snapshot?.context.battleSeed)
-  const difficulty = selectedDifficulty ?? providedDifficulty
-  const character = selectedCharacterId
-    ? resolvePlayableCharacter(selectedCharacterId)
-    : providedCharacter
-  const stage = useMemo(
-    () =>
-      selectedStageNumber && difficulty
-        ? createBattleStageDefinition(selectedStageNumber, difficulty, { fastStage })
-        : providedStage,
-    [difficulty, fastStage, providedStage, selectedStageNumber],
-  )
-  const completeBattle = onComplete ?? ((result: RunResult) => {
-    sessionActorRef?.send({ type: 'BATTLE_COMPLETED', result })
-  })
-
-  if (!difficulty || !stage || !character) {
-    throw new Error('BattleView requires battle session actor ref or explicit battle props')
-  }
-
   return (
     <BattleViewRuntime
-      key={`${difficulty}-${character.id}-${stage.id}-${selectedBattleSeed ?? 'direct'}-${fastStage}-${invincible}`}
       difficulty={difficulty}
       stage={stage}
       character={character}
       fastStage={fastStage}
       invincible={invincible}
-      onComplete={completeBattle}
+      onComplete={onComplete}
     />
   )
 }

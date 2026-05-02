@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMachine } from '@xstate/react'
 import { parseAsBoolean, useQueryStates } from 'nuqs'
 
-import { BattleLoadingScreen } from './BattleLoadingScreen'
+import { BattlePhase } from './BattlePhase'
 import { battleSessionMachine } from './battleSessionMachine'
 import { readLastCharacterId } from './characterSelectionStorage'
 import { OrientationLock } from './OrientationLock'
@@ -14,13 +14,6 @@ import { TitleScreen } from './screens/TitleScreen'
 import { cx } from './classNames'
 import styles from './App.module.css'
 import { resolveCharacterId } from '../game/content/characters'
-
-const loadBattleViewModule = () => import('../game/ui/BattleView')
-
-const BattleView = lazy(async () => {
-  const module = await loadBattleViewModule()
-  return { default: module.BattleView }
-})
 
 type Viewport = {
   width: number
@@ -47,7 +40,7 @@ function readViewport(initialViewport?: Viewport): Viewport {
 }
 
 export function App({ initialViewport }: AppProps) {
-  const initialSelectedCharacterId = useMemo(() => resolveCharacterId(readLastCharacterId()), [])
+  const [initialSelectedCharacterId] = useState(() => resolveCharacterId(readLastCharacterId()))
   const [sessionSnapshot, , sessionActorRef] = useMachine(battleSessionMachine, {
     input: {
       selectedCharacterId: initialSelectedCharacterId,
@@ -73,28 +66,13 @@ export function App({ initialViewport }: AppProps) {
     return () => window.removeEventListener('resize', onResize)
   }, [initialViewport])
 
-  if (sessionSnapshot.matches('battle')) {
+  if (sessionSnapshot.matches('battleLoading') || sessionSnapshot.matches('battle')) {
     return (
-      <main className={styles.battleRoot}>
-        <Suspense fallback={<div className={styles.battleLoadingFallback}>Loading Battle</div>}>
-          <BattleView
-            sessionActorRef={sessionActorRef}
-            fastStage={debugFlags.fastStage}
-            invincible={debugFlags.invincible}
-          />
-        </Suspense>
-      </main>
-    )
-  }
-
-  if (sessionSnapshot.matches('battleLoading')) {
-    return (
-      <main className={styles.battleRoot}>
-        <BattleLoadingScreen
-          sessionActorRef={sessionActorRef}
-          fastStage={debugFlags.fastStage}
-        />
-      </main>
+      <BattlePhase
+        sessionActorRef={sessionActorRef}
+        fastStage={debugFlags.fastStage}
+        invincible={debugFlags.invincible}
+      />
     )
   }
 

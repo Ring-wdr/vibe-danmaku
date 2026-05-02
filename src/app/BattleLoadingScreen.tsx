@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSelector } from '@xstate/react'
+import { useEffect, useState } from 'react'
 
 import type { BattleSessionActorRef } from './battleSessionMachine'
 import {
@@ -8,31 +7,21 @@ import {
   type BattleAssetProgress,
 } from './battleAssetPreload'
 import styles from './BattleLoadingScreen.module.css'
-import { resolvePlayableCharacter } from '../game/content/characters'
-import { createBattleStageDefinition } from '../game/content/battleStage'
+import type { CharacterDefinition, StageDefinition } from '../game/types'
 
 const loadBattleViewModule = () => import('../game/ui/BattleView')
 
 type BattleLoadingScreenProps = {
   sessionActorRef: BattleSessionActorRef
-  fastStage?: boolean
+  stage: StageDefinition
+  character: CharacterDefinition
 }
 
-export function BattleLoadingScreen({ sessionActorRef, fastStage }: BattleLoadingScreenProps) {
-  const difficulty = useSelector(sessionActorRef, (snapshot) => snapshot.context.difficulty)
-  const selectedCharacterId = useSelector(
-    sessionActorRef,
-    (snapshot) => snapshot.context.selectedCharacterId,
-  )
-  const stageNumber = useSelector(
-    sessionActorRef,
-    (snapshot) => snapshot.context.currentStageNumber,
-  )
-  const character = resolvePlayableCharacter(selectedCharacterId)
-  const stage = useMemo(
-    () => createBattleStageDefinition(stageNumber, difficulty, { fastStage }),
-    [difficulty, fastStage, stageNumber],
-  )
+export function BattleLoadingScreen({
+  sessionActorRef,
+  stage,
+  character,
+}: BattleLoadingScreenProps) {
   const [retrySeed, setRetrySeed] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [progress, setProgress] = useState<BattleAssetProgress>({
@@ -82,7 +71,7 @@ export function BattleLoadingScreen({ sessionActorRef, fastStage }: BattleLoadin
             loadedItems: items.length,
             totalItems: items.length,
             ratio: 1,
-          currentLabel: 'Ready',
+            currentLabel: 'Ready',
           })
           sessionActorRef.send({ type: 'BATTLE_ASSETS_READY' })
         }
