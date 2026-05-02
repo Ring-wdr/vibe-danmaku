@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { lyraAerCharacter, vesperNoireCharacter } from '../content/characters'
+import {
+  lyraAerCharacter,
+  reinaShiroganeCharacter,
+  vesperNoireCharacter,
+} from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
 import type {
@@ -513,6 +517,133 @@ describe('createBattleRuntime', () => {
       'panel',
     ])
     expect(runtime.getSnapshot().playerShots).toBe(1)
+  })
+
+  it('fires only Reina central sword shots without launching the orbiting swords', () => {
+    const contactStage: StageDefinition = {
+      ...createStageDefinition('normal'),
+      events: [
+        {
+          id: 'orbit-contact-wave',
+          trigger: { type: 'time', at: 0 },
+          once: true,
+          actions: [
+            {
+              type: 'spawnWave',
+              wave: {
+                id: 'orbit-contact-wave',
+                kind: 'brass-cloud-scout',
+                archetype: 'scout',
+                variant: 'brass-cloud-scout',
+                atlasId: 'enemy-brass-cloud',
+                frameId: 'scout',
+                count: 3,
+                spacing: 0.68,
+                hp: 6,
+                movement: {
+                  type: 'enterAndStrafe',
+                  entrySpeed: 120,
+                  holdZ: -1.62,
+                  strafeSpeed: 0,
+                  strafeRange: 0,
+                },
+                resolution: { type: 'allInactive' },
+                scale: 0.5,
+                hitRadius: 0.32,
+                pattern: {
+                  shape: 'fan',
+                  count: 0,
+                  interval: 99,
+                  speed: 0,
+                  spread: 0,
+                  life: 0,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    }
+    const runtime = createRuntime({
+      stage: contactStage,
+      character: {
+        ...reinaShiroganeCharacter,
+        shot: {
+          ...reinaShiroganeCharacter.shot,
+          power: 0,
+        },
+      },
+    })
+
+    runtime.update(0.08)
+
+    const snapshot = runtime.getSnapshot()
+    const playerBullets = snapshot.bullets.filter((bullet) => bullet.source === 'player')
+
+    expect(playerBullets).toHaveLength(1)
+    expect(playerBullets[0]?.kind).toBe('sword')
+  })
+
+  it('lets Reina orbiting swords reach enemies outside the former tight halo', () => {
+    const wideContactStage: StageDefinition = {
+      ...createStageDefinition('normal'),
+      events: [
+        {
+          id: 'wide-orbit-contact-wave',
+          trigger: { type: 'time', at: 0 },
+          once: true,
+          actions: [
+            {
+              type: 'spawnWave',
+              wave: {
+                id: 'wide-orbit-contact-wave',
+                kind: 'brass-cloud-scout',
+                archetype: 'scout',
+                variant: 'brass-cloud-scout',
+                atlasId: 'enemy-brass-cloud',
+                frameId: 'scout',
+                count: 1,
+                spacing: 0,
+                hp: 4,
+                movement: {
+                  type: 'enterAndStrafe',
+                  entrySpeed: 160,
+                  holdZ: -1.63,
+                  strafeSpeed: 0,
+                  strafeRange: 0,
+                },
+                resolution: { type: 'allInactive' },
+                scale: 0.5,
+                hitRadius: 0.28,
+                pattern: {
+                  shape: 'fan',
+                  count: 0,
+                  interval: 99,
+                  speed: 0,
+                  spread: 0,
+                  life: 0,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    }
+    const runtime = createRuntime({
+      stage: wideContactStage,
+      character: {
+        ...reinaShiroganeCharacter,
+        shot: {
+          ...reinaShiroganeCharacter.shot,
+          power: 0,
+        },
+      },
+    })
+
+    runtime.beginDrag({ x: -2.2, z: -1.85 })
+    runtime.update(0.05)
+
+    expect(runtime.getSnapshot().enemies).toHaveLength(0)
   })
 
   it('lets the player reach wider side lanes while dragging', () => {

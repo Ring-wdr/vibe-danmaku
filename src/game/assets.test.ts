@@ -28,5 +28,8 @@ describe('gameAssets', () => {
     expect(gameAssets.vesperNoirePanelUrl).toMatch(/players\/vesper-noire-panel/)
     expect(gameAssets.vesperNoireSheetUrl).toMatch(/players\/vesper-noire-sprite-sheet/)
     expect(gameAssets.vesperNoirePortraitUrl).toMatch(/ui\/ui-vesper-noire-portrait/)
+    expect(gameAssets.reinaShiroganeSheetUrl).toMatch(/players\/reina-shirogane-sprite-sheet/)
+    expect(gameAssets.reinaShiroganeSwordUrl).toMatch(/players\/reina-shirogane-sword/)
+    expect(gameAssets.reinaShiroganePortraitUrl).toMatch(/ui\/ui-reina-shirogane-portrait/)
   })
 })

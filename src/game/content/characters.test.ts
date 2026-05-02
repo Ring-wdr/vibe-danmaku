@@ -6,15 +6,16 @@ import {
   getCharacterSelectRoster,
   isPlayableCharacterId,
   playableCharacters,
+  reinaShiroganeCharacter,
   resolveCharacterId,
   resolvePlayableCharacter,
   vesperNoireCharacter,
 } from './characters'
 
 describe('character catalog', () => {
-  it('registers Lyra and Vesper as normal playable characters', () => {
+  it('registers Lyra, Vesper, and Reina as normal playable characters', () => {
     expect(defaultCharacterId).toBe('lyra-aer')
-    expect(playableCharacters).toHaveLength(2)
+    expect(playableCharacters).toHaveLength(3)
     expect(playableCharacters[0]).toMatchObject({
       id: 'lyra-aer',
       name: 'Lyra Aer',
@@ -43,6 +44,34 @@ describe('character catalog', () => {
       expect.objectContaining({ offsetX: -0.62, textureUrl: expect.stringContaining('vesper-noire-panel') }),
       expect.objectContaining({ offsetX: 0.62, textureUrl: expect.stringContaining('vesper-noire-panel') }),
     ])
+    expect(playableCharacters[2]).toBe(reinaShiroganeCharacter)
+    expect(playableCharacters[2]).toMatchObject({
+      id: 'reina-shirogane',
+      name: 'Reina Shirogane',
+      title: 'Crimson Blades',
+      frameCount: 4,
+      isFallback: false,
+    })
+    expect(reinaShiroganeCharacter.shot.sidePanelShots).toBeUndefined()
+    expect(reinaShiroganeCharacter.sidePanels).toEqual([
+      expect.objectContaining({
+        textureUrl: expect.stringContaining('reina-shirogane-sword'),
+        orbit: expect.objectContaining({ phase: 0 }),
+      }),
+      expect.objectContaining({
+        textureUrl: expect.stringContaining('reina-shirogane-sword'),
+        orbit: expect.objectContaining({ phase: (Math.PI * 2) / 3 }),
+      }),
+      expect.objectContaining({
+        textureUrl: expect.stringContaining('reina-shirogane-sword'),
+        orbit: expect.objectContaining({ phase: (Math.PI * 4) / 3 }),
+      }),
+    ])
+    for (const panel of reinaShiroganeCharacter.sidePanels ?? []) {
+      expect(panel.orbit?.radiusX).toBeGreaterThanOrEqual(2.04)
+      expect(panel.orbit?.radiusZ).toBeGreaterThanOrEqual(0.72)
+      expect(panel.orbit?.hitRadius).toBeGreaterThanOrEqual(0.32)
+    }
   })
 
   it('resolves empty selection to the default character and invalid saved ids to fallback', () => {
@@ -67,20 +96,24 @@ describe('character catalog', () => {
   it('keeps the fallback out of the normal roster until it is the active selection', () => {
     expect(isPlayableCharacterId('lyra-aer')).toBe(true)
     expect(isPlayableCharacterId('vesper-noire')).toBe(true)
+    expect(isPlayableCharacterId('reina-shirogane')).toBe(true)
     expect(isPlayableCharacterId(fallbackCharacter.id)).toBe(false)
     expect(getCharacterSelectRoster('lyra-aer').map((character) => character.id)).toEqual([
       'lyra-aer',
       'vesper-noire',
+      'reina-shirogane',
     ])
     expect(getCharacterSelectRoster(fallbackCharacter.id).map((character) => character.id)).toEqual([
       fallbackCharacter.id,
       'lyra-aer',
       'vesper-noire',
+      'reina-shirogane',
     ])
     expect(getCharacterSelectRoster('deleted-character').map((character) => character.id)).toEqual([
       fallbackCharacter.id,
       'lyra-aer',
       'vesper-noire',
+      'reina-shirogane',
     ])
   })
 })

@@ -49,6 +49,20 @@ const runtimeAssets = [
     alphaQuality: 92,
   },
   {
+    source: 'players/reina-shirogane-sprite-sheet.png',
+    output: 'players/reina-shirogane-sprite-sheet.webp',
+    width: 1024,
+    quality: 74,
+    alphaQuality: 86,
+  },
+  {
+    source: 'players/reina-shirogane-sword.png',
+    output: 'players/reina-shirogane-sword.webp',
+    width: 208,
+    quality: 82,
+    alphaQuality: 92,
+  },
+  {
     source: 'backgrounds/burning-ruins/stage2-ruin-floor.png',
     output: 'backgrounds/burning-ruins/stage2-ruin-floor.webp',
     width: 1024,
@@ -86,6 +100,13 @@ const runtimeAssets = [
   {
     source: 'ui/ui-vesper-noire-portrait.png',
     output: 'ui/ui-vesper-noire-portrait.webp',
+    width: 480,
+    quality: 76,
+    alphaQuality: 88,
+  },
+  {
+    source: 'ui/ui-reina-shirogane-portrait.png',
+    output: 'ui/ui-reina-shirogane-portrait.webp',
     width: 480,
     quality: 76,
     alphaQuality: 88,

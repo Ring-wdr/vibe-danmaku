@@ -157,6 +157,7 @@ export type CharacterDefinition = {
     interval: number
     speed: number
     power: number
+    projectileKind?: 'primary' | 'sword'
     sidePanelShots?: {
       offsetX: number
       speed?: number
@@ -170,6 +171,14 @@ export type CharacterDefinition = {
     offsetZ: number
     scale: number
     textureUrl: string
+    orbit?: {
+      radiusX: number
+      radiusZ: number
+      angularSpeed: number
+      phase: number
+      hitRadius: number
+      damagePerSecond: number
+    }
   }[]
   special?: CharacterSpecialDefinition
 }
@@ -226,7 +235,7 @@ export type RenderBoss = {
 export type RenderBullet = {
   id: string
   source: 'player' | 'enemy'
-  kind?: 'primary' | 'panel' | 'special-orb'
+  kind?: 'primary' | 'sword' | 'panel' | 'special-orb'
   position: ArenaPoint
   radius: number
   glow: number

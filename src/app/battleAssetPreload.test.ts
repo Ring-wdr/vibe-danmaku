@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { lyraAerCharacter, vesperNoireCharacter } from '../game/content/characters'
+import {
+  lyraAerCharacter,
+  reinaShiroganeCharacter,
+  vesperNoireCharacter,
+} from '../game/content/characters'
 import { createStageDefinition } from '../game/content/stage1'
 import { createStage2Definition } from '../game/content/stage2'
 import { getBattleAssetPreloadItems } from './battleAssetPreload'
@@ -73,5 +77,21 @@ describe('getBattleAssetPreloadItems', () => {
         url: vesperNoireCharacter.sidePanels?.[0]?.textureUrl,
       }),
     )
+  })
+
+  it('deduplicates Reina orbiting sword textures before battle entry', () => {
+    const items = getBattleAssetPreloadItems({
+      stage: createStageDefinition('normal'),
+      character: reinaShiroganeCharacter,
+    })
+
+    const swordItems = items.filter((item) => item.url.includes('reina-shirogane-sword'))
+
+    expect(swordItems).toHaveLength(1)
+    expect(swordItems[0]).toMatchObject({
+      id: 'player-side-panel-1',
+      label: 'Reina Shirogane side panel',
+      url: reinaShiroganeCharacter.sidePanels?.[0]?.textureUrl,
+    })
   })
 })

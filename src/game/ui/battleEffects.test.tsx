@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { SparkleMesh } from './battleEffects'
+import { BulletMesh, getBulletRotationStep, SparkleMesh } from './battleEffects'
 
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
@@ -31,5 +31,50 @@ describe('SparkleMesh', () => {
     } finally {
       consoleError.mockRestore()
     }
+  })
+})
+
+describe('getBulletRotationStep', () => {
+  it('spins player sword shots faster than regular player bullets', () => {
+    const swordStep = getBulletRotationStep({
+      id: 'sword-shot',
+      source: 'player',
+      kind: 'sword',
+      position: { x: 0, z: 0 },
+      radius: 0.08,
+      glow: 1.2,
+    })
+    const primaryStep = getBulletRotationStep({
+      id: 'primary-shot',
+      source: 'player',
+      kind: 'primary',
+      position: { x: 0, z: 0 },
+      radius: 0.08,
+      glow: 1.2,
+    })
+
+    expect(swordStep).toBeGreaterThanOrEqual(primaryStep * 3)
+  })
+})
+
+describe('BulletMesh', () => {
+  it('renders player sword shots with a pointed blade tip', () => {
+    const { container } = render(
+      <BulletMesh
+        bullet={{
+          id: 'sword-shot',
+          source: 'player',
+          kind: 'sword',
+          position: { x: 0, z: 0 },
+          radius: 0.08,
+          glow: 1.2,
+        }}
+        isPaused={false}
+      />,
+    )
+
+    const tipGeometry = container.querySelector('conegeometry')
+
+    expect(tipGeometry?.getAttribute('args')).toContain(',3')
   })
 })

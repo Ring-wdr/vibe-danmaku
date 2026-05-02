@@ -18,11 +18,12 @@ import type {
   StageEvent,
 } from '../types'
 import { battleItems, getAttackMultiplier } from '../content/items'
+import { getSidePanelPosition } from '../content/sidePanelOrbit'
 
 type RuntimeBullet = {
   id: string
   source: 'player' | 'enemy'
-  kind?: 'primary' | 'panel' | 'special-orb'
+  kind?: 'primary' | 'sword' | 'panel' | 'special-orb'
   x: number
   z: number
   vx: number
@@ -745,6 +746,47 @@ export function createBattleRuntime({
     enemy.hitFlashFor = enemyFeedbackConfig.hitFlashDuration
   }
 
+  const damageOrbitingSidePanels = (delta: number) => {
+    const attackMultiplier = getAttackMultiplier(powerupLevel)
+
+    for (const panel of pilot.sidePanels ?? []) {
+      if (!panel.orbit) {
+        continue
+      }
+
+      const panelPosition = getSidePanelPosition({
+        battleElapsed: elapsed,
+        panel,
+        player: { x: player.x, z: player.z },
+      })
+      const damage = panel.orbit.damagePerSecond * delta * attackMultiplier
+
+      for (let enemyIndex = enemies.length - 1; enemyIndex >= 0; enemyIndex -= 1) {
+        const enemy = enemies[enemyIndex]
+        const hitDistance = panel.orbit.hitRadius + enemy.hitRadius
+
+        if (distanceSquared(panelPosition, { x: enemy.x, z: enemy.z }) >= hitDistance * hitDistance) {
+          continue
+        }
+
+        damageEnemy(enemy, damage)
+        if (enemy.hp <= 0) {
+          recordEnemyDefeated(enemy)
+          addSpecialCharge(beamLanceConfig.enemyDefeatCharge)
+          spawnDestructionEffect(enemy)
+          enemies.splice(enemyIndex, 1)
+        }
+      }
+
+      for (const boss of bosses) {
+        const hitDistance = panel.orbit.hitRadius + 0.44
+        if (distanceSquared(panelPosition, { x: boss.x, z: boss.z }) < hitDistance * hitDistance) {
+          boss.hp -= damage
+        }
+      }
+    }
+  }
+
   const explodeEnergyOrb = (orb: RuntimeBullet) => {
     if (special.kind !== 'energyOrb') {
       return
@@ -1358,7 +1400,7 @@ export function createBattleRuntime({
     player.shotTimer -= delta
     if (player.shotTimer <= 0) {
       addPlayerBullet({
-        kind: 'primary',
+        kind: pilot.shot.projectileKind ?? 'primary',
         x: player.x,
         z: player.z + 0.22,
         speed: pilot.shot.speed,
@@ -1383,6 +1425,7 @@ export function createBattleRuntime({
 
     updateSpecial(delta)
     updateEnemies(delta)
+    damageOrbitingSidePanels(delta)
     updateSpawnGroupResolutions()
     updateBosses(delta)
     updateBullets(delta)

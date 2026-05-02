@@ -32,6 +32,10 @@ function getBulletPalette(bullet: RenderBullet): BulletPalette {
     return { aura: '#b56bff', body: '#f26bff', core: '#fff0ff', accent: '#65f5ff' }
   }
 
+  if (bullet.kind === 'sword') {
+    return { aura: '#f04a5f', body: '#e8f7ff', core: '#ffffff', accent: '#d8a54d' }
+  }
+
   if (bullet.source === 'player') {
     return { aura: '#ffb45d', body: '#ffd28a', core: '#fff7d7', accent: '#f8e27a' }
   }
@@ -68,8 +72,65 @@ export function BulletMesh({ bullet, isPaused }: { bullet: RenderBullet; isPause
 
     const pulse = 1 + Math.sin(clock.elapsedTime * 8 + phase * Math.PI * 2) * 0.08 * glow
     groupRef.current.scale.setScalar(pulse)
-    groupRef.current.rotation.z += 0.018 * glow
+    groupRef.current.rotation.z += getBulletRotationStep(bullet)
   })
+
+  if (bullet.kind === 'sword') {
+    return (
+      <group ref={groupRef} position={arenaPointToView(bullet.position, 0.76)}>
+        <mesh>
+          <circleGeometry args={[baseRadius * 2.4, 32]} />
+          <meshBasicMaterial
+            color={palette.aura}
+            transparent
+            opacity={0.18 + glow * 0.08}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh position={[0, baseRadius * 0.58, 0.02]}>
+          <planeGeometry args={[baseRadius * 0.86, baseRadius * 5.8]} />
+          <meshBasicMaterial
+            color={palette.body}
+            transparent
+            opacity={0.78}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh position={[0, baseRadius * 1.02, 0.04]}>
+          <planeGeometry args={[baseRadius * 0.3, baseRadius * 4.5]} />
+          <meshBasicMaterial
+            color={palette.core}
+            transparent
+            opacity={0.9}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh position={[0, baseRadius * 3.92, 0.045]}>
+          <coneGeometry args={[baseRadius * 0.48, baseRadius * 1.08, 3]} />
+          <meshBasicMaterial
+            color={palette.core}
+            transparent
+            opacity={0.92}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+        <mesh position={[0, -baseRadius * 1.8, 0.05]}>
+          <boxGeometry args={[baseRadius * 1.65, baseRadius * 0.34, baseRadius * 0.08]} />
+          <meshBasicMaterial
+            color={palette.accent}
+            transparent
+            opacity={0.86}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+    )
+  }
 
   return (
     <group
@@ -130,6 +191,12 @@ export function BulletMesh({ bullet, isPaused }: { bullet: RenderBullet; isPause
       ) : null}
     </group>
   )
+}
+
+export function getBulletRotationStep(bullet: RenderBullet) {
+  const glow = Math.min(1.8, Math.max(0.75, bullet.glow))
+
+  return (bullet.kind === 'sword' ? 0.072 : 0.018) * glow
 }
 
 export function SpecialBeamMesh({

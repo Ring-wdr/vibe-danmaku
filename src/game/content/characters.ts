@@ -96,6 +96,78 @@ export const vesperNoireCharacter: PlayableCharacter = {
   isFallback: false,
 }
 
+export const reinaShiroganeCharacter: PlayableCharacter = {
+  id: 'reina-shirogane',
+  name: 'Reina Shirogane',
+  title: 'Crimson Blades',
+  spriteSheetUrl: gameAssets.reinaShiroganeSheetUrl,
+  portraitUrl: gameAssets.reinaShiroganePortraitUrl,
+  description:
+    'Calm sword saint with a central flying blade shot and three orbiting swords that punish close enemies.',
+  frameCount: 4,
+  moveRadius: {
+    x: 3.95,
+    minZ: -3.15,
+    maxZ: -0.4,
+  },
+  shot: {
+    interval: 0.14,
+    speed: 5.9,
+    power: 11,
+    projectileKind: 'sword',
+  },
+  sidePanels: [
+    {
+      offsetX: 0,
+      offsetZ: 0.22,
+      scale: 0.5,
+      textureUrl: gameAssets.reinaShiroganeSwordUrl,
+      orbit: {
+        radiusX: 2.4,
+        radiusZ: 0.85,
+        angularSpeed: 3.2,
+        phase: 0,
+        hitRadius: 0.36,
+        damagePerSecond: 88,
+      },
+    },
+    {
+      offsetX: 0,
+      offsetZ: 0.22,
+      scale: 0.5,
+      textureUrl: gameAssets.reinaShiroganeSwordUrl,
+      orbit: {
+        radiusX: 2.4,
+        radiusZ: 0.85,
+        angularSpeed: 3.2,
+        phase: (Math.PI * 2) / 3,
+        hitRadius: 0.36,
+        damagePerSecond: 88,
+      },
+    },
+    {
+      offsetX: 0,
+      offsetZ: 0.22,
+      scale: 0.5,
+      textureUrl: gameAssets.reinaShiroganeSwordUrl,
+      orbit: {
+        radiusX: 2.4,
+        radiusZ: 0.85,
+        angularSpeed: 3.2,
+        phase: (Math.PI * 4) / 3,
+        hitRadius: 0.36,
+        damagePerSecond: 88,
+      },
+    },
+  ],
+  stats: [
+    { label: 'Mobility', value: 'Poised', ratio: 0.82 },
+    { label: 'Blade Orbit', value: 'Triple', ratio: 0.92 },
+    { label: 'Reach', value: 'Piercing', ratio: 0.86 },
+  ],
+  isFallback: false,
+}
+
 export const fallbackCharacter: PlayableCharacter = {
   ...lyraAerCharacter,
   id: 'fallback-pilot',
@@ -105,7 +177,11 @@ export const fallbackCharacter: PlayableCharacter = {
   isFallback: true,
 }
 
-export const playableCharacters = [lyraAerCharacter, vesperNoireCharacter] as const
+export const playableCharacters = [
+  lyraAerCharacter,
+  vesperNoireCharacter,
+  reinaShiroganeCharacter,
+] as const
 export const defaultCharacterId = lyraAerCharacter.id
 
 const playableCharacterMap = new Map<string, PlayableCharacter>(

@@ -7,6 +7,7 @@ import {
   enemyBrassCloudAtlasSize,
   type AtlasFrame,
 } from '../content/enemyBrassCloudAtlas'
+import { getSidePanelPosition, getSidePanelTilt } from '../content/sidePanelOrbit'
 import { arenaPointToView } from './battleViewMath'
 import { RestoredTextureMaterial, useLoadedTexture } from './battleTexture'
 import {
@@ -245,18 +246,15 @@ function ItemDropSprite({ drop }: { drop: RenderItemDrop }) {
 function PlayerSidePanel({
   position,
   scale,
-  side,
-  battleElapsed,
+  tilt,
   textureUrl,
 }: {
   position: [number, number, number]
   scale: number
-  side: -1 | 1
-  battleElapsed: number
+  tilt: number
   textureUrl: string
 }) {
   const texture = useLoadedTexture(textureUrl)
-  const tilt = side * 0.24 + Math.sin(battleElapsed * 4.2 + side) * 0.06
 
   if (!texture) {
     return (
@@ -369,22 +367,26 @@ export function RuntimeEntityLayer({
         spriteSheetUrl={character.spriteSheetUrl}
         specialActive={snapshot.specialSlots.some((slot) => slot.active)}
       />
-      {(character.sidePanels ?? []).map((panel) => (
-        <PlayerSidePanel
-          key={panel.offsetX}
-          battleElapsed={snapshot.elapsed}
-          position={arenaPointToView(
-            {
-              x: snapshot.player.position.x + panel.offsetX,
-              z: snapshot.player.position.z + panel.offsetZ,
-            },
-            0.68,
-          )}
-          scale={panel.scale}
-          side={panel.offsetX < 0 ? -1 : 1}
-          textureUrl={panel.textureUrl}
-        />
-      ))}
+      {(character.sidePanels ?? []).map((panel, index) => {
+        const side = panel.offsetX < 0 || (panel.offsetX === 0 && index % 2 === 1) ? -1 : 1
+
+        return (
+          <PlayerSidePanel
+            key={`${panel.textureUrl}-${index}`}
+            position={arenaPointToView(
+              getSidePanelPosition({
+                battleElapsed: snapshot.elapsed,
+                panel,
+                player: snapshot.player.position,
+              }),
+              0.68,
+            )}
+            scale={panel.scale}
+            tilt={getSidePanelTilt({ battleElapsed: snapshot.elapsed, panel, side })}
+            textureUrl={panel.textureUrl}
+          />
+        )
+      })}
       {snapshot.enemies.map((enemy) => (
         <EnemySprite
           key={enemy.id}

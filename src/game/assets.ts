@@ -8,9 +8,12 @@ import stage2MidbossCoreUrl from '../assets/generated/bosses/stage2-midboss-core
 import enemyBrassCloudAtlasUrl from '../assets/generated/enemies/enemy-brass-cloud-atlas.webp'
 import itemAtlasUrl from '../assets/generated/items/item-atlas.webp'
 import playerSheetUrl from '../assets/generated/players/player-battle-sprite-sheet.webp'
+import reinaShiroganeSwordUrl from '../assets/generated/players/reina-shirogane-sword.webp'
+import reinaShiroganeSheetUrl from '../assets/generated/players/reina-shirogane-sprite-sheet.webp'
 import vesperNoirePanelUrl from '../assets/generated/players/vesper-noire-panel.webp'
 import vesperNoireSheetUrl from '../assets/generated/players/vesper-noire-sprite-sheet.webp'
 import playerPortraitUrl from '../assets/generated/ui/ui-player-portrait.webp'
+import reinaShiroganePortraitUrl from '../assets/generated/ui/ui-reina-shirogane-portrait.webp'
 import vesperNoirePortraitUrl from '../assets/generated/ui/ui-vesper-noire-portrait.webp'
 import uiOrnamentUrl from '../assets/generated/ui/ui-ornament.webp'
 
@@ -22,6 +25,9 @@ export const gameAssets = {
   itemAtlasUrl,
   playerPortraitUrl,
   playerSheetUrl,
+  reinaShiroganePortraitUrl,
+  reinaShiroganeSheetUrl,
+  reinaShiroganeSwordUrl,
   stage2BossCoreUrl,
   stage2MidbossCoreUrl,
   stage2RuinFloorUrl,
