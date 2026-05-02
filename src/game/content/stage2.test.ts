@@ -77,4 +77,29 @@ describe('createStage2Definition', () => {
       expect(phase.pattern.count).toBeGreaterThan(easy.boss.phases[index]!.pattern.count)
     })
   })
+
+  it('expresses the midboss and second-half waves through explicit triggers', () => {
+    const stage = createStage2Definition('normal')
+    const midbossEvent = stage.events?.find((event) => event.id === 'midboss-ember-gate-spawn')
+    const wave7Event = stage.events?.find((event) => event.id === 'wave-7-event')
+    const finalBossEvent = stage.events?.find(
+      (event) => event.id === 'boss-ash-citadel-core-spawn',
+    )
+
+    expect(midbossEvent?.trigger).toEqual({
+      type: 'afterResolved',
+      target: 'wave-6',
+      delay: 1.5,
+    })
+    expect(wave7Event?.trigger).toEqual({
+      type: 'afterDefeated',
+      target: 'midboss-ember-gate',
+      delay: 1.5,
+    })
+    expect(finalBossEvent?.trigger).toEqual({
+      type: 'afterResolved',
+      target: 'wave-12',
+      delay: 2,
+    })
+  })
 })

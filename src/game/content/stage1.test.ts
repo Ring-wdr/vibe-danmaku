@@ -2,6 +2,24 @@ import { describe, expect, it } from 'vitest'
 
 import { createStageDefinition } from './stage1'
 
+function getSpawnWaveEvents(stage: ReturnType<typeof createStageDefinition>) {
+  return (stage.events ?? []).filter((event) =>
+    event.actions.some((action) => action.type === 'spawnWave'),
+  )
+}
+
+function getSpawnBossEvents(stage: ReturnType<typeof createStageDefinition>) {
+  return (stage.events ?? []).filter((event) =>
+    event.actions.some((action) => action.type === 'spawnBoss'),
+  )
+}
+
+function getVictoryEvents(stage: ReturnType<typeof createStageDefinition>) {
+  return (stage.events ?? []).filter((event) =>
+    event.actions.some((action) => action.type === 'finishStage'),
+  )
+}
+
 describe('createStageDefinition', () => {
   it('roughly doubles or triples each regular wave after the density increase', () => {
     const stage = createStageDefinition('normal')
@@ -67,5 +85,39 @@ describe('createStageDefinition', () => {
     expect(new Set(stage.waves.map((wave) => wave.archetype))).toEqual(
       new Set(['scout', 'sentinel', 'lancer', 'splitter', 'mine-layer', 'weaver']),
     )
+  })
+
+  it('expresses every Stage 1 spawn through explicit events', () => {
+    const stage = createStageDefinition('normal')
+    const spawnWaveEvents = getSpawnWaveEvents(stage)
+    const spawnBossEvents = getSpawnBossEvents(stage)
+    const victoryEvents = getVictoryEvents(stage)
+
+    expect(spawnWaveEvents).toHaveLength(8)
+    expect(spawnWaveEvents[0]?.trigger).toEqual({ type: 'time', at: 1.8 })
+    expect(spawnWaveEvents[1]?.trigger).toEqual({
+      type: 'afterResolved',
+      target: 'wave-1',
+      delay: 1.5,
+    })
+    expect(spawnBossEvents).toHaveLength(1)
+    expect(spawnBossEvents[0]?.id).toBe('boss-brass-core-spawn')
+    expect(spawnBossEvents[0]?.trigger).toEqual({
+      type: 'afterResolved',
+      target: 'wave-8',
+      delay: 2,
+    })
+    expect(spawnBossEvents[0]?.actions[0]).toMatchObject({
+      type: 'spawnBoss',
+      role: 'final',
+      boss: { id: 'boss-brass-core' },
+    })
+    expect(victoryEvents).toEqual([
+      {
+        id: 'boss-brass-core-victory',
+        trigger: { type: 'afterDefeated', target: 'boss-brass-core', delay: 0 },
+        actions: [{ type: 'finishStage', outcome: 'victory' }],
+      },
+    ])
   })
 })

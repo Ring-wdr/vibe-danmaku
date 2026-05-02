@@ -1,9 +1,16 @@
 import { scaleBossDefinition } from './bossScaling'
 import { resolveEnemyWave } from './enemies'
+import {
+  createBossEventAfterResolved,
+  createSequentialWaveEvents,
+  createVictoryEvent,
+  scaleEventTime,
+} from './stageEvents'
 import type {
   BossDefinition,
   Difficulty,
   MidbossDefinition,
+  StageEvent,
   StageDefinition,
 } from '../types'
 
@@ -166,8 +173,40 @@ export function createStage2Definition(
 ): StageDefinition {
   const fastMultiplier = options?.fastStage ? 0.22 : 1
   const scaleTime = (value: number) => Number((value * fastMultiplier).toFixed(2))
+  const waves = baseWavePlacements.map((placement) => ({
+    ...resolveEnemyWave(difficulty, placement),
+    startAt: scaleTime(placement.startAt),
+  }))
   const midboss = scaleBossDefinition(baseMidboss, difficulty)
   const boss = scaleBossDefinition(baseBoss, difficulty)
+  const scaledMidboss = { ...midboss, startAt: scaleTime(midboss.startAt) }
+  const scaledBoss = { ...boss, startAt: scaleTime(boss.startAt) }
+  const firstHalf = waves.slice(0, 6)
+  const secondHalf = waves.slice(6)
+  const firstHalfEvents = createSequentialWaveEvents(firstHalf, {
+    firstAt: 1.8,
+    delayAfterResolved: 1.25,
+  })
+  const secondHalfEvents: StageEvent[] = secondHalf.map((wave, index) => ({
+    id: `${wave.id}-event`,
+    trigger:
+      index === 0
+        ? { type: 'afterDefeated', target: scaledMidboss.id, delay: 1.5 }
+        : { type: 'afterResolved', target: secondHalf[index - 1]!.id, delay: 1.25 },
+    actions: [{ type: 'spawnWave', wave }],
+  }))
+  const events = [
+    ...firstHalfEvents,
+    createBossEventAfterResolved(
+      scaledMidboss,
+      'midboss',
+      firstHalf[firstHalf.length - 1]!.id,
+      1.5,
+    ),
+    ...secondHalfEvents,
+    createBossEventAfterResolved(scaledBoss, 'final', waves[waves.length - 1]!.id, 2),
+    createVictoryEvent(scaledBoss.id),
+  ].map((event) => scaleEventTime(event, fastMultiplier))
 
   return {
     id: 'burning-ruin-corridor',
@@ -176,17 +215,9 @@ export function createStage2Definition(
     name: 'Burning Ruin Corridor',
     lore: '전쟁 뒤 불타는 폐허 회랑을 돌파하고 잿빛 성채 코어를 붕괴시킨다.',
     duration: scaleTime(210),
-    waves: baseWavePlacements.map((placement) => ({
-      ...resolveEnemyWave(difficulty, placement),
-      startAt: scaleTime(placement.startAt),
-    })),
-    midboss: {
-      ...midboss,
-      startAt: scaleTime(midboss.startAt),
-    },
-    boss: {
-      ...boss,
-      startAt: scaleTime(boss.startAt),
-    },
+    waves,
+    midboss: scaledMidboss,
+    boss: scaledBoss,
+    events,
   }
 }

@@ -1,5 +1,11 @@
 import { scaleBossDefinition } from './bossScaling'
 import { resolveEnemyWave } from './enemies'
+import {
+  createBossEventAfterResolved,
+  createSequentialWaveEvents,
+  createVictoryEvent,
+  scaleEventTime,
+} from './stageEvents'
 import type { BossDefinition, Difficulty, StageDefinition } from '../types'
 
 const baseWavePlacements = [
@@ -106,7 +112,20 @@ export function createStageDefinition(
 ): StageDefinition {
   const fastMultiplier = options?.fastStage ? 0.22 : 1
   const scaleTime = (value: number) => Number((value * fastMultiplier).toFixed(2))
+  const waves = baseWavePlacements.map((placement) => ({
+    ...resolveEnemyWave(difficulty, placement),
+    startAt: scaleTime(placement.startAt),
+  }))
   const boss = scaleBossDefinition(baseBoss, difficulty)
+  const scaledBoss = { ...boss, startAt: scaleTime(boss.startAt) }
+  const events = [
+    ...createSequentialWaveEvents(waves, {
+      firstAt: 1.8,
+      delayAfterResolved: 1.5,
+    }),
+    createBossEventAfterResolved(scaledBoss, 'final', waves[waves.length - 1]!.id, 2),
+    createVictoryEvent(scaledBoss.id),
+  ].map((event) => scaleEventTime(event, fastMultiplier))
 
   return {
     id: 'brass-cloud-gate',
@@ -115,13 +134,8 @@ export function createStageDefinition(
     name: 'Brass Cloud Gate',
     lore: '황동 비공정 항로 위를 뒤덮은 마도 구름 회랑을 돌파해 비공정 코어를 파괴한다.',
     duration: scaleTime(165),
-    waves: baseWavePlacements.map((placement) => ({
-      ...resolveEnemyWave(difficulty, placement),
-      startAt: scaleTime(placement.startAt),
-    })),
-    boss: {
-      ...boss,
-      startAt: scaleTime(boss.startAt),
-    },
+    waves,
+    boss: scaledBoss,
+    events,
   }
 }
