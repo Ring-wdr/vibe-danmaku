@@ -187,7 +187,7 @@ export function App({ initialViewport }: AppProps) {
             <ResultScreen
               result={result}
               onRetry={() => {
-                setCurrentStageNumber(result.stageNumber)
+                setCurrentStageNumber(result.stageNumber === 2 ? 2 : 1)
                 setBattleSeed((current) => current + 1)
                 startScreen('battle-loading')
               }}

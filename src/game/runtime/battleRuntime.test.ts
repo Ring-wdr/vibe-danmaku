@@ -4,6 +4,7 @@ import { lyraAerCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { createBattleRuntime } from './battleRuntime'
 import type {
+  BossDefinition,
   BulletPatternConfig,
   CharacterDefinition,
   Difficulty,
@@ -48,16 +49,58 @@ function createRuntime(options?: {
   })
 }
 
-function getFirstWave(stage: StageDefinition): EnemyWave {
-  const action = stage.events
-    ?.flatMap((event) => event.actions)
-    .find((candidate) => candidate.type === 'spawnWave')
+function getSpawnedWaves(stage: StageDefinition) {
+  return stage.events.flatMap((event) =>
+    event.actions.flatMap((action) => (action.type === 'spawnWave' ? [action.wave] : [])),
+  )
+}
 
-  if (!action || action.type !== 'spawnWave') {
-    throw new Error('Expected stage fixture to include a spawnWave event')
+function getWaveFromStage(stage: StageDefinition, index: number): EnemyWave {
+  const wave = getSpawnedWaves(stage)[index]
+
+  if (!wave) {
+    throw new Error(`Expected stage fixture to include wave ${index}`)
   }
 
-  return action.wave
+  return wave
+}
+
+function getFirstWave(stage: StageDefinition): EnemyWave {
+  return getWaveFromStage(stage, 0)
+}
+
+function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
+  const action = stage.events
+    .flatMap((event) => event.actions)
+    .find((candidate) => candidate.type === 'spawnBoss' && candidate.role === role)
+
+  if (!action || action.type !== 'spawnBoss') {
+    throw new Error(`Expected stage fixture to include a ${role} boss event`)
+  }
+
+  return action.boss
+}
+
+function getFinalBossChargeReferenceTime(stage: StageDefinition) {
+  const finalBossEvent = stage.events.find((event) =>
+    event.actions.some((action) => action.type === 'spawnBoss' && action.role === 'final'),
+  )
+
+  return finalBossEvent?.trigger.type === 'time'
+    ? finalBossEvent.trigger.at
+    : (stage.duration ?? 0) * 0.5
+}
+
+function createEventStage(
+  baseStage: StageDefinition,
+  events: StageEvent[],
+  duration = 999,
+): StageDefinition {
+  return {
+    ...baseStage,
+    duration,
+    events,
+  }
 }
 
 function createWaveEvent(
@@ -76,7 +119,7 @@ function createWaveEvent(
 function createBossEvent(
   id: string,
   trigger: StageEvent['trigger'],
-  boss: StageDefinition['boss'],
+  boss: BossDefinition,
   role: 'midboss' | 'final',
 ): StageEvent {
   return {
@@ -100,8 +143,7 @@ function createVictoryEvent(
 function createEnemyBulletCleanupStage(): StageDefinition {
   const stage = createStageDefinition('normal', { fastStage: true })
   const boss = {
-    ...stage.boss,
-    startAt: 0,
+    ...getBossFromStage(stage, 'final'),
     phases: [
       {
         id: 'cleanup-test-ring',
@@ -118,69 +160,49 @@ function createEnemyBulletCleanupStage(): StageDefinition {
         },
       },
     ],
-  } satisfies StageDefinition['boss']
+  } satisfies BossDefinition
 
-  return {
-    ...stage,
-    duration: 999,
-    waves: [],
-    boss,
-    events: [createBossEvent('cleanup-boss', { type: 'time', at: 0 }, boss, 'final')],
-  }
+  return createEventStage(stage, [
+    createBossEvent('cleanup-boss', { type: 'time', at: 0 }, boss, 'final'),
+  ])
 }
 
 function createImmediateWaveStage(): StageDefinition {
   const stage = createStageDefinition('normal')
   const wave = {
-    ...stage.waves[0]!,
-    startAt: 0,
+    ...getFirstWave(stage),
     count: 1,
   }
 
-  return {
-    ...stage,
-    waves: [wave],
-    boss: {
-      ...stage.boss,
-      startAt: 999,
-    },
-    events: [createWaveEvent('immediate-wave', { type: 'time', at: 0 }, wave)],
-  }
+  return createEventStage(stage, [
+    createWaveEvent('immediate-wave', { type: 'time', at: 0 }, wave),
+  ])
 }
 
 function createPatternStage(pattern: BulletPatternConfig): StageDefinition {
   const stage = createStageDefinition('normal')
   const wave = {
-    ...stage.waves[0]!,
+    ...getFirstWave(stage),
     id: `pattern-${pattern.shape}`,
-    startAt: 0,
     count: 1,
     hp: 999,
-    speed: 0.78,
+    movement: { type: 'flyThrough', path: 'helix', speed: 0.78 },
     pattern,
-  }
+  } satisfies EnemyWave
 
-  return {
-    ...stage,
-    duration: 999,
-    waves: [wave],
-    boss: {
-      ...stage.boss,
-      startAt: 999,
-    },
-    events: [createWaveEvent(`${wave.id}-event`, { type: 'time', at: 0 }, wave)],
-  }
+  return createEventStage(stage, [
+    createWaveEvent(`${wave.id}-event`, { type: 'time', at: 0 }, wave),
+  ])
 }
 
 function createSpecialTestStage(): StageDefinition {
   const stage = createStageDefinition('normal')
   const wave = {
-    ...stage.waves[0]!,
+    ...getFirstWave(stage),
     id: 'special-target',
-    startAt: 0,
     count: 1,
     hp: 32,
-    speed: 0,
+    movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     pattern: {
       shape: 'fan',
       count: 3,
@@ -191,32 +213,24 @@ function createSpecialTestStage(): StageDefinition {
     },
   } satisfies EnemyWave
   const boss = {
-    ...stage.boss,
-    startAt: 0.2,
+    ...getBossFromStage(stage, 'final'),
     hp: 240,
   }
 
-  return {
-    ...stage,
-    duration: 999,
-    waves: [wave],
-    boss,
-    events: [
-      createWaveEvent('special-target-event', { type: 'time', at: 0 }, wave),
-      createBossEvent('special-boss-event', { type: 'time', at: 0.2 }, boss, 'final'),
-    ],
-  }
+  return createEventStage(stage, [
+    createWaveEvent('special-target-event', { type: 'time', at: 0 }, wave),
+    createBossEvent('special-boss-event', { type: 'time', at: 0.2 }, boss, 'final'),
+  ])
 }
 
 function createSpecialChargeBonusStage(): StageDefinition {
   const stage = createStageDefinition('normal')
   const wave = {
-    ...stage.waves[0]!,
+    ...getFirstWave(stage),
     id: 'charge-bonus-target',
-    startAt: 0,
     count: 1,
     hp: 1,
-    speed: 0,
+    movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     pattern: {
       shape: 'fan',
       count: 3,
@@ -227,39 +241,28 @@ function createSpecialChargeBonusStage(): StageDefinition {
     },
   } satisfies EnemyWave
 
-  return {
-    ...stage,
-    duration: 999,
-    waves: [wave],
-    boss: {
-      ...stage.boss,
-      startAt: 999,
-    },
-    events: [createWaveEvent('charge-bonus-event', { type: 'time', at: 0 }, wave)],
-  }
+  return createEventStage(stage, [
+    createWaveEvent('charge-bonus-event', { type: 'time', at: 0 }, wave),
+  ])
 }
 
 function createMidbossGateStage(): StageDefinition {
   const stage = createStageDefinition('normal')
   const beforeGate = {
-    ...stage.waves[0]!,
+    ...getWaveFromStage(stage, 0),
     id: 'before-gate',
-    startAt: 0,
     count: 1,
     hp: 999,
   }
   const afterGate = {
-    ...stage.waves[1]!,
+    ...getWaveFromStage(stage, 1),
     id: 'after-gate',
-    startAt: 0.1,
     count: 1,
     hp: 99999,
   }
   const midboss = {
-    ...stage.boss,
+    ...getBossFromStage(stage, 'final'),
     id: 'test-midboss',
-    gateAfterWaveIndex: 0,
-    startAt: 0.05,
     hp: 240,
     phases: [
       {
@@ -277,31 +280,17 @@ function createMidbossGateStage(): StageDefinition {
         },
       },
     ],
-  } satisfies NonNullable<StageDefinition['midboss']>
-  const boss = { ...stage.boss, startAt: 999 }
+  } satisfies BossDefinition
 
-  return {
-    ...stage,
-    duration: 999,
-    waves: [beforeGate, afterGate],
-    midboss,
-    boss,
-    events: [
-      createWaveEvent('before-gate-event', { type: 'time', at: 0 }, beforeGate),
-      createBossEvent('midboss-event', { type: 'time', at: 0.05 }, midboss, 'midboss'),
-      createWaveEvent(
-        'after-gate-event',
-        { type: 'afterDefeated', target: midboss.id, delay: 0.1 },
-        afterGate,
-      ),
-    ],
-  }
-}
-
-function createLegacyMidbossGateStage(): StageDefinition {
-  const { events: _events, ...stage } = createMidbossGateStage()
-
-  return stage
+  return createEventStage(stage, [
+    createWaveEvent('before-gate-event', { type: 'time', at: 0 }, beforeGate),
+    createBossEvent('midboss-event', { type: 'time', at: 0.05 }, midboss, 'midboss'),
+    createWaveEvent(
+      'after-gate-event',
+      { type: 'afterDefeated', target: midboss.id, delay: 0.1 },
+      afterGate,
+    ),
+  ])
 }
 
 const midbossSlayerPilot: CharacterDefinition = {
@@ -499,24 +488,20 @@ describe('stage event timeline runtime', () => {
   it('stops evaluating the current tick after a finishStage event', () => {
     const baseStage = createStageDefinition('normal')
     const lateWave = {
-      ...baseStage.waves[0]!,
+      ...getFirstWave(baseStage),
       id: 'after-finish-spawn',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createVictoryEvent('same-tick-victory', { type: 'time', at: 0.01 }),
           createWaveEvent('same-tick-spawn', { type: 'time', at: 0.01 }, lateWave),
         ],
-      },
+      ),
     })
 
     runtime.update(0.02)
@@ -530,31 +515,24 @@ describe('stage event timeline runtime', () => {
   it('fires afterResolved after a fly-through enemy escapes the viewport and spawns the next wave', () => {
     const baseStage = createStageDefinition('normal')
     const firstWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'escape-first',
-      startAt: 0,
       count: 1,
       hp: 99999,
-      speed: 18,
       movement: { type: 'flyThrough', path: 'helix', speed: 18 },
       resolution: { type: 'allInactive' },
     } satisfies EnemyWave
     const secondWave = {
-      ...baseStage.waves[1]!,
+      ...getWaveFromStage(baseStage, 1),
       id: 'after-escape',
-      startAt: 999,
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createWaveEvent('escape-first-event', { type: 'time', at: 0 }, firstWave),
           createWaveEvent(
             'after-escape-event',
@@ -562,7 +540,7 @@ describe('stage event timeline runtime', () => {
             secondWave,
           ),
         ],
-      },
+      ),
       character: testPilot,
     })
 
@@ -583,30 +561,24 @@ describe('stage event timeline runtime', () => {
   it('does not fire afterDefeated when the target wave only escapes', () => {
     const baseStage = createStageDefinition('normal')
     const escapingWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'escaped-not-defeated',
-      startAt: 0,
       count: 1,
       hp: 99999,
-      speed: 18,
       movement: { type: 'flyThrough', path: 'helix', speed: 18 },
       resolution: { type: 'allInactive' },
     } satisfies EnemyWave
     const blockedWave = {
-      ...baseStage.waves[1]!,
+      ...getWaveFromStage(baseStage, 1),
       id: 'blocked-after-defeated',
-      startAt: 999,
       count: 1,
       hp: 99999,
-      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createWaveEvent('escaped-not-defeated-event', { type: 'time', at: 0 }, escapingWave),
           createWaveEvent(
             'blocked-after-defeated-event',
@@ -614,7 +586,7 @@ describe('stage event timeline runtime', () => {
             blockedWave,
           ),
         ],
-      },
+      ),
       character: testPilot,
     })
 
@@ -629,45 +601,41 @@ describe('stage event timeline runtime', () => {
 
   it('keeps repeated interval summons with the same wave id as distinct active groups', () => {
     const baseStage = createStageDefinition('normal')
+    const baseBoss = getBossFromStage(baseStage, 'final')
     const boss = {
-      ...baseStage.boss,
+      ...baseBoss,
       id: 'interval-anchor',
       hp: 99999,
       phases: [
         {
-          ...baseStage.boss.phases[0]!,
+          ...baseBoss.phases[0]!,
           id: 'interval-anchor-phase',
           pattern: {
-            ...baseStage.boss.phases[0]!.pattern,
+            ...baseBoss.phases[0]!.pattern,
             interval: 999,
           },
         },
       ],
-    } satisfies StageDefinition['boss']
+    } satisfies BossDefinition
     const summonWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'repeat-summon',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
       resolution: { type: 'timeout', seconds: 0.25, then: 'forceEscape' },
     } satisfies EnemyWave
     const markerWave = {
-      ...baseStage.waves[1]!,
+      ...getWaveFromStage(baseStage, 1),
       id: 'repeat-summon-marker',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss,
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createBossEvent('interval-anchor-event', { type: 'time', at: 0 }, boss, 'final'),
           createWaveEvent(
             'repeat-summon-interval',
@@ -685,7 +653,7 @@ describe('stage event timeline runtime', () => {
             markerWave,
           ),
         ],
-      },
+      ),
       character: testPilot,
     })
 
@@ -704,11 +672,10 @@ describe('stage event timeline runtime', () => {
   it('fires afterDefeated from the defeated timestamp before timeout resolution', () => {
     const baseStage = createStageDefinition('normal')
     const timeoutWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'defeated-before-timeout',
       count: 1,
       hp: 1,
-      speed: 0,
       movement: {
         type: 'enterAndStrafe',
         entrySpeed: 48,
@@ -719,20 +686,16 @@ describe('stage event timeline runtime', () => {
       resolution: { type: 'timeout', seconds: 5, then: 'resolve' },
     } satisfies EnemyWave
     const markerWave = {
-      ...baseStage.waves[1]!,
+      ...getWaveFromStage(baseStage, 1),
       id: 'defeated-before-timeout-marker',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createWaveEvent('timeout-wave-event', { type: 'time', at: 0 }, timeoutWave),
           createWaveEvent(
             'timeout-wave-defeated-event',
@@ -740,7 +703,7 @@ describe('stage event timeline runtime', () => {
             markerWave,
           ),
         ],
-      },
+      ),
       character: midbossSlayerPilot,
     })
 
@@ -758,11 +721,10 @@ describe('stage event timeline runtime', () => {
   it('keeps enter-and-strafe enemies near their hold line', () => {
     const baseStage = createStageDefinition('normal')
     const strafeWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'hold-line-strafe',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: {
         type: 'enterAndStrafe',
         entrySpeed: 5,
@@ -773,13 +735,9 @@ describe('stage event timeline runtime', () => {
       resolution: { type: 'allDefeated' },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [createWaveEvent('hold-line-strafe-event', { type: 'time', at: 0 }, strafeWave)],
-      },
+      stage: createEventStage(baseStage, [
+        createWaveEvent('hold-line-strafe-event', { type: 'time', at: 0 }, strafeWave),
+      ]),
       character: testPilot,
     })
 
@@ -803,11 +761,10 @@ describe('stage event timeline runtime', () => {
   it('does not resolve allDefeated strafe waves while the guard is alive', () => {
     const baseStage = createStageDefinition('normal')
     const guardWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'alive-strafe-guard',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: {
         type: 'enterAndStrafe',
         entrySpeed: 5,
@@ -818,20 +775,16 @@ describe('stage event timeline runtime', () => {
       resolution: { type: 'allDefeated' },
     } satisfies EnemyWave
     const blockedWave = {
-      ...baseStage.waves[1]!,
+      ...getWaveFromStage(baseStage, 1),
       id: 'blocked-by-alive-guard',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createWaveEvent('alive-strafe-guard-event', { type: 'time', at: 0 }, guardWave),
           createWaveEvent(
             'blocked-by-alive-guard-event',
@@ -839,7 +792,7 @@ describe('stage event timeline runtime', () => {
             blockedWave,
           ),
         ],
-      },
+      ),
       character: testPilot,
     })
 
@@ -855,11 +808,10 @@ describe('stage event timeline runtime', () => {
   it('force-escapes timeout strafe waves so progression cannot hang', () => {
     const baseStage = createStageDefinition('normal')
     const strafeWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'timeout-strafe-escape',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: {
         type: 'enterAndStrafe',
         entrySpeed: 5,
@@ -870,20 +822,16 @@ describe('stage event timeline runtime', () => {
       resolution: { type: 'timeout', seconds: 0.5, then: 'forceEscape' },
     } satisfies EnemyWave
     const followUpWave = {
-      ...baseStage.waves[1]!,
+      ...getWaveFromStage(baseStage, 1),
       id: 'after-timeout-strafe',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createWaveEvent('timeout-strafe-escape-event', { type: 'time', at: 0 }, strafeWave),
           createWaveEvent(
             'after-timeout-strafe-event',
@@ -891,7 +839,7 @@ describe('stage event timeline runtime', () => {
             followUpWave,
           ),
         ],
-      },
+      ),
       character: testPilot,
     })
 
@@ -909,39 +857,35 @@ describe('stage event timeline runtime', () => {
 
   it('spawns summon waves from boss HP triggers', () => {
     const baseStage = createStageDefinition('normal')
+    const baseBoss = getBossFromStage(baseStage, 'final')
     const boss = {
-      ...baseStage.boss,
+      ...baseBoss,
       id: 'hp-trigger-boss',
-      startAt: 0,
       hp: 240,
       phases: [
         {
-          ...baseStage.boss.phases[0]!,
+          ...baseBoss.phases[0]!,
           id: 'hp-trigger-phase',
           threshold: 0,
           supportLaser: false,
           pattern: {
-            ...baseStage.boss.phases[0]!.pattern,
+            ...baseBoss.phases[0]!.pattern,
             interval: 999,
           },
         },
       ],
-    } satisfies StageDefinition['boss']
+    } satisfies BossDefinition
     const summonWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'hp-trigger-summon',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss,
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createBossEvent('hp-trigger-boss-event', { type: 'time', at: 0 }, boss, 'final'),
           createWaveEvent(
             'hp-trigger-summon-event',
@@ -950,7 +894,7 @@ describe('stage event timeline runtime', () => {
             'summon',
           ),
         ],
-      },
+      ),
       character: bossTriggerPilot,
     })
 
@@ -976,50 +920,46 @@ describe('stage event timeline runtime', () => {
 
   it('spawns summon waves from boss phase triggers', () => {
     const baseStage = createStageDefinition('normal')
+    const baseBoss = getBossFromStage(baseStage, 'final')
     const boss = {
-      ...baseStage.boss,
+      ...baseBoss,
       id: 'phase-trigger-boss',
-      startAt: 0,
       hp: 240,
       phases: [
         {
-          ...baseStage.boss.phases[0]!,
+          ...baseBoss.phases[0]!,
           id: 'phase-trigger-opening',
           threshold: 0.5,
           supportLaser: false,
           pattern: {
-            ...baseStage.boss.phases[0]!.pattern,
+            ...baseBoss.phases[0]!.pattern,
             interval: 999,
           },
         },
         {
-          ...baseStage.boss.phases[0]!,
+          ...baseBoss.phases[0]!,
           id: 'phase-trigger-critical',
           threshold: 0,
           label: 'Critical',
           supportLaser: false,
           pattern: {
-            ...baseStage.boss.phases[0]!.pattern,
+            ...baseBoss.phases[0]!.pattern,
             interval: 999,
           },
         },
       ],
-    } satisfies StageDefinition['boss']
+    } satisfies BossDefinition
     const summonWave = {
-      ...baseStage.waves[0]!,
+      ...getWaveFromStage(baseStage, 0),
       id: 'phase-trigger-summon',
       count: 1,
       hp: 99999,
-      speed: 0,
       movement: { type: 'flyThrough', path: 'helix', speed: 0 },
     } satisfies EnemyWave
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss,
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createBossEvent('phase-trigger-boss-event', { type: 'time', at: 0 }, boss, 'final'),
           createWaveEvent(
             'phase-trigger-summon-event',
@@ -1028,7 +968,7 @@ describe('stage event timeline runtime', () => {
             'summon',
           ),
         ],
-      },
+      ),
       character: bossTriggerPilot,
     })
 
@@ -1054,47 +994,43 @@ describe('stage event timeline runtime', () => {
 
   it('supports multiple active midbosses in the snapshot', () => {
     const baseStage = createStageDefinition('normal')
+    const baseBoss = getBossFromStage(baseStage, 'final')
     const firstMidboss = {
-      ...baseStage.boss,
+      ...baseBoss,
       id: 'first-active-midboss',
-      startAt: 0,
       hp: 99999,
       phases: [
         {
-          ...baseStage.boss.phases[0]!,
+          ...baseBoss.phases[0]!,
           id: 'first-active-midboss-phase',
           supportLaser: false,
           pattern: {
-            ...baseStage.boss.phases[0]!.pattern,
+            ...baseBoss.phases[0]!.pattern,
             interval: 999,
           },
         },
       ],
-    } satisfies StageDefinition['boss']
+    } satisfies BossDefinition
     const secondMidboss = {
-      ...baseStage.boss,
+      ...baseBoss,
       id: 'second-active-midboss',
-      startAt: 0,
       hp: 99999,
       phases: [
         {
-          ...baseStage.boss.phases[0]!,
+          ...baseBoss.phases[0]!,
           id: 'second-active-midboss-phase',
           supportLaser: false,
           pattern: {
-            ...baseStage.boss.phases[0]!.pattern,
+            ...baseBoss.phases[0]!.pattern,
             interval: 999,
           },
         },
       ],
-    } satisfies StageDefinition['boss']
+    } satisfies BossDefinition
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 999,
-        waves: [],
-        boss: { ...baseStage.boss, startAt: 999 },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createBossEvent(
             'first-active-midboss-event',
             { type: 'time', at: 0 },
@@ -1108,14 +1044,14 @@ describe('stage event timeline runtime', () => {
             'midboss',
           ),
         ],
-      },
+      ),
       character: testPilot,
     })
 
     runtime.update(0.11)
 
     const snapshot = runtime.getSnapshot()
-    expect(snapshot.bosses?.map((boss) => boss.id)).toEqual([
+    expect(snapshot.bosses.map((boss) => boss.id)).toEqual([
       firstMidboss.id,
       secondMidboss.id,
     ])
@@ -1124,19 +1060,6 @@ describe('stage event timeline runtime', () => {
 })
 
 describe('midboss gate runtime', () => {
-  it('keeps legacy no-events post-gate waves blocked while the midboss is alive', () => {
-    const runtime = createRuntime({ stage: createLegacyMidbossGateStage() })
-
-    runtime.update(0.06)
-    runtime.update(0.05)
-
-    const snapshot = runtime.getSnapshot()
-
-    expect(snapshot.boss?.id).toBe('test-midboss')
-    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'before-gate')).toBe(true)
-    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'after-gate')).toBe(false)
-  })
-
   it('blocks post-gate waves while the midboss is alive', () => {
     const runtime = createRuntime({ stage: createMidbossGateStage() })
 
@@ -1189,22 +1112,17 @@ describe('midboss gate runtime', () => {
   it('does not turn midboss defeat into timeout victory after stage duration', () => {
     const baseStage = createMidbossGateStage()
     const midboss = {
-      ...baseStage.midboss!,
+      ...getBossFromStage(baseStage, 'midboss'),
       hp: 2200,
     }
     const runtime = createRuntime({
-      stage: {
-        ...baseStage,
-        duration: 0.12,
-        waves: [],
-        boss: {
-          ...baseStage.boss,
-          startAt: 10,
-        },
-        events: [
+      stage: createEventStage(
+        baseStage,
+        [
           createBossEvent('midboss-event', { type: 'time', at: 0.05 }, midboss, 'midboss'),
         ],
-      },
+        0.12,
+      ),
       character: midbossSlayerPilot,
     })
 
@@ -1223,28 +1141,20 @@ describe('midboss gate runtime', () => {
 
   it('waits for the afterDefeated delay before resuming post-gate waves', () => {
     const baseStage = createMidbossGateStage()
-    const beforeGate = { ...baseStage.waves[0]!, id: 'before-gate', startAt: 0, count: 1 }
+    const beforeGate = { ...getWaveFromStage(baseStage, 0), id: 'before-gate', count: 1 }
     const afterGate = {
-      ...baseStage.waves[1]!,
+      ...getWaveFromStage(baseStage, 1),
       id: 'after-gate',
-      startAt: 999,
       count: 1,
       hp: 99999,
     }
     const midboss = {
-      ...baseStage.midboss!,
+      ...getBossFromStage(baseStage, 'midboss'),
       hp: 2200,
-      startAt: 0.05,
     }
-    const stage = {
-      ...baseStage,
-      waves: [beforeGate, afterGate],
-      midboss,
-      boss: {
-        ...baseStage.boss,
-        startAt: 0.3,
-      },
-      events: [
+    const stage = createEventStage(
+      baseStage,
+      [
         createWaveEvent('before-gate-event', { type: 'time', at: 0 }, beforeGate),
         createBossEvent('midboss-event', { type: 'time', at: 0.05 }, midboss, 'midboss'),
         createWaveEvent(
@@ -1253,7 +1163,7 @@ describe('midboss gate runtime', () => {
           afterGate,
         ),
       ],
-    }
+    )
     const runtime = createRuntime({ stage, character: midbossSlayerPilot })
 
     runtime.update(0.4)
@@ -1284,17 +1194,14 @@ describe('midboss gate runtime', () => {
 
   it('sets a victory result only when the explicit final boss victory event fires', () => {
     const baseStage = createMidbossGateStage()
-    const midboss = baseStage.midboss!
+    const midboss = getBossFromStage(baseStage, 'midboss')
     const boss = {
-      ...baseStage.boss,
-      startAt: 0.5,
+      ...getBossFromStage(createStageDefinition('normal'), 'final'),
       hp: 240,
     }
-    const stage = {
-      ...baseStage,
-      waves: [],
-      boss,
-      events: [
+    const stage = createEventStage(
+      baseStage,
+      [
         createBossEvent('midboss-event', { type: 'time', at: 0.05 }, midboss, 'midboss'),
         createBossEvent(
           'final-boss-event',
@@ -1308,7 +1215,7 @@ describe('midboss gate runtime', () => {
           delay: 0.15,
         }),
       ],
-    }
+    )
     const runtime = createRuntime({ stage, character: midbossSlayerPilot })
 
     runtime.update(0.11)
@@ -1319,9 +1226,9 @@ describe('midboss gate runtime', () => {
 
     runtime.update(0.5)
 
-    expect(runtime.getSnapshot().boss?.id).toBe(stage.boss.id)
+    expect(runtime.getSnapshot().boss?.id).toBe(boss.id)
 
-    advanceWhileBossActive(runtime, stage.boss.id)
+    advanceWhileBossActive(runtime, boss.id)
 
     let snapshot = runtime.getSnapshot()
     expect(snapshot.boss).toBeNull()
@@ -1445,8 +1352,9 @@ describe('special attack runtime', () => {
   it('charges most of the beam-lance gauge by boss arrival', () => {
     const stage = createStageDefinition('normal')
     const runtime = createRuntime({ stage })
+    const chargeReference = getFinalBossChargeReferenceTime(stage)
 
-    runtime.update(stage.boss.startAt)
+    runtime.update(chargeReference)
 
     const slot = runtime
       .getSnapshot()
@@ -1475,7 +1383,7 @@ describe('special attack runtime', () => {
     const slot = runtime
       .getSnapshot()
       .specialSlots.find((candidate) => candidate.id === beamLance)
-    const naturalChargeOnly = (92 / stage.boss.startAt) * 2.5
+    const naturalChargeOnly = (92 / getFinalBossChargeReferenceTime(stage)) * 2.5
 
     expect(slot?.charge).toBeGreaterThan(naturalChargeOnly + 0.5)
   })
@@ -1483,8 +1391,9 @@ describe('special attack runtime', () => {
   it('activates beam-lance at full charge and resets that slot', () => {
     const stage = createStageDefinition('normal')
     const runtime = createRuntime({ stage })
+    const chargeReference = getFinalBossChargeReferenceTime(stage)
 
-    runtime.update(stage.boss.startAt + 9)
+    runtime.update(chargeReference + 9)
 
     expect(runtime.activateSpecial(beamLance)).toBe(true)
 
@@ -1532,17 +1441,16 @@ describe('special attack runtime', () => {
 
   it('misses enemies outside the active beam width or behind the player', () => {
     const stage = createSpecialTestStage()
+    const wave = {
+      ...getFirstWave(stage),
+      spacing: 0,
+      count: 1,
+    }
     const runtime = createRuntime({
-      stage: {
-        ...stage,
-        waves: [
-          {
-            ...stage.waves[0]!,
-            spacing: 0,
-            count: 1,
-          },
-        ],
-      },
+      stage: createEventStage(stage, [
+        createWaveEvent('special-target-event', { type: 'time', at: 0 }, wave),
+        ...stage.events.filter((event) => event.id !== 'special-target-event'),
+      ]),
     })
 
     runtime.beginDrag({ x: 3, z: -1.85 })

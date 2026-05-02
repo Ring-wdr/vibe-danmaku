@@ -12,7 +12,6 @@ function createImmediateVictoryStage(): StageDefinition {
   return {
     ...stage,
     duration: 999,
-    waves: [],
     events: [
       {
         id: 'immediate-victory',
@@ -20,10 +19,6 @@ function createImmediateVictoryStage(): StageDefinition {
         actions: [{ type: 'finishStage', outcome: 'victory' }],
       },
     ],
-    boss: {
-      ...stage.boss,
-      startAt: 999,
-    },
   }
 }
 

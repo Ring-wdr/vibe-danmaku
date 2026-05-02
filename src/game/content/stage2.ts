@@ -9,15 +9,17 @@ import {
 import type {
   BossDefinition,
   Difficulty,
-  MidbossDefinition,
   StageEvent,
   StageDefinition,
 } from '../types'
 
+type TimedBossDefinition = BossDefinition & { spawnAt: number }
+type TimedMidbossDefinition = TimedBossDefinition & { gateWaveCount: number }
+
 const baseWavePlacements = [
   {
     id: 'wave-1',
-    startAt: 1.8,
+    eventAt: 1.8,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 14,
@@ -25,7 +27,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-2',
-    startAt: 8.5,
+    eventAt: 8.5,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 14,
@@ -33,7 +35,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-3',
-    startAt: 15.6,
+    eventAt: 15.6,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 14,
@@ -41,7 +43,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-4',
-    startAt: 23,
+    eventAt: 23,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 18,
@@ -49,7 +51,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-5',
-    startAt: 31,
+    eventAt: 31,
     archetype: 'mine-layer',
     variant: 'brass-cloud-mine-layer',
     count: 18,
@@ -57,7 +59,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-6',
-    startAt: 39,
+    eventAt: 39,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 18,
@@ -65,7 +67,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-7',
-    startAt: 54,
+    eventAt: 54,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 24,
@@ -74,7 +76,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-8',
-    startAt: 62,
+    eventAt: 62,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 24,
@@ -83,7 +85,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-9',
-    startAt: 70,
+    eventAt: 70,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 14,
@@ -91,7 +93,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-10',
-    startAt: 78,
+    eventAt: 78,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 14,
@@ -99,7 +101,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-11',
-    startAt: 86,
+    eventAt: 86,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 14,
@@ -107,7 +109,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-12',
-    startAt: 94,
+    eventAt: 94,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 18,
@@ -115,10 +117,10 @@ const baseWavePlacements = [
   },
 ] as const
 
-const baseMidboss: MidbossDefinition = {
+const baseMidboss: TimedMidbossDefinition = {
   id: 'midboss-ember-gate',
-  startAt: 47,
-  gateAfterWaveIndex: 5,
+  spawnAt: 47,
+  gateWaveCount: 6,
   hp: 720,
   phases: [
     {
@@ -138,9 +140,9 @@ const baseMidboss: MidbossDefinition = {
   ],
 }
 
-const baseBoss: BossDefinition = {
+const baseBoss: TimedBossDefinition = {
   id: 'boss-ash-citadel-core',
-  startAt: 106,
+  spawnAt: 106,
   hp: 1680,
   phases: [
     {
@@ -173,19 +175,16 @@ export function createStage2Definition(
 ): StageDefinition {
   const fastMultiplier = options?.fastStage ? 0.22 : 1
   const scaleTime = (value: number) => Number((value * fastMultiplier).toFixed(2))
-  const waves = baseWavePlacements.map((placement) => ({
-    ...resolveEnemyWave(difficulty, placement),
-    startAt: scaleTime(placement.startAt),
-  }))
-  const midboss = scaleBossDefinition(baseMidboss, difficulty)
-  const boss = scaleBossDefinition(baseBoss, difficulty)
-  const scaledMidboss = { ...midboss, startAt: scaleTime(midboss.startAt) }
-  const scaledBoss = { ...boss, startAt: scaleTime(boss.startAt) }
-  const midbossGateWaveCount = scaledMidboss.gateAfterWaveIndex + 1
+  const waves = baseWavePlacements.map((placement) => resolveEnemyWave(difficulty, placement))
+  const scaledMidboss = scaleBossDefinition(baseMidboss, difficulty)
+  const scaledBoss = scaleBossDefinition(baseBoss, difficulty)
+  const midbossGateWaveCount = scaledMidboss.gateWaveCount
+  const { spawnAt: _midbossSpawnAt, gateWaveCount: _gateWaveCount, ...midboss } = scaledMidboss
+  const { spawnAt: _bossSpawnAt, ...boss } = scaledBoss
   const firstHalf = waves.slice(0, midbossGateWaveCount)
   const secondHalf = waves.slice(midbossGateWaveCount)
   const firstHalfEvents = createSequentialWaveEvents(firstHalf, {
-    firstAt: 1.8,
+    firstAt: baseWavePlacements[0]!.eventAt,
     delayAfterResolved: 1.25,
   })
   const secondHalfEvents: StageEvent[] = secondHalf.map((wave, index) => ({
@@ -199,14 +198,14 @@ export function createStage2Definition(
   const events = [
     ...firstHalfEvents,
     createBossEventAfterResolved(
-      scaledMidboss,
+      midboss,
       'midboss',
       firstHalf[firstHalf.length - 1]!.id,
       1.5,
     ),
     ...secondHalfEvents,
-    createBossEventAfterResolved(scaledBoss, 'final', waves[waves.length - 1]!.id, 2),
-    createVictoryEvent(scaledBoss.id),
+    createBossEventAfterResolved(boss, 'final', waves[waves.length - 1]!.id, 2),
+    createVictoryEvent(boss.id),
   ].map((event) => scaleEventTime(event, fastMultiplier))
 
   return {
@@ -216,9 +215,6 @@ export function createStage2Definition(
     name: 'Burning Ruin Corridor',
     lore: '전쟁 뒤 불타는 폐허 회랑을 돌파하고 잿빛 성채 코어를 붕괴시킨다.',
     duration: scaleTime(210),
-    waves,
-    midboss: scaledMidboss,
-    boss: scaledBoss,
     events,
   }
 }

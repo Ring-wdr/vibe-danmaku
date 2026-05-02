@@ -101,7 +101,6 @@ export type SpawnGroupResolution =
 
 export type EnemyWave = {
   id: string
-  startAt: number
   kind: EnemyKind
   archetype: EnemyArchetypeId
   variant: EnemyVariantId
@@ -110,12 +109,10 @@ export type EnemyWave = {
   count: number
   spacing: number
   hp: number
-  speed: number
-  movement?: EnemyMovementConfig
-  resolution?: SpawnGroupResolution
+  movement: EnemyMovementConfig
+  resolution: SpawnGroupResolution
   scale: number
   hitRadius: number
-  path: 'swoop-left' | 'swoop-right' | 'helix'
   pattern: BulletPatternConfig
 }
 
@@ -129,24 +126,18 @@ export type BossPhaseDefinition = {
 
 export type BossDefinition = {
   id: string
-  startAt: number
   hp: number
   phases: BossPhaseDefinition[]
 }
 
-export type MidbossDefinition = BossDefinition & { gateAfterWaveIndex: number }
-
 export type StageDefinition = {
   id: StageId
-  stageNumber: 1 | 2
+  stageNumber: number
   backgroundTheme: StageBackgroundTheme
   name: string
   lore: string
-  duration: number
-  events?: StageEvent[]
-  waves: EnemyWave[]
-  midboss?: MidbossDefinition
-  boss: BossDefinition
+  duration?: number
+  events: StageEvent[]
 }
 
 export type CharacterDefinition = {
@@ -171,7 +162,7 @@ export type RunResult = {
   outcome: 'victory' | 'defeat'
   stageId: StageId
   stageName: string
-  stageNumber: 1 | 2
+  stageNumber: number
   difficulty: Difficulty
   duration: number
   remainingHp: number
@@ -248,7 +239,7 @@ export type BattleSnapshot = {
   }
   enemies: RenderEnemy[]
   boss: RenderBoss | null
-  bosses?: RenderBoss[]
+  bosses: RenderBoss[]
   bullets: RenderBullet[]
   specialSlots: RenderSpecialSlot[]
   specialBeam: RenderSpecialBeam | null

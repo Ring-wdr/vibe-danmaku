@@ -153,7 +153,7 @@ function EnemySprite({
 }
 
 function getBossDefinitionsByRole(stage: StageDefinition, role: 'midboss' | 'final') {
-  return (stage.events ?? []).flatMap((event) =>
+  return stage.events.flatMap((event) =>
     event.actions.flatMap((action) =>
       action.type === 'spawnBoss' && action.role === role ? [action.boss] : [],
     ),
@@ -162,20 +162,18 @@ function getBossDefinitionsByRole(stage: StageDefinition, role: 'midboss' | 'fin
 
 export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string } | null) {
   const eventMidbosses = getBossDefinitionsByRole(stage, 'midboss')
-  const legacyMidbosses = stage.midboss ? [stage.midboss] : []
   if (
     boss &&
-    [...eventMidbosses, ...legacyMidbosses].some((definition) => definition.id === boss.id) &&
+    eventMidbosses.some((definition) => definition.id === boss.id) &&
     stage.backgroundTheme === 'burning-ruins'
   ) {
     return gameAssets.stage2MidbossCoreUrl
   }
 
   const eventFinalBosses = getBossDefinitionsByRole(stage, 'final')
-  const legacyFinalBosses = stage.boss ? [stage.boss] : []
   if (
     boss &&
-    [...eventFinalBosses, ...legacyFinalBosses].some((definition) => definition.id === boss.id) &&
+    eventFinalBosses.some((definition) => definition.id === boss.id) &&
     stage.backgroundTheme === 'burning-ruins'
   ) {
     return gameAssets.stage2BossCoreUrl

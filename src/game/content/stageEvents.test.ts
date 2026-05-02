@@ -10,7 +10,6 @@ import type { BossDefinition, EnemyWave, StageEvent } from '../types'
 
 const fixtureWave = {
   id: 'wave-1',
-  startAt: 0,
   kind: 'brass-cloud-scout',
   archetype: 'scout',
   variant: 'brass-cloud-scout',
@@ -19,18 +18,15 @@ const fixtureWave = {
   count: 2,
   spacing: 1,
   hp: 10,
-  speed: 1,
   movement: { type: 'flyThrough', path: 'swoop-left', speed: 1 },
   resolution: { type: 'allInactive' },
   scale: 0.8,
   hitRadius: 0.33,
-  path: 'swoop-left',
   pattern: { shape: 'fan', count: 3, interval: 1, speed: 1, spread: 1, life: 4 },
 } satisfies EnemyWave
 
 const fixtureBoss = {
   id: 'boss-brass-core',
-  startAt: 0,
   hp: 240,
   phases: [
     {

@@ -100,7 +100,7 @@ const controlRect = {
 const defaultStage = createStageDefinition('normal')
 
 function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
-  const action = (stage.events ?? [])
+  const action = stage.events
     .flatMap((event) => event.actions)
     .find((candidate) => candidate.type === 'spawnBoss' && candidate.role === role)
 
@@ -230,10 +230,11 @@ describe('getBossCoreTextureUrl', () => {
 
   it('keeps an event-owned midboss on the generic core outside burning ruins', () => {
     const stage = createStageDefinition('normal')
+    const finalBoss = getBossFromStage(stage, 'final')
     const stageWithEventMidboss: StageDefinition = {
       ...stage,
       events: [
-        ...(stage.events ?? []),
+        ...stage.events,
         {
           id: 'test-midboss-spawn',
           trigger: { type: 'time', at: 1 },
@@ -242,7 +243,7 @@ describe('getBossCoreTextureUrl', () => {
               type: 'spawnBoss',
               role: 'midboss',
               boss: {
-                ...stage.boss,
+                ...finalBoss,
                 id: 'brass-cloud-midboss',
               },
             },

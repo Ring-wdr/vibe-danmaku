@@ -1,21 +1,40 @@
 import { describe, expect, it } from 'vitest'
 
 import { createStageDefinition } from './stage1'
+import type { StageDefinition } from '../types'
 
-function getSpawnWaveEvents(stage: ReturnType<typeof createStageDefinition>) {
-  return (stage.events ?? []).filter((event) =>
+function getSpawnedWaves(stage: StageDefinition) {
+  return stage.events.flatMap((event) =>
+    event.actions.flatMap((action) => (action.type === 'spawnWave' ? [action.wave] : [])),
+  )
+}
+
+function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
+  const action = stage.events
+    .flatMap((event) => event.actions)
+    .find((candidate) => candidate.type === 'spawnBoss' && candidate.role === role)
+
+  if (!action || action.type !== 'spawnBoss') {
+    throw new Error(`missing ${role} boss`)
+  }
+
+  return action.boss
+}
+
+function getSpawnWaveEvents(stage: StageDefinition) {
+  return stage.events.filter((event) =>
     event.actions.some((action) => action.type === 'spawnWave'),
   )
 }
 
-function getSpawnBossEvents(stage: ReturnType<typeof createStageDefinition>) {
-  return (stage.events ?? []).filter((event) =>
+function getSpawnBossEvents(stage: StageDefinition) {
+  return stage.events.filter((event) =>
     event.actions.some((action) => action.type === 'spawnBoss'),
   )
 }
 
-function getVictoryEvents(stage: ReturnType<typeof createStageDefinition>) {
-  return (stage.events ?? []).filter((event) =>
+function getVictoryEvents(stage: StageDefinition) {
+  return stage.events.filter((event) =>
     event.actions.some((action) => action.type === 'finishStage'),
   )
 }
@@ -23,12 +42,13 @@ function getVictoryEvents(stage: ReturnType<typeof createStageDefinition>) {
 describe('createStageDefinition', () => {
   it('roughly doubles or triples each regular wave after the density increase', () => {
     const stage = createStageDefinition('normal')
+    const waves = getSpawnedWaves(stage)
     const previousWaveCounts = [3, 3, 3, 4, 4, 4, 5, 5]
 
-    expect(stage.waves.map((wave) => wave.count)).toEqual([7, 7, 7, 9, 9, 9, 12, 12])
-    expect(stage.waves.reduce((total, wave) => total + wave.count, 0)).toBe(72)
+    expect(waves.map((wave) => wave.count)).toEqual([7, 7, 7, 9, 9, 9, 12, 12])
+    expect(waves.reduce((total, wave) => total + wave.count, 0)).toBe(72)
 
-    stage.waves.forEach((wave, index) => {
+    waves.forEach((wave, index) => {
       const ratio = wave.count / previousWaveCounts[index]!
       expect(ratio).toBeGreaterThanOrEqual(2)
       expect(ratio).toBeLessThanOrEqual(3)
@@ -38,7 +58,7 @@ describe('createStageDefinition', () => {
   it('keeps denser enemy formations inside the playable horizontal span', () => {
     const stage = createStageDefinition('normal')
 
-    for (const wave of stage.waves) {
+    for (const wave of getSpawnedWaves(stage)) {
       expect((wave.count - 1) * wave.spacing).toBeLessThanOrEqual(6)
     }
   })
@@ -46,43 +66,53 @@ describe('createStageDefinition', () => {
   it('keeps wave timing stable across difficulties while scaling bullet counts', () => {
     const easy = createStageDefinition('easy')
     const hard = createStageDefinition('hard')
+    const easyWaves = getSpawnedWaves(easy)
+    const hardWaves = getSpawnedWaves(hard)
+    const easyBoss = getBossFromStage(easy, 'final')
+    const hardBoss = getBossFromStage(hard, 'final')
 
-    expect(hard.waves.map((wave) => wave.startAt)).toEqual(
-      easy.waves.map((wave) => wave.startAt),
+    expect(getSpawnWaveEvents(hard).map((event) => event.trigger)).toEqual(
+      getSpawnWaveEvents(easy).map((event) => event.trigger),
     )
-    expect(hard.waves[0]?.pattern.count).toBeGreaterThan(
-      easy.waves[0]?.pattern.count ?? 0,
+    expect(hardWaves[0]?.pattern.count).toBeGreaterThan(
+      easyWaves[0]?.pattern.count ?? 0,
     )
-    expect(hard.boss.phases[1]?.pattern.count).toBeGreaterThan(
-      easy.boss.phases[1]?.pattern.count ?? 0,
+    expect(hardBoss.phases[1]?.pattern.count).toBeGreaterThan(
+      easyBoss.phases[1]?.pattern.count ?? 0,
     )
-    expect(easy.boss.phases.map((phase) => phase.pattern.count)).toEqual([8, 10, 12])
-    expect(hard.boss.phases.map((phase) => phase.pattern.count)).toEqual([10, 12, 14])
+    expect(easyBoss.phases.map((phase) => phase.pattern.count)).toEqual([8, 10, 12])
+    expect(hardBoss.phases.map((phase) => phase.pattern.count)).toEqual([10, 12, 14])
   })
 
   it('starts the first combat wave quickly after deploy so the battle does not feel empty', () => {
     const easy = createStageDefinition('easy')
+    const firstWaveEvent = getSpawnWaveEvents(easy)[0]
 
-    expect(easy.waves[0]?.startAt).toBeLessThanOrEqual(2)
+    expect(firstWaveEvent?.trigger).toEqual({ type: 'time', at: 1.8 })
   })
 
   it('keeps regular enemy waves close enough together to avoid empty combat stretches', () => {
     const stage = createStageDefinition('normal')
-    const waveStartTimes = stage.waves.map((wave) => wave.startAt)
-    const waveGaps = waveStartTimes.slice(1).map((startAt, index) => {
-      return startAt - waveStartTimes[index]!
-    })
-    const finalApproachGap = stage.boss.startAt - waveStartTimes[waveStartTimes.length - 1]!
+    const spawnWaveEvents = getSpawnWaveEvents(stage)
+    const finalBossEvent = getSpawnBossEvents(stage).find((event) =>
+      event.actions.some((action) => action.type === 'spawnBoss' && action.role === 'final'),
+    )
 
-    expect(stage.waves.length).toBeGreaterThanOrEqual(7)
-    expect(Math.max(...waveGaps)).toBeLessThanOrEqual(12)
-    expect(finalApproachGap).toBeLessThanOrEqual(12)
+    expect(spawnWaveEvents).toHaveLength(8)
+    expect(spawnWaveEvents.slice(1).every((event) => event.trigger.type === 'afterResolved')).toBe(
+      true,
+    )
+    expect(finalBossEvent?.trigger).toEqual({
+      type: 'afterResolved',
+      target: 'wave-8',
+      delay: 2,
+    })
   })
 
   it('uses every regular enemy archetype in Stage 1', () => {
     const stage = createStageDefinition('normal')
 
-    expect(new Set(stage.waves.map((wave) => wave.archetype))).toEqual(
+    expect(new Set(getSpawnedWaves(stage).map((wave) => wave.archetype))).toEqual(
       new Set(['scout', 'sentinel', 'lancer', 'splitter', 'mine-layer', 'weaver']),
     )
   })

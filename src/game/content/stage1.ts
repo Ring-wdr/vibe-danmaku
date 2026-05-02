@@ -8,10 +8,12 @@ import {
 } from './stageEvents'
 import type { BossDefinition, Difficulty, StageDefinition } from '../types'
 
+type TimedBossDefinition = BossDefinition & { spawnAt: number }
+
 const baseWavePlacements = [
   {
     id: 'wave-1',
-    startAt: 1.8,
+    eventAt: 1.8,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 7,
@@ -19,7 +21,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-2',
-    startAt: 10.5,
+    eventAt: 10.5,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 7,
@@ -27,7 +29,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-3',
-    startAt: 19,
+    eventAt: 19,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 7,
@@ -35,7 +37,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-4',
-    startAt: 28,
+    eventAt: 28,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 9,
@@ -43,7 +45,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-5',
-    startAt: 38,
+    eventAt: 38,
     archetype: 'mine-layer',
     variant: 'brass-cloud-mine-layer',
     count: 9,
@@ -51,7 +53,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-6',
-    startAt: 48,
+    eventAt: 48,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 9,
@@ -59,7 +61,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-7',
-    startAt: 58,
+    eventAt: 58,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 12,
@@ -68,7 +70,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-8',
-    startAt: 68,
+    eventAt: 68,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 12,
@@ -77,9 +79,9 @@ const baseWavePlacements = [
   },
 ] as const
 
-const baseBoss: BossDefinition = {
+const baseBoss: TimedBossDefinition = {
   id: 'boss-brass-core',
-  startAt: 78,
+  spawnAt: 78,
   hp: 960,
   phases: [
     {
@@ -112,19 +114,15 @@ export function createStageDefinition(
 ): StageDefinition {
   const fastMultiplier = options?.fastStage ? 0.22 : 1
   const scaleTime = (value: number) => Number((value * fastMultiplier).toFixed(2))
-  const waves = baseWavePlacements.map((placement) => ({
-    ...resolveEnemyWave(difficulty, placement),
-    startAt: scaleTime(placement.startAt),
-  }))
-  const boss = scaleBossDefinition(baseBoss, difficulty)
-  const scaledBoss = { ...boss, startAt: scaleTime(boss.startAt) }
+  const waves = baseWavePlacements.map((placement) => resolveEnemyWave(difficulty, placement))
+  const { spawnAt: _spawnAt, ...boss } = scaleBossDefinition(baseBoss, difficulty)
   const events = [
     ...createSequentialWaveEvents(waves, {
-      firstAt: 1.8,
+      firstAt: baseWavePlacements[0]!.eventAt,
       delayAfterResolved: 1.5,
     }),
-    createBossEventAfterResolved(scaledBoss, 'final', waves[waves.length - 1]!.id, 2),
-    createVictoryEvent(scaledBoss.id),
+    createBossEventAfterResolved(boss, 'final', waves[waves.length - 1]!.id, 2),
+    createVictoryEvent(boss.id),
   ].map((event) => scaleEventTime(event, fastMultiplier))
 
   return {
@@ -134,8 +132,6 @@ export function createStageDefinition(
     name: 'Brass Cloud Gate',
     lore: '황동 비공정 항로 위를 뒤덮은 마도 구름 회랑을 돌파해 비공정 코어를 파괴한다.',
     duration: scaleTime(165),
-    waves,
-    boss: scaledBoss,
     events,
   }
 }

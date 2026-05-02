@@ -15,7 +15,7 @@ type EnemyArchetypeDefinition = {
   speed: number
   scale: number
   hitRadius: number
-  path: EnemyWave['path']
+  path: Extract<EnemyMovementConfig, { type: 'flyThrough' }>['path']
   pattern: BulletPatternConfig
 }
 
@@ -31,14 +31,14 @@ type EnemyThemeVariant = {
 
 type StageEnemyPlacement = {
   id: string
-  startAt: number
+  eventAt: number
   archetype: EnemyArchetypeId
   variant: EnemyVariantId
   count: number
   spacing: number
   hp?: number
   speed?: number
-  path?: EnemyWave['path']
+  path?: Extract<EnemyMovementConfig, { type: 'flyThrough' }>['path']
   movement?: EnemyMovementConfig
   resolution?: SpawnGroupResolution
   pattern?: Partial<BulletPatternConfig>
@@ -292,7 +292,6 @@ export function resolveEnemyWave(
 
   return {
     id: placement.id,
-    startAt: placement.startAt,
     kind: variant.id,
     archetype: archetype.id,
     variant: variant.id,
@@ -301,7 +300,6 @@ export function resolveEnemyWave(
     count: placement.count,
     spacing: placement.spacing,
     hp: placement.hp ?? Math.round(archetype.hp * tuning.hp),
-    speed: placement.speed ?? archetype.speed,
     movement:
       placement.movement ??
       ({
@@ -312,7 +310,6 @@ export function resolveEnemyWave(
     resolution: placement.resolution ?? { type: 'allInactive' },
     scale: archetype.scale,
     hitRadius: archetype.hitRadius,
-    path: placement.path ?? archetype.path,
     pattern: resolvePatternForDifficulty(mergedPattern, difficulty),
   }
 }
