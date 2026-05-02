@@ -298,6 +298,12 @@ function createMidbossGateStage(): StageDefinition {
   }
 }
 
+function createLegacyMidbossGateStage(): StageDefinition {
+  const { events: _events, ...stage } = createMidbossGateStage()
+
+  return stage
+}
+
 const midbossSlayerPilot: CharacterDefinition = {
   ...testPilot,
   id: 'midboss-slayer',
@@ -480,6 +486,37 @@ describe('createBattleRuntime', () => {
 })
 
 describe('stage event timeline runtime', () => {
+  it('stops evaluating the current tick after a finishStage event', () => {
+    const baseStage = createStageDefinition('normal')
+    const lateWave = {
+      ...baseStage.waves[0]!,
+      id: 'after-finish-spawn',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss: { ...baseStage.boss, startAt: 999 },
+        events: [
+          createVictoryEvent('same-tick-victory', { type: 'time', at: 0.01 }),
+          createWaveEvent('same-tick-spawn', { type: 'time', at: 0.01 }, lateWave),
+        ],
+      },
+    })
+
+    runtime.update(0.02)
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.result?.outcome).toBe('victory')
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === lateWave.id)).toBe(false)
+  })
+
   it('fires afterResolved after a fly-through enemy escapes the viewport and spawns the next wave', () => {
     const baseStage = createStageDefinition('normal')
     const firstWave = {
@@ -710,6 +747,19 @@ describe('stage event timeline runtime', () => {
 })
 
 describe('midboss gate runtime', () => {
+  it('keeps legacy no-events post-gate waves blocked while the midboss is alive', () => {
+    const runtime = createRuntime({ stage: createLegacyMidbossGateStage() })
+
+    runtime.update(0.06)
+    runtime.update(0.05)
+
+    const snapshot = runtime.getSnapshot()
+
+    expect(snapshot.boss?.id).toBe('test-midboss')
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'before-gate')).toBe(true)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === 'after-gate')).toBe(false)
+  })
+
   it('blocks post-gate waves while the midboss is alive', () => {
     const runtime = createRuntime({ stage: createMidbossGateStage() })
 

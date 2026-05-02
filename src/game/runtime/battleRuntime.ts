@@ -182,25 +182,53 @@ function getEnemyEntryShootDelay(spawnZ: number, speed: number) {
 }
 
 function createLegacyStageEvents(stage: StageDefinition): StageEvent[] {
-  const events: StageEvent[] = stage.waves.map((wave) => ({
+  if (!stage.midboss) {
+    const events: StageEvent[] = stage.waves.map((wave) => ({
+      id: `${wave.id}-legacy-spawn`,
+      trigger: { type: 'time', at: wave.startAt },
+      actions: [{ type: 'spawnWave', wave }],
+    }))
+
+    events.push({
+      id: `${stage.boss.id}-legacy-spawn`,
+      trigger: { type: 'time', at: stage.boss.startAt },
+      actions: [{ type: 'spawnBoss', boss: stage.boss, role: 'final' }],
+    })
+    events.push({
+      id: `${stage.boss.id}-legacy-victory`,
+      trigger: { type: 'afterDefeated', target: stage.boss.id, delay: 0 },
+      actions: [{ type: 'finishStage', outcome: 'victory' }],
+    })
+
+    return events
+  }
+
+  const gateAfterWaveIndex = stage.midboss.gateAfterWaveIndex
+  const events: StageEvent[] = stage.waves.map((wave, index) => ({
     id: `${wave.id}-legacy-spawn`,
-    trigger: { type: 'time', at: wave.startAt },
+    trigger:
+      index <= gateAfterWaveIndex
+        ? { type: 'time', at: wave.startAt }
+        : {
+            type: 'afterDefeated',
+            target: stage.midboss!.id,
+            delay: Math.max(0, wave.startAt - stage.midboss!.startAt),
+          },
     actions: [{ type: 'spawnWave', wave }],
   }))
 
-  if (stage.midboss) {
-    events.push({
-      id: `${stage.midboss.id}-legacy-spawn`,
-      trigger: { type: 'time', at: stage.midboss.startAt },
-      actions: [{ type: 'spawnBoss', boss: stage.midboss, role: 'midboss' }],
-    })
-  }
-
+  events.push({
+    id: `${stage.midboss.id}-legacy-spawn`,
+    trigger: { type: 'time', at: stage.midboss.startAt },
+    actions: [{ type: 'spawnBoss', boss: stage.midboss, role: 'midboss' }],
+  })
   events.push({
     id: `${stage.boss.id}-legacy-spawn`,
-    trigger: stage.midboss
-      ? { type: 'afterDefeated', target: stage.midboss.id, delay: stage.boss.startAt }
-      : { type: 'time', at: stage.boss.startAt },
+    trigger: {
+      type: 'afterDefeated',
+      target: stage.midboss.id,
+      delay: Math.max(0, stage.boss.startAt - stage.midboss.startAt),
+    },
     actions: [{ type: 'spawnBoss', boss: stage.boss, role: 'final' }],
   })
   events.push({
@@ -1038,6 +1066,10 @@ export function createBattleRuntime({
     state.lastFiredAt = elapsed
 
     for (const action of event.actions) {
+      if (result) {
+        return
+      }
+
       if (action.type === 'spawnWave') {
         spawnWave(action.wave, action.groupKind ?? 'wave')
         continue
@@ -1049,6 +1081,7 @@ export function createBattleRuntime({
       }
 
       finish(action.outcome)
+      return
     }
   }
 
@@ -1061,6 +1094,9 @@ export function createBattleRuntime({
       const state = getEventState(event)
       if (isTriggerReady(event, state)) {
         fireEvent(event, state)
+        if (result) {
+          return
+        }
       }
     }
   }
@@ -1076,6 +1112,9 @@ export function createBattleRuntime({
     }
 
     evaluateEvents()
+    if (result) {
+      return
+    }
 
     player.shotTimer -= delta
     if (player.shotTimer <= 0) {
