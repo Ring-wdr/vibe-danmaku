@@ -4,6 +4,7 @@ import {
   defaultCharacterId,
   fallbackCharacter,
   getCharacterSelectRoster,
+  astraVoltCharacter,
   isPlayableCharacterId,
   playableCharacters,
   reinaShiroganeCharacter,
@@ -13,9 +14,9 @@ import {
 } from './characters'
 
 describe('character catalog', () => {
-  it('registers Lyra, Vesper, and Reina as normal playable characters', () => {
+  it('registers Lyra, Vesper, Reina, and Astra as normal playable characters', () => {
     expect(defaultCharacterId).toBe('lyra-aer')
-    expect(playableCharacters).toHaveLength(3)
+    expect(playableCharacters).toHaveLength(4)
     expect(playableCharacters[0]).toMatchObject({
       id: 'lyra-aer',
       name: 'Lyra Aer',
@@ -73,6 +74,33 @@ describe('character catalog', () => {
       expect(panel.orbit?.hitRadius).toBeGreaterThanOrEqual(0.32)
       expect(panel.orbit?.damagePerSecond).toBe(96)
     }
+    expect(playableCharacters[3]).toBe(astraVoltCharacter)
+    expect(playableCharacters[3]).toMatchObject({
+      id: 'astra-volt',
+      name: 'Astra Volt',
+      title: 'Thunder Regent',
+      frameCount: 4,
+      isFallback: false,
+      special: {
+        id: 'beam-lance',
+        icon: 'beam',
+        kind: 'beam',
+      },
+    })
+    expect(astraVoltCharacter.shot.sidePanelShots).toEqual([
+      expect.objectContaining({ offsetX: -0.68, glow: 1.55 }),
+      expect.objectContaining({ offsetX: 0.68, glow: 1.55 }),
+    ])
+    expect(astraVoltCharacter.sidePanels).toEqual([
+      expect.objectContaining({
+        offsetX: -0.72,
+        textureUrl: expect.stringContaining('astra-volt-panel'),
+      }),
+      expect.objectContaining({
+        offsetX: 0.72,
+        textureUrl: expect.stringContaining('astra-volt-panel'),
+      }),
+    ])
   })
 
   it('resolves empty selection to the default character and invalid saved ids to fallback', () => {
@@ -98,23 +126,27 @@ describe('character catalog', () => {
     expect(isPlayableCharacterId('lyra-aer')).toBe(true)
     expect(isPlayableCharacterId('vesper-noire')).toBe(true)
     expect(isPlayableCharacterId('reina-shirogane')).toBe(true)
+    expect(isPlayableCharacterId('astra-volt')).toBe(true)
     expect(isPlayableCharacterId(fallbackCharacter.id)).toBe(false)
     expect(getCharacterSelectRoster('lyra-aer').map((character) => character.id)).toEqual([
       'lyra-aer',
       'vesper-noire',
       'reina-shirogane',
+      'astra-volt',
     ])
     expect(getCharacterSelectRoster(fallbackCharacter.id).map((character) => character.id)).toEqual([
       fallbackCharacter.id,
       'lyra-aer',
       'vesper-noire',
       'reina-shirogane',
+      'astra-volt',
     ])
     expect(getCharacterSelectRoster('deleted-character').map((character) => character.id)).toEqual([
       fallbackCharacter.id,
       'lyra-aer',
       'vesper-noire',
       'reina-shirogane',
+      'astra-volt',
     ])
   })
 })

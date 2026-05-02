@@ -63,6 +63,20 @@ const runtimeAssets = [
     alphaQuality: 92,
   },
   {
+    source: 'players/astra-volt-sprite-sheet.png',
+    output: 'players/astra-volt-sprite-sheet.webp',
+    width: 1024,
+    quality: 74,
+    alphaQuality: 86,
+  },
+  {
+    source: 'players/astra-volt-panel.png',
+    output: 'players/astra-volt-panel.webp',
+    width: 208,
+    quality: 82,
+    alphaQuality: 92,
+  },
+  {
     source: 'backgrounds/burning-ruins/stage2-ruin-floor.png',
     output: 'backgrounds/burning-ruins/stage2-ruin-floor.webp',
     width: 1024,
@@ -107,6 +121,13 @@ const runtimeAssets = [
   {
     source: 'ui/ui-reina-shirogane-portrait.png',
     output: 'ui/ui-reina-shirogane-portrait.webp',
+    width: 480,
+    quality: 76,
+    alphaQuality: 88,
+  },
+  {
+    source: 'ui/ui-astra-volt-portrait.png',
+    output: 'ui/ui-astra-volt-portrait.webp',
     width: 480,
     quality: 76,
     alphaQuality: 88,

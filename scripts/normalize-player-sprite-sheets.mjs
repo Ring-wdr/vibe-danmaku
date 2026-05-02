@@ -14,9 +14,14 @@ const alphaThreshold = 8
 const targetMainBodyHeight = 600
 
 const playerSpriteSheets = [
-  'player-battle-sprite-sheet.png',
-  'vesper-noire-sprite-sheet.png',
-  'reina-shirogane-sprite-sheet.png',
+  { source: 'player-battle-sprite-sheet.png', output: 'player-battle-sprite-sheet.png' },
+  { source: 'vesper-noire-sprite-sheet.png', output: 'vesper-noire-sprite-sheet.png' },
+  { source: 'reina-shirogane-sprite-sheet.png', output: 'reina-shirogane-sprite-sheet.png' },
+  {
+    source: 'astra-volt-sprite-sheet-source.png',
+    output: 'astra-volt-sprite-sheet.png',
+    preserveSourceFrames: true,
+  },
 ]
 
 function getNearestFrameIndex(centerX, sourceWidth) {
@@ -119,6 +124,66 @@ function median(values) {
     : sortedValues[middle]
 }
 
+function getFixedFrameContentMetrics({ data, width, height }) {
+  const frameWidth = width / frameCount
+
+  if (!Number.isInteger(frameWidth)) {
+    return []
+  }
+
+  return Array.from({ length: frameCount }, (_, frameIndex) => {
+    let minX = frameWidth
+    let maxX = -1
+    let minY = height
+    let maxY = -1
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = frameIndex * frameWidth; x < (frameIndex + 1) * frameWidth; x += 1) {
+        const alpha = data[(y * width + x) * 4 + 3]
+
+        if (alpha <= alphaThreshold) {
+          continue
+        }
+
+        const localX = x - frameIndex * frameWidth
+        minX = Math.min(minX, localX)
+        maxX = Math.max(maxX, localX)
+        minY = Math.min(minY, y)
+        maxY = Math.max(maxY, y)
+      }
+    }
+
+    return {
+      hasContent: maxX >= minX && maxY >= minY,
+      left: minX,
+      right: frameWidth - 1 - maxX,
+      top: minY,
+      bottom: height - 1 - maxY,
+    }
+  })
+}
+
+function isAlreadyNormalizedOutput({ config, metadata, sourceData }) {
+  if (config.source !== config.output) {
+    return false
+  }
+
+  if (metadata.width !== targetFrameWidth * frameCount || metadata.height !== targetHeight) {
+    return false
+  }
+
+  return getFixedFrameContentMetrics({
+    data: sourceData,
+    width: metadata.width,
+    height: metadata.height,
+  }).every(
+    (frame) =>
+      frame.hasContent &&
+      frame.left >= minHorizontalPadding &&
+      frame.right >= minHorizontalPadding,
+  )
+}
+
 async function createAssignedFrameImage({ components, sourceData, sourceWidth }) {
   if (components.length === 0) {
     return null
@@ -160,36 +225,102 @@ async function createAssignedFrameImage({ components, sourceData, sourceWidth })
   }
 }
 
-async function normalizePlayerSpriteSheet(fileName) {
-  const sourcePath = path.join(playerDir, fileName)
+async function createSourceFrameImage({ frameIndex, sourceData, sourceWidth, sourceHeight }) {
+  const sourceFrameLeft = Math.round((sourceWidth * frameIndex) / frameCount)
+  const sourceFrameRight = Math.round((sourceWidth * (frameIndex + 1)) / frameCount)
+  const sourceFrameWidth = sourceFrameRight - sourceFrameLeft
+  let minX = sourceFrameWidth
+  let minY = sourceHeight
+  let maxX = -1
+  let maxY = -1
+
+  for (let y = 0; y < sourceHeight; y += 1) {
+    for (let localX = 0; localX < sourceFrameWidth; localX += 1) {
+      const sourceX = sourceFrameLeft + localX
+      const sourceIndex = (y * sourceWidth + sourceX) * 4
+
+      if (sourceData[sourceIndex + 3] <= alphaThreshold) {
+        continue
+      }
+
+      minX = Math.min(minX, localX)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, localX)
+      maxY = Math.max(maxY, y)
+    }
+  }
+
+  if (maxX < minX || maxY < minY) {
+    return null
+  }
+
+  const width = maxX - minX + 1
+  const height = maxY - minY + 1
+  const frameData = Buffer.alloc(width * height * 4)
+
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let localX = minX; localX <= maxX; localX += 1) {
+      const sourceX = sourceFrameLeft + localX
+      const sourceIndex = (y * sourceWidth + sourceX) * 4
+      const targetIndex = ((y - minY) * width + localX - minX) * 4
+
+      frameData[targetIndex] = sourceData[sourceIndex]
+      frameData[targetIndex + 1] = sourceData[sourceIndex + 1]
+      frameData[targetIndex + 2] = sourceData[sourceIndex + 2]
+      frameData[targetIndex + 3] = sourceData[sourceIndex + 3]
+    }
+  }
+
+  return {
+    bounds: {
+      left: sourceFrameLeft + minX,
+      top: minY,
+      width,
+      height,
+    },
+    image: sharp(frameData, {
+      raw: {
+        width,
+        height,
+        channels: 4,
+      },
+    }),
+  }
+}
+
+async function normalizePlayerSpriteSheet(config) {
+  const sourcePath = path.join(playerDir, config.source)
+  const outputPath = path.join(playerDir, config.output)
   const source = sharp(sourcePath).ensureAlpha()
   const metadata = await source.metadata()
 
   if (!metadata.width || !metadata.height) {
-    throw new Error(`Cannot read sprite sheet dimensions: ${fileName}`)
+    throw new Error(`Cannot read sprite sheet dimensions: ${config.source}`)
   }
 
   const sourceData = await source.raw().toBuffer()
-  const componentsByFrame = Array.from({ length: frameCount }, () => [])
-
-  for (const component of findAlphaComponents({
-    data: sourceData,
-    width: metadata.width,
-    height: metadata.height,
-  })) {
-    const frameIndex = getNearestFrameIndex(component.centerX, metadata.width)
-    componentsByFrame[frameIndex].push(component)
+  if (isAlreadyNormalizedOutput({ config, metadata, sourceData })) {
+    console.log(`${config.output}: already normalized`)
+    return
   }
 
-  const assignedFrames = await Promise.all(
-    componentsByFrame.map((components) =>
-      createAssignedFrameImage({
-        components,
+  const assignedFrames = config.preserveSourceFrames
+    ? await Promise.all(
+        Array.from({ length: frameCount }, (_, frameIndex) =>
+          createSourceFrameImage({
+            frameIndex,
+            sourceData,
+            sourceWidth: metadata.width,
+            sourceHeight: metadata.height,
+          }),
+        ),
+      )
+    : await createComponentAssignedFrames({
         sourceData,
         sourceWidth: metadata.width,
-      }),
-    ),
-  )
+        sourceHeight: metadata.height,
+      })
+
   const maxContentWidth = Math.max(
     ...assignedFrames.map((frame) => frame?.bounds.width ?? 0),
   )
@@ -236,10 +367,35 @@ async function normalizePlayerSpriteSheet(fileName) {
   })
     .composite(composites.filter(Boolean))
     .png()
-    .toFile(sourcePath)
+    .toFile(outputPath)
 
   console.log(
-    `${fileName}: normalized to ${targetFrameWidth * frameCount}x${targetHeight} (${targetFrameWidth}px x ${frameCount} frames)`,
+    `${config.output}: normalized from ${config.source} to ${
+      targetFrameWidth * frameCount
+    }x${targetHeight} (${targetFrameWidth}px x ${frameCount} frames)`,
+  )
+}
+
+async function createComponentAssignedFrames({ sourceData, sourceWidth, sourceHeight }) {
+  const componentsByFrame = Array.from({ length: frameCount }, () => [])
+
+  for (const component of findAlphaComponents({
+    data: sourceData,
+    width: sourceWidth,
+    height: sourceHeight,
+  })) {
+    const frameIndex = getNearestFrameIndex(component.centerX, sourceWidth)
+    componentsByFrame[frameIndex].push(component)
+  }
+
+  return Promise.all(
+    componentsByFrame.map((components) =>
+      createAssignedFrameImage({
+        components,
+        sourceData,
+        sourceWidth,
+      }),
+    ),
   )
 }
 

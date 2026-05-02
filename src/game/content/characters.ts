@@ -168,6 +168,58 @@ export const reinaShiroganeCharacter: PlayableCharacter = {
   isFallback: false,
 }
 
+export const astraVoltCharacter: PlayableCharacter = {
+  id: 'astra-volt',
+  name: 'Astra Volt',
+  title: 'Thunder Regent',
+  spriteSheetUrl: gameAssets.astraVoltSheetUrl,
+  portraitUrl: gameAssets.astraVoltPortraitUrl,
+  description:
+    'Fierce thunder caster with twin voltaic sigils, fast amber bolts, and a focused lightning lance.',
+  frameCount: 4,
+  moveRadius: {
+    x: 4.18,
+    minZ: -3.28,
+    maxZ: -0.36,
+  },
+  shot: {
+    interval: 0.105,
+    speed: 6.25,
+    power: 10,
+    sidePanelShots: [
+      {
+        offsetX: -0.68,
+        speed: 6.55,
+        power: 7,
+        radius: 0.056,
+        glow: 1.55,
+      },
+      {
+        offsetX: 0.68,
+        speed: 6.55,
+        power: 7,
+        radius: 0.056,
+        glow: 1.55,
+      },
+    ],
+  },
+  sidePanels: [
+    { offsetX: -0.72, offsetZ: 0.08, scale: 0.58, textureUrl: gameAssets.astraVoltPanelUrl },
+    { offsetX: 0.72, offsetZ: 0.08, scale: 0.58, textureUrl: gameAssets.astraVoltPanelUrl },
+  ],
+  special: {
+    id: 'beam-lance',
+    icon: 'beam',
+    kind: 'beam',
+  },
+  stats: [
+    { label: 'Mobility', value: 'Surging', ratio: 0.94 },
+    { label: 'Bolt Rate', value: 'Relentless', ratio: 0.98 },
+    { label: 'Lance', value: 'Focused', ratio: 0.88 },
+  ],
+  isFallback: false,
+}
+
 export const fallbackCharacter: PlayableCharacter = {
   ...lyraAerCharacter,
   id: 'fallback-pilot',
@@ -181,6 +233,7 @@ export const playableCharacters = [
   lyraAerCharacter,
   vesperNoireCharacter,
   reinaShiroganeCharacter,
+  astraVoltCharacter,
 ] as const
 export const defaultCharacterId = lyraAerCharacter.id
 
