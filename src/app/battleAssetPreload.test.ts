@@ -14,6 +14,7 @@ describe('getBattleAssetPreloadItems', () => {
     const urls = items.map((item) => item.url)
 
     expect(urls).toContain(lyraAerCharacter.spriteSheetUrl)
+    expect(urls.some((url) => url.includes('/items/item-atlas'))).toBe(true)
     expect(urls.some((url) => url.includes('/enemies/enemy-brass-cloud-atlas'))).toBe(true)
     expect(urls.some((url) => url.includes('/backgrounds/brass-cloud/cloud-layer-a'))).toBe(true)
     expect(urls.some((url) => url.includes('/backgrounds/brass-cloud/cloud-layer-b'))).toBe(true)

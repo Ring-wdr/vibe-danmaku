@@ -72,6 +72,11 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
     boss: null,
     bosses: [],
     bullets: [],
+    itemDrops: [],
+    playerPowerups: {
+      powerupLevel: 0,
+      attackMultiplier: 1,
+    },
     specialSlots: [
       {
         id: 'beam-lance',

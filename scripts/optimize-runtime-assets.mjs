@@ -97,6 +97,13 @@ const runtimeAssets = [
     quality: 76,
     alphaQuality: 84,
   },
+  {
+    source: 'items/item-atlas.png',
+    output: 'items/item-atlas.webp',
+    width: 512,
+    quality: 82,
+    alphaQuality: 92,
+  },
 ]
 
 function formatBytes(bytes) {

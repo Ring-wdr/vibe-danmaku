@@ -6,6 +6,7 @@ import bossCoreUrl from '../assets/generated/bosses/boss-core.webp'
 import stage2BossCoreUrl from '../assets/generated/bosses/stage2-boss-core.webp'
 import stage2MidbossCoreUrl from '../assets/generated/bosses/stage2-midboss-core.webp'
 import enemyBrassCloudAtlasUrl from '../assets/generated/enemies/enemy-brass-cloud-atlas.webp'
+import itemAtlasUrl from '../assets/generated/items/item-atlas.webp'
 import playerSheetUrl from '../assets/generated/players/player-battle-sprite-sheet.webp'
 import vesperNoirePanelUrl from '../assets/generated/players/vesper-noire-panel.webp'
 import vesperNoireSheetUrl from '../assets/generated/players/vesper-noire-sprite-sheet.webp'
@@ -18,6 +19,7 @@ export const gameAssets = {
   cloudLayerAUrl,
   cloudLayerBUrl,
   enemyBrassCloudAtlasUrl,
+  itemAtlasUrl,
   playerPortraitUrl,
   playerSheetUrl,
   stage2BossCoreUrl,

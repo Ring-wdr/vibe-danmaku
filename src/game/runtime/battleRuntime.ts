@@ -9,6 +9,7 @@ import type {
   RenderBullet,
   RenderDestructionEffect,
   RenderEnemy,
+  RenderItemDrop,
   RenderSpecialBeam,
   RenderSpecialSlot,
   RunResult,
@@ -16,6 +17,7 @@ import type {
   StageDefinition,
   StageEvent,
 } from '../types'
+import { battleItems, getAttackMultiplier } from '../content/items'
 
 type RuntimeBullet = {
   id: string
@@ -115,6 +117,16 @@ type RuntimeDestructionEffect = {
   seed: number
 }
 
+type RuntimeItemDrop = {
+  id: string
+  itemId: 'powerup'
+  x: number
+  z: number
+  speed: number
+  radius: number
+  collected: boolean
+}
+
 type RuntimeOptions = {
   difficulty: Difficulty
   stage: StageDefinition
@@ -162,6 +174,15 @@ const defaultSpecial = {
 const enemyFeedbackConfig = {
   hitFlashDuration: 0.06,
   destructionLife: 0.62,
+} as const
+
+const itemDropConfig = {
+  waveInterval: 4,
+  spawnZ: bulletViewportBounds.maxZ + 1.35,
+  cleanupZ: bulletViewportBounds.minZ - 0.85,
+  speed: 2.6,
+  radius: 0.25,
+  pickupRadius: 0.28,
 } as const
 
 function clamp(value: number, min: number, max: number) {
@@ -239,6 +260,7 @@ export function createBattleRuntime({
   const bosses: RuntimeBoss[] = []
   const sparkles: RuntimeSparkle[] = []
   const destructionEffects: RuntimeDestructionEffect[] = []
+  const itemDrops: RuntimeItemDrop[] = []
   const eventStates = new Map<string, EventState>()
   const spawnGroups = new Map<string, SpawnGroupState>()
   const spawnGroupCounts = new Map<string, number>()
@@ -261,11 +283,14 @@ export function createBattleRuntime({
   let hitsTaken = 0
   let bossEnteredCount = 0
   let cuePulse = 0
+  let regularWaveSpawnCount = 0
+  let powerupLevel = 0
   let result: RunResult | null = null
   let lastBulletId = 0
   let lastEnemyId = 0
   let lastSparkleId = 0
   let lastDestructionEffectId = 0
+  let lastItemDropId = 0
   let cachedSnapshot: BattleSnapshot | null = null
 
   const getBossPhase = (boss: RuntimeBoss | null) => {
@@ -335,6 +360,12 @@ export function createBattleRuntime({
       radius: bullet.radius,
       glow: bullet.glow,
     }))
+    const renderItemDrops: RenderItemDrop[] = itemDrops.map((drop) => ({
+      id: drop.id,
+      itemId: drop.itemId,
+      position: { x: drop.x, z: drop.z },
+      collected: drop.collected,
+    }))
     const renderBosses: RenderBoss[] = bosses.map((candidate) => {
       const bossPhase = getBossPhase(candidate)
 
@@ -365,6 +396,11 @@ export function createBattleRuntime({
       boss: renderBoss,
       bosses: renderBosses,
       bullets: renderBullets,
+      itemDrops: renderItemDrops,
+      playerPowerups: {
+        powerupLevel,
+        attackMultiplier: getAttackMultiplier(powerupLevel),
+      },
       specialSlots: [getSpecialSlot()],
       specialBeam: getSpecialBeam(),
       sparkles: sparkles.map((sparkle) => ({
@@ -438,7 +474,19 @@ export function createBattleRuntime({
       radius,
       glow,
       life: 2.2,
-      damage: power,
+      damage: power * getAttackMultiplier(powerupLevel),
+    })
+  }
+
+  const spawnItemDrop = (itemId: RuntimeItemDrop['itemId']) => {
+    itemDrops.push({
+      id: `item-drop-${lastItemDropId++}`,
+      itemId,
+      x: 0,
+      z: itemDropConfig.spawnZ,
+      speed: itemDropConfig.speed,
+      radius: itemDropConfig.radius,
+      collected: false,
     })
   }
 
@@ -543,6 +591,13 @@ export function createBattleRuntime({
   }
 
   const spawnWave = (wave: EnemyWave, groupKind: 'wave' | 'summon' = 'wave') => {
+    if (groupKind === 'wave') {
+      regularWaveSpawnCount += 1
+      if (regularWaveSpawnCount % itemDropConfig.waveInterval === 0) {
+        spawnItemDrop('powerup')
+      }
+    }
+
     const movement = wave.movement
     const resolution = wave.resolution
     const groupCount = spawnGroupCounts.get(wave.id) ?? 0
@@ -881,6 +936,36 @@ export function createBattleRuntime({
 
     if (spawnedSparkle) {
       specialSparkleTimer = beamLanceConfig.sparkleInterval
+    }
+  }
+
+  const collectItemDrop = (drop: RuntimeItemDrop) => {
+    if (drop.itemId === 'powerup') {
+      powerupLevel = Math.min(battleItems.powerup.maxLevel, powerupLevel + 1)
+      cuePulse += 1
+    }
+
+    drop.collected = true
+  }
+
+  const updateItemDrops = (delta: number) => {
+    for (let index = itemDrops.length - 1; index >= 0; index -= 1) {
+      const drop = itemDrops[index]
+      drop.z -= drop.speed * delta
+
+      const hitDistance = drop.radius + itemDropConfig.pickupRadius
+      if (
+        distanceSquared({ x: drop.x, z: drop.z }, { x: player.x, z: player.z }) <
+        hitDistance * hitDistance
+      ) {
+        collectItemDrop(drop)
+        itemDrops.splice(index, 1)
+        continue
+      }
+
+      if (drop.z < itemDropConfig.cleanupZ) {
+        itemDrops.splice(index, 1)
+      }
     }
   }
 
@@ -1267,6 +1352,8 @@ export function createBattleRuntime({
     if (result) {
       return
     }
+
+    updateItemDrops(delta)
 
     player.shotTimer -= delta
     if (player.shotTimer <= 0) {

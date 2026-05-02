@@ -60,6 +60,11 @@ export function getBattleAssetPreloadItems({
       label: 'Enemy atlas',
       url: gameAssets.enemyBrassCloudAtlasUrl,
     },
+    {
+      id: 'item-atlas',
+      label: 'Item atlas',
+      url: gameAssets.itemAtlasUrl,
+    },
   ]
 
   const stageItems =

@@ -182,6 +182,30 @@ function createImmediateWaveStage(): StageDefinition {
   ])
 }
 
+function createPowerupItemStage(waveCount = 4): StageDefinition {
+  const stage = createStageDefinition('normal')
+  const baseWave = {
+    ...getFirstWave(stage),
+    count: 0,
+    hp: 1,
+    movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+  } satisfies EnemyWave
+
+  return createEventStage(
+    stage,
+    Array.from({ length: waveCount }, (_, index) =>
+      createWaveEvent(
+        `powerup-wave-${index}`,
+        { type: 'time', at: index * 0.1 },
+        {
+          ...baseWave,
+          id: `powerup-wave-${index}`,
+        },
+      ),
+    ),
+  )
+}
+
 function createPatternStage(pattern: BulletPatternConfig): StageDefinition {
   const stage = createStageDefinition('normal')
   const wave = {
@@ -597,6 +621,99 @@ describe('createBattleRuntime', () => {
     const snapshot = runtime.getSnapshot()
     expect(snapshot.enemies[0]?.position.z).toBeGreaterThan(3.2)
     expect(snapshot.bullets.some((bullet) => bullet.source === 'enemy')).toBe(true)
+  })
+
+  it('drops a powerup item box after every fourth regular wave spawn', () => {
+    const runtime = createRuntime({ stage: createPowerupItemStage() })
+
+    runtime.update(0.31)
+
+    const snapshot = runtime.getSnapshot() as ReturnType<typeof runtime.getSnapshot> & {
+      itemDrops?: { itemId: string; position: { x: number; z: number } }[]
+      playerPowerups?: { powerupLevel: number; attackMultiplier: number }
+    }
+
+    expect(snapshot.itemDrops).toEqual([
+      expect.objectContaining({
+        itemId: 'powerup',
+        position: expect.objectContaining({
+          z: expect.any(Number),
+        }),
+      }),
+    ])
+    expect(snapshot.itemDrops?.[0]?.position.z).toBeGreaterThan(3.2)
+    expect(snapshot.playerPowerups).toEqual({
+      powerupLevel: 0,
+      attackMultiplier: 1,
+    })
+  })
+
+  it('collects falling powerup boxes and caps attack power at level 3', () => {
+    const runtime = createRuntime({
+      stage: createPowerupItemStage(),
+      character: {
+        ...testPilot,
+        shot: {
+          ...testPilot.shot,
+          interval: 999,
+        },
+      },
+    })
+
+    runtime.update(0.31)
+    for (let index = 0; index < 4; index += 1) {
+      runtime.update(0.5)
+    }
+
+    let snapshot = runtime.getSnapshot() as ReturnType<typeof runtime.getSnapshot> & {
+      itemDrops?: { itemId: string }[]
+      playerPowerups?: { powerupLevel: number; attackMultiplier: number }
+    }
+
+    expect(snapshot.itemDrops).toHaveLength(0)
+    expect(snapshot.playerPowerups).toEqual({
+      powerupLevel: 1,
+      attackMultiplier: 1.2,
+    })
+
+    const cappedRuntime = createRuntime({
+      stage: createPowerupItemStage(16),
+      character: {
+        ...testPilot,
+        shot: {
+          ...testPilot.shot,
+          interval: 999,
+        },
+      },
+    })
+
+    for (let index = 0; index < 12; index += 1) {
+      cappedRuntime.update(0.02)
+      cappedRuntime.update(0.5)
+    }
+
+    snapshot = cappedRuntime.getSnapshot() as ReturnType<typeof cappedRuntime.getSnapshot> & {
+      playerPowerups?: { powerupLevel: number; attackMultiplier: number }
+    }
+
+    expect(snapshot.playerPowerups).toEqual({
+      powerupLevel: 3,
+      attackMultiplier: 1.73,
+    })
+
+    for (let index = 0; index < 3; index += 1) {
+      cappedRuntime.update(0.02)
+      cappedRuntime.update(0.5)
+    }
+
+    snapshot = cappedRuntime.getSnapshot() as ReturnType<typeof cappedRuntime.getSnapshot> & {
+      playerPowerups?: { powerupLevel: number; attackMultiplier: number }
+    }
+
+    expect(snapshot.playerPowerups).toEqual({
+      powerupLevel: 3,
+      attackMultiplier: 1.73,
+    })
   })
 
   it('lets enemy bullets leave the viewport before cleaning them up after a grace period', () => {

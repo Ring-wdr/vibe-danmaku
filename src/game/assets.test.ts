@@ -21,6 +21,7 @@ describe('gameAssets', () => {
     expect(gameAssets.cloudLayerAUrl).toMatch(/backgrounds\/brass-cloud\/cloud-layer-a/)
     expect(gameAssets.cloudLayerBUrl).toMatch(/backgrounds\/brass-cloud\/cloud-layer-b/)
     expect(gameAssets.enemyBrassCloudAtlasUrl).toMatch(/enemies\/enemy-brass-cloud-atlas/)
+    expect(gameAssets.itemAtlasUrl).toMatch(/items\/item-atlas/)
     expect(gameAssets.playerSheetUrl).toMatch(/players\/player-battle-sprite-sheet/)
     expect(gameAssets.playerPortraitUrl).toMatch(/ui\/ui-player-portrait/)
     expect(gameAssets.uiOrnamentUrl).toMatch(/ui\/ui-ornament/)

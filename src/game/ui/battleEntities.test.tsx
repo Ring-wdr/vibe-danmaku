@@ -3,9 +3,11 @@ import { createElement } from 'react'
 import * as THREE from 'three'
 import { describe, expect, it, vi } from 'vitest'
 
+import { gameAssets } from '../assets'
 import { lyraAerCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { RuntimeEntityLayer } from './battleEntities'
+import { useLoadedTexture } from './battleTexture'
 import type { BattleSnapshot } from '../types'
 
 vi.mock('@react-three/fiber', () => ({
@@ -57,6 +59,11 @@ const snapshot = {
   boss: null,
   bosses: [],
   bullets: [],
+  itemDrops: [],
+  playerPowerups: {
+    powerupLevel: 0,
+    attackMultiplier: 1,
+  },
   specialSlots: [
     {
       id: 'beam-lance',
@@ -98,5 +105,29 @@ describe('RuntimeEntityLayer', () => {
           Number(material.dataset.tintStrength) > 0,
       ),
     ).toBe(true)
+  })
+
+  it('renders falling item boxes with the shared item atlas texture', () => {
+    render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={{
+          ...snapshot,
+          itemDrops: [
+            {
+              id: 'item-drop-1',
+              itemId: 'powerup',
+              position: { x: 0, z: 2.2 },
+              collected: false,
+            },
+          ],
+        }}
+        isPaused={false}
+      />,
+    )
+
+    expect(screen.getByTestId('item-drop-powerup')).toBeInTheDocument()
+    expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(gameAssets.itemAtlasUrl)
   })
 })

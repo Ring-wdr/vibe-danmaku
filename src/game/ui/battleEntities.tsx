@@ -21,6 +21,7 @@ import type {
   CharacterDefinition,
   RenderBoss,
   RenderEnemy,
+  RenderItemDrop,
   StageDefinition,
 } from '../types'
 
@@ -199,6 +200,48 @@ function EnemySprite({
   )
 }
 
+function ItemDropSprite({ drop }: { drop: RenderItemDrop }) {
+  const texture = useLoadedTexture(gameAssets.itemAtlasUrl)
+  const position = arenaPointToView(drop.position, 0.74)
+
+  if (!texture) {
+    return (
+      <group data-testid={`item-drop-${drop.itemId}`} position={position}>
+        <mesh>
+          <boxGeometry args={[0.42, 0.42, 0.12]} />
+          <meshBasicMaterial color="#67e8f9" toneMapped={false} />
+        </mesh>
+      </group>
+    )
+  }
+
+  return (
+    <group data-testid={`item-drop-${drop.itemId}`} position={position}>
+      <mesh>
+        <planeGeometry args={[0.56, 0.56]} />
+        <RestoredTextureMaterial
+          texture={texture}
+          frameColumns={2}
+          frameIndex={0}
+          exposure={1.72}
+          saturation={1.32}
+          contrast={1.08}
+        />
+      </mesh>
+      <mesh position={[0, -0.03, -0.02]}>
+        <ringGeometry args={[0.28, 0.34, 36]} />
+        <meshBasicMaterial
+          color="#f8e08e"
+          transparent
+          opacity={0.2}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 function PlayerSidePanel({
   position,
   scale,
@@ -351,6 +394,9 @@ export function RuntimeEntityLayer({
           position={arenaPointToView(enemy.position, 0.7)}
           scale={enemy.scale}
         />
+      ))}
+      {snapshot.itemDrops.map((drop) => (
+        <ItemDropSprite key={drop.id} drop={drop} />
       ))}
       {getRenderableBosses(snapshot).map((boss) => (
         <BossSprite key={boss.id} boss={boss} stage={stage} />

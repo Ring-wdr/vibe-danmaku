@@ -232,6 +232,27 @@ export type RenderBullet = {
   glow: number
 }
 
+export type BattleItemId = 'powerup'
+
+export type BattleItemDefinition = {
+  id: BattleItemId
+  label: string
+  maxLevel: number
+  attackMultiplierPerLevel: number
+}
+
+export type RenderItemDrop = {
+  id: string
+  itemId: BattleItemId
+  position: ArenaPoint
+  collected: boolean
+}
+
+export type RenderPlayerPowerups = {
+  powerupLevel: number
+  attackMultiplier: number
+}
+
 export type SpecialSlotId = 'beam-lance' | 'phantom-orb'
 export type SpecialIconId = 'beam' | 'orb'
 
@@ -284,6 +305,8 @@ export type BattleSnapshot = {
   boss: RenderBoss | null
   bosses: RenderBoss[]
   bullets: RenderBullet[]
+  itemDrops: RenderItemDrop[]
+  playerPowerups: RenderPlayerPowerups
   specialSlots: RenderSpecialSlot[]
   specialBeam: RenderSpecialBeam | null
   sparkles: RenderSparkle[]
