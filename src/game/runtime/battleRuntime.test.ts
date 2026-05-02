@@ -314,6 +314,16 @@ const midbossSlayerPilot: CharacterDefinition = {
   },
 }
 
+const bossTriggerPilot: CharacterDefinition = {
+  ...testPilot,
+  id: 'boss-trigger-pilot',
+  shot: {
+    interval: 0.18,
+    speed: 24,
+    power: 80,
+  },
+}
+
 function advanceWhileBossActive(
   runtime: ReturnType<typeof createRuntime>,
   bossId: string,
@@ -743,6 +753,357 @@ describe('stage event timeline runtime', () => {
     expect(snapshot.elapsed).toBeLessThan(5)
     expect(snapshot.enemies.some((enemy) => enemy.waveId === timeoutWave.id)).toBe(false)
     expect(snapshot.enemies.some((enemy) => enemy.waveId === markerWave.id)).toBe(true)
+  })
+
+  it('keeps enter-and-strafe enemies near their hold line', () => {
+    const baseStage = createStageDefinition('normal')
+    const strafeWave = {
+      ...baseStage.waves[0]!,
+      id: 'hold-line-strafe',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: {
+        type: 'enterAndStrafe',
+        entrySpeed: 5,
+        holdZ: 1.2,
+        strafeSpeed: 2,
+        strafeRange: 1.6,
+      },
+      resolution: { type: 'allDefeated' },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss: { ...baseStage.boss, startAt: 999 },
+        events: [createWaveEvent('hold-line-strafe-event', { type: 'time', at: 0 }, strafeWave)],
+      },
+      character: testPilot,
+    })
+
+    runtime.update(1.2)
+
+    const firstSnapshot = runtime.getSnapshot()
+    const firstEnemy = firstSnapshot.enemies.find((enemy) => enemy.waveId === strafeWave.id)
+    expect(firstEnemy?.position.z).toBeCloseTo(strafeWave.movement.holdZ, 5)
+
+    runtime.update(0.8)
+
+    const secondEnemy = runtime
+      .getSnapshot()
+      .enemies.find((enemy) => enemy.waveId === strafeWave.id)
+    expect(secondEnemy?.position.z).toBeCloseTo(strafeWave.movement.holdZ, 5)
+    expect(Math.abs(secondEnemy?.position.x ?? 0)).toBeLessThanOrEqual(
+      strafeWave.movement.strafeRange,
+    )
+  })
+
+  it('does not resolve allDefeated strafe waves while the guard is alive', () => {
+    const baseStage = createStageDefinition('normal')
+    const guardWave = {
+      ...baseStage.waves[0]!,
+      id: 'alive-strafe-guard',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: {
+        type: 'enterAndStrafe',
+        entrySpeed: 5,
+        holdZ: 1.2,
+        strafeSpeed: 2,
+        strafeRange: 1.6,
+      },
+      resolution: { type: 'allDefeated' },
+    } satisfies EnemyWave
+    const blockedWave = {
+      ...baseStage.waves[1]!,
+      id: 'blocked-by-alive-guard',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss: { ...baseStage.boss, startAt: 999 },
+        events: [
+          createWaveEvent('alive-strafe-guard-event', { type: 'time', at: 0 }, guardWave),
+          createWaveEvent(
+            'blocked-by-alive-guard-event',
+            { type: 'afterResolved', target: guardWave.id, delay: 0 },
+            blockedWave,
+          ),
+        ],
+      },
+      character: testPilot,
+    })
+
+    for (let index = 0; index < 20; index += 1) {
+      runtime.update(0.1)
+    }
+
+    const snapshot = runtime.getSnapshot()
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === guardWave.id)).toBe(true)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === blockedWave.id)).toBe(false)
+  })
+
+  it('force-escapes timeout strafe waves so progression cannot hang', () => {
+    const baseStage = createStageDefinition('normal')
+    const strafeWave = {
+      ...baseStage.waves[0]!,
+      id: 'timeout-strafe-escape',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: {
+        type: 'enterAndStrafe',
+        entrySpeed: 5,
+        holdZ: 1.2,
+        strafeSpeed: 2,
+        strafeRange: 1.6,
+      },
+      resolution: { type: 'timeout', seconds: 0.5, then: 'forceEscape' },
+    } satisfies EnemyWave
+    const followUpWave = {
+      ...baseStage.waves[1]!,
+      id: 'after-timeout-strafe',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss: { ...baseStage.boss, startAt: 999 },
+        events: [
+          createWaveEvent('timeout-strafe-escape-event', { type: 'time', at: 0 }, strafeWave),
+          createWaveEvent(
+            'after-timeout-strafe-event',
+            { type: 'afterResolved', target: strafeWave.id, delay: 0 },
+            followUpWave,
+          ),
+        ],
+      },
+      character: testPilot,
+    })
+
+    runtime.update(0.1)
+    expect(runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === strafeWave.id)).toBe(
+      true,
+    )
+
+    runtime.update(0.6)
+
+    const snapshot = runtime.getSnapshot()
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === strafeWave.id)).toBe(false)
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === followUpWave.id)).toBe(true)
+  })
+
+  it('spawns summon waves from boss HP triggers', () => {
+    const baseStage = createStageDefinition('normal')
+    const boss = {
+      ...baseStage.boss,
+      id: 'hp-trigger-boss',
+      startAt: 0,
+      hp: 240,
+      phases: [
+        {
+          ...baseStage.boss.phases[0]!,
+          id: 'hp-trigger-phase',
+          threshold: 0,
+          supportLaser: false,
+          pattern: {
+            ...baseStage.boss.phases[0]!.pattern,
+            interval: 999,
+          },
+        },
+      ],
+    } satisfies StageDefinition['boss']
+    const summonWave = {
+      ...baseStage.waves[0]!,
+      id: 'hp-trigger-summon',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss,
+        events: [
+          createBossEvent('hp-trigger-boss-event', { type: 'time', at: 0 }, boss, 'final'),
+          createWaveEvent(
+            'hp-trigger-summon-event',
+            { type: 'bossHp', bossId: boss.id, atOrBelow: 0.5 },
+            summonWave,
+            'summon',
+          ),
+        ],
+      },
+      character: bossTriggerPilot,
+    })
+
+    for (let index = 0; index < 20; index += 1) {
+      runtime.update(0.05)
+      if (runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === summonWave.id)) {
+        break
+      }
+    }
+
+    expect(runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === summonWave.id)).toBe(
+      true,
+    )
+  })
+
+  it('spawns summon waves from boss phase triggers', () => {
+    const baseStage = createStageDefinition('normal')
+    const boss = {
+      ...baseStage.boss,
+      id: 'phase-trigger-boss',
+      startAt: 0,
+      hp: 240,
+      phases: [
+        {
+          ...baseStage.boss.phases[0]!,
+          id: 'phase-trigger-opening',
+          threshold: 0.5,
+          supportLaser: false,
+          pattern: {
+            ...baseStage.boss.phases[0]!.pattern,
+            interval: 999,
+          },
+        },
+        {
+          ...baseStage.boss.phases[0]!,
+          id: 'phase-trigger-critical',
+          threshold: 0,
+          label: 'Critical',
+          supportLaser: false,
+          pattern: {
+            ...baseStage.boss.phases[0]!.pattern,
+            interval: 999,
+          },
+        },
+      ],
+    } satisfies StageDefinition['boss']
+    const summonWave = {
+      ...baseStage.waves[0]!,
+      id: 'phase-trigger-summon',
+      count: 1,
+      hp: 99999,
+      speed: 0,
+      movement: { type: 'flyThrough', path: 'helix', speed: 0 },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss,
+        events: [
+          createBossEvent('phase-trigger-boss-event', { type: 'time', at: 0 }, boss, 'final'),
+          createWaveEvent(
+            'phase-trigger-summon-event',
+            { type: 'bossPhase', bossId: boss.id, phaseId: 'phase-trigger-critical' },
+            summonWave,
+            'summon',
+          ),
+        ],
+      },
+      character: bossTriggerPilot,
+    })
+
+    for (let index = 0; index < 20; index += 1) {
+      runtime.update(0.05)
+      if (runtime.getSnapshot().enemies.some((enemy) => enemy.waveId === summonWave.id)) {
+        break
+      }
+    }
+
+    const snapshot = runtime.getSnapshot()
+    expect(snapshot.phaseLabel).toBe('Critical')
+    expect(snapshot.enemies.some((enemy) => enemy.waveId === summonWave.id)).toBe(true)
+  })
+
+  it('supports multiple active midbosses in the snapshot', () => {
+    const baseStage = createStageDefinition('normal')
+    const firstMidboss = {
+      ...baseStage.boss,
+      id: 'first-active-midboss',
+      startAt: 0,
+      hp: 99999,
+      phases: [
+        {
+          ...baseStage.boss.phases[0]!,
+          id: 'first-active-midboss-phase',
+          supportLaser: false,
+          pattern: {
+            ...baseStage.boss.phases[0]!.pattern,
+            interval: 999,
+          },
+        },
+      ],
+    } satisfies StageDefinition['boss']
+    const secondMidboss = {
+      ...baseStage.boss,
+      id: 'second-active-midboss',
+      startAt: 0,
+      hp: 99999,
+      phases: [
+        {
+          ...baseStage.boss.phases[0]!,
+          id: 'second-active-midboss-phase',
+          supportLaser: false,
+          pattern: {
+            ...baseStage.boss.phases[0]!.pattern,
+            interval: 999,
+          },
+        },
+      ],
+    } satisfies StageDefinition['boss']
+    const runtime = createRuntime({
+      stage: {
+        ...baseStage,
+        duration: 999,
+        waves: [],
+        boss: { ...baseStage.boss, startAt: 999 },
+        events: [
+          createBossEvent(
+            'first-active-midboss-event',
+            { type: 'time', at: 0 },
+            firstMidboss,
+            'midboss',
+          ),
+          createBossEvent(
+            'second-active-midboss-event',
+            { type: 'time', at: 0.1 },
+            secondMidboss,
+            'midboss',
+          ),
+        ],
+      },
+      character: testPilot,
+    })
+
+    runtime.update(0.11)
+
+    const snapshot = runtime.getSnapshot()
+    expect(snapshot.bosses?.map((boss) => boss.id)).toEqual([
+      firstMidboss.id,
+      secondMidboss.id,
+    ])
+    expect(snapshot.boss?.id).toBe(firstMidboss.id)
   })
 })
 
