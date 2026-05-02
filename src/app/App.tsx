@@ -1,7 +1,9 @@
-import { lazy, Suspense, startTransition, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useMachine } from '@xstate/react'
 import { parseAsBoolean, useQueryStates } from 'nuqs'
 
 import { BattleLoadingScreen } from './BattleLoadingScreen'
+import { battleSessionMachine } from './battleSessionMachine'
 import { readLastCharacterId, writeLastCharacterId } from './characterSelectionStorage'
 import { OrientationLock } from './OrientationLock'
 import { CharacterSelectScreen } from './screens/CharacterSelectScreen'
@@ -18,7 +20,7 @@ import {
 } from '../game/content/characters'
 import { createStageDefinition as createStage1Definition } from '../game/content/stage1'
 import { createStage2Definition } from '../game/content/stage2'
-import type { AppScreen, Difficulty, RunResult, StageDefinition } from '../game/types'
+import type { StageDefinition } from '../game/types'
 
 const loadBattleViewModule = () => import('../game/ui/BattleView')
 
@@ -52,16 +54,16 @@ function readViewport(initialViewport?: Viewport): Viewport {
 }
 
 export function App({ initialViewport }: AppProps) {
-  const [screen, setScreen] = useState<AppScreen>('title')
-  const [difficulty, setDifficulty] = useState<Difficulty>('normal')
-  const [selectedCharacterId, setSelectedCharacterId] = useState(() =>
-    resolveCharacterId(readLastCharacterId()),
-  )
+  const initialSelectedCharacterId = useMemo(() => resolveCharacterId(readLastCharacterId()), [])
+  const [sessionSnapshot, sendSessionEvent] = useMachine(battleSessionMachine, {
+    input: {
+      selectedCharacterId: initialSelectedCharacterId,
+    },
+  })
+  const { battleSeed, currentStageNumber, difficulty, result, selectedCharacterId } =
+    sessionSnapshot.context
   const selectedCharacter = resolvePlayableCharacter(selectedCharacterId)
   const characterRoster = getCharacterSelectRoster(selectedCharacter.id)
-  const [result, setResult] = useState<RunResult | null>(null)
-  const [battleSeed, setBattleSeed] = useState(0)
-  const [currentStageNumber, setCurrentStageNumber] = useState<1 | 2>(1)
   const [viewport, setViewport] = useState(() => readViewport(initialViewport))
   const [debugFlags] = useQueryStates({
     fastStage: parseAsBoolean.withDefault(false),
@@ -89,11 +91,7 @@ export function App({ initialViewport }: AppProps) {
     return () => window.removeEventListener('resize', onResize)
   }, [initialViewport])
 
-  const startScreen = (nextScreen: AppScreen) => {
-    startTransition(() => setScreen(nextScreen))
-  }
-
-  if (screen === 'battle') {
+  if (sessionSnapshot.matches('battle')) {
     return (
       <main className={styles.battleRoot}>
         <Suspense fallback={<div className={styles.battleLoadingFallback}>Loading Battle</div>}>
@@ -105,16 +103,7 @@ export function App({ initialViewport }: AppProps) {
             fastStage={debugFlags.fastStage}
             invincible={debugFlags.invincible}
             onComplete={(nextResult) => {
-              if (nextResult.outcome === 'victory' && nextResult.stageNumber === 1) {
-                setResult(null)
-                setCurrentStageNumber(2)
-                setBattleSeed((current) => current + 1)
-                startScreen('battle-loading')
-                return
-              }
-
-              setResult(nextResult)
-              startScreen('result')
+              sendSessionEvent({ type: 'BATTLE_COMPLETED', result: nextResult })
             }}
           />
         </Suspense>
@@ -122,13 +111,13 @@ export function App({ initialViewport }: AppProps) {
     )
   }
 
-  if (screen === 'battle-loading') {
+  if (sessionSnapshot.matches('battleLoading')) {
     return (
       <main className={styles.battleRoot}>
         <BattleLoadingScreen
           character={selectedCharacter}
           stage={currentStage}
-          onReady={() => startScreen('battle')}
+          onReady={() => sendSessionEvent({ type: 'BATTLE_ASSETS_READY' })}
         />
       </main>
     )
@@ -141,60 +130,54 @@ export function App({ initialViewport }: AppProps) {
         {portraitOnly ? <OrientationLock /> : null}
 
         <div className={cx(styles.screenStack, portraitOnly && styles.screenStackBlocked)}>
-          {screen === 'title' ? (
+          {sessionSnapshot.matches('title') ? (
             <TitleScreen
               onStart={() => {
-                setCurrentStageNumber(1)
-                setResult(null)
-                startScreen('difficulty-select')
+                sendSessionEvent({ type: 'START_SORTIE' })
               }}
             />
           ) : null}
 
-          {screen === 'difficulty-select' ? (
+          {sessionSnapshot.matches('difficultySelect') ? (
             <DifficultySelectScreen
               onSelectDifficulty={(nextDifficulty) => {
-                setDifficulty(nextDifficulty)
-                startScreen('character-select')
+                sendSessionEvent({ type: 'SELECT_DIFFICULTY', difficulty: nextDifficulty })
               }}
             />
           ) : null}
 
-          {screen === 'character-select' ? (
+          {sessionSnapshot.matches('characterSelect') ? (
             <CharacterSelectScreen
               selectedCharacter={selectedCharacter}
               characterRoster={characterRoster}
-              onSelectCharacter={setSelectedCharacterId}
+              onSelectCharacter={(characterId) => {
+                sendSessionEvent({ type: 'SELECT_CHARACTER', characterId })
+              }}
               onDeploy={() => {
                 writeLastCharacterId(selectedCharacter.id)
-                startScreen('stage-intro')
+                sendSessionEvent({ type: 'DEPLOY_CHARACTER' })
               }}
             />
           ) : null}
 
-          {screen === 'stage-intro' ? (
+          {sessionSnapshot.matches('stageIntro') ? (
             <StageIntroScreen
               difficulty={difficulty}
               selectedCharacter={selectedCharacter}
               onDeploy={() => {
-                setCurrentStageNumber(1)
-                startScreen('battle-loading')
+                sendSessionEvent({ type: 'DEPLOY_CHARACTER' })
               }}
             />
           ) : null}
 
-          {screen === 'result' && result ? (
+          {sessionSnapshot.matches('result') && result ? (
             <ResultScreen
               result={result}
               onRetry={() => {
-                setCurrentStageNumber(result.stageNumber === 2 ? 2 : 1)
-                setBattleSeed((current) => current + 1)
-                startScreen('battle-loading')
+                sendSessionEvent({ type: 'RETRY_STAGE' })
               }}
               onReturnToTitle={() => {
-                setResult(null)
-                setCurrentStageNumber(1)
-                startScreen('title')
+                sendSessionEvent({ type: 'RETURN_TO_TITLE' })
               }}
             />
           ) : null}
