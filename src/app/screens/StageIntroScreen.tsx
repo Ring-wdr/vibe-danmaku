@@ -1,17 +1,21 @@
-import type { CharacterDefinition, Difficulty } from '../../game/types'
+import { useSelector } from '@xstate/react'
+
+import type { BattleSessionActorRef } from '../battleSessionMachine'
+import { resolvePlayableCharacter } from '../../game/content/characters'
 import styles from './StageIntroScreen.module.css'
 
 type StageIntroScreenProps = {
-  difficulty: Difficulty
-  selectedCharacter: CharacterDefinition
-  onDeploy: () => void
+  sessionActorRef: BattleSessionActorRef
 }
 
-export function StageIntroScreen({
-  difficulty,
-  selectedCharacter,
-  onDeploy,
-}: StageIntroScreenProps) {
+export function StageIntroScreen({ sessionActorRef }: StageIntroScreenProps) {
+  const difficulty = useSelector(sessionActorRef, (snapshot) => snapshot.context.difficulty)
+  const selectedCharacterId = useSelector(
+    sessionActorRef,
+    (snapshot) => snapshot.context.selectedCharacterId,
+  )
+  const selectedCharacter = resolvePlayableCharacter(selectedCharacterId)
+
   return (
     <section className={styles.screen}>
       <p className={styles.eyebrow}>Stage 1</p>
@@ -26,7 +30,11 @@ export function StageIntroScreen({
         <p className={styles.controls}>
           전투 중 화면 어디든 드래그해 회피하세요. 자동 연사는 항상 유지됩니다.
         </p>
-        <button type="button" className={styles.deployButton} onClick={onDeploy}>
+        <button
+          type="button"
+          className={styles.deployButton}
+          onClick={() => sessionActorRef.send({ type: 'DEPLOY_CHARACTER' })}
+        >
           Deploy
         </button>
       </div>

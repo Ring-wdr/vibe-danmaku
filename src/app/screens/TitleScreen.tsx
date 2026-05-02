@@ -1,11 +1,12 @@
 import { gameAssets } from '../../game/assets'
+import type { BattleSessionActorRef } from '../battleSessionMachine'
 import styles from './TitleScreen.module.css'
 
 type TitleScreenProps = {
-  onStart: () => void
+  sessionActorRef: BattleSessionActorRef
 }
 
-export function TitleScreen({ onStart }: TitleScreenProps) {
+export function TitleScreen({ sessionActorRef }: TitleScreenProps) {
   return (
     <section className={styles.screen}>
       <div className={styles.heroCopy}>
@@ -19,7 +20,11 @@ export function TitleScreen({ onStart }: TitleScreenProps) {
         <img className={styles.portrait} src={gameAssets.playerPortraitUrl} alt="Lyra Aer portrait" />
         <img className={styles.crest} src={gameAssets.uiOrnamentUrl} alt="" />
       </div>
-      <button type="button" className={styles.startButton} onClick={onStart}>
+      <button
+        type="button"
+        className={styles.startButton}
+        onClick={() => sessionActorRef.send({ type: 'START_SORTIE' })}
+      >
         Start Sortie
       </button>
     </section>

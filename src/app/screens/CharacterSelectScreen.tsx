@@ -1,20 +1,26 @@
+import { useSelector } from '@xstate/react'
+
+import { writeLastCharacterId } from '../characterSelectionStorage'
 import { cx } from '../classNames'
-import type { PlayableCharacter } from '../../game/content/characters'
+import type { BattleSessionActorRef } from '../battleSessionMachine'
+import {
+  getCharacterSelectRoster,
+  resolvePlayableCharacter,
+} from '../../game/content/characters'
 import styles from './CharacterSelectScreen.module.css'
 
 type CharacterSelectScreenProps = {
-  selectedCharacter: PlayableCharacter
-  characterRoster: PlayableCharacter[]
-  onSelectCharacter: (characterId: PlayableCharacter['id']) => void
-  onDeploy: () => void
+  sessionActorRef: BattleSessionActorRef
 }
 
-export function CharacterSelectScreen({
-  selectedCharacter,
-  characterRoster,
-  onSelectCharacter,
-  onDeploy,
-}: CharacterSelectScreenProps) {
+export function CharacterSelectScreen({ sessionActorRef }: CharacterSelectScreenProps) {
+  const selectedCharacterId = useSelector(
+    sessionActorRef,
+    (snapshot) => snapshot.context.selectedCharacterId,
+  )
+  const selectedCharacter = resolvePlayableCharacter(selectedCharacterId)
+  const characterRoster = getCharacterSelectRoster(selectedCharacter.id)
+
   return (
     <section className={styles.screen}>
       <div className={styles.heading}>
@@ -68,7 +74,9 @@ export function CharacterSelectScreen({
               className={cx(styles.slot, selected && styles.slotSelected)}
               aria-label={`${selected ? 'Selected' : 'Select'} ${character.name}`}
               aria-pressed={selected}
-              onClick={() => onSelectCharacter(character.id)}
+              onClick={() =>
+                sessionActorRef.send({ type: 'SELECT_CHARACTER', characterId: character.id })
+              }
             >
               <img className={styles.slotPortrait} src={character.portraitUrl} alt="" />
               <span className={styles.slotName}>{character.name}</span>
@@ -77,7 +85,14 @@ export function CharacterSelectScreen({
         })}
       </div>
 
-      <button type="button" className={styles.deployButton} onClick={onDeploy}>
+      <button
+        type="button"
+        className={styles.deployButton}
+        onClick={() => {
+          writeLastCharacterId(selectedCharacter.id)
+          sessionActorRef.send({ type: 'DEPLOY_CHARACTER' })
+        }}
+      >
         Deploy {selectedCharacter.name}
       </button>
     </section>

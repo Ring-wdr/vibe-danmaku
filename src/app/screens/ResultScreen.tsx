@@ -1,13 +1,19 @@
-import type { RunResult } from '../../game/types'
+import { useSelector } from '@xstate/react'
+
+import type { BattleSessionActorRef } from '../battleSessionMachine'
 import styles from './ResultScreen.module.css'
 
 type ResultScreenProps = {
-  result: RunResult
-  onRetry: () => void
-  onReturnToTitle: () => void
+  sessionActorRef: BattleSessionActorRef
 }
 
-export function ResultScreen({ result, onRetry, onReturnToTitle }: ResultScreenProps) {
+export function ResultScreen({ sessionActorRef }: ResultScreenProps) {
+  const result = useSelector(sessionActorRef, (snapshot) => snapshot.context.result)
+
+  if (!result) {
+    return null
+  }
+
   return (
     <section className={styles.screen}>
       <p className={styles.eyebrow}>
@@ -43,10 +49,18 @@ export function ResultScreen({ result, onRetry, onReturnToTitle }: ResultScreenP
         </div>
       </div>
       <div className={styles.actions}>
-        <button type="button" className={styles.primaryButton} onClick={onRetry}>
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={() => sessionActorRef.send({ type: 'RETRY_STAGE' })}
+        >
           Retry Stage
         </button>
-        <button type="button" className={styles.secondaryButton} onClick={onReturnToTitle}>
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={() => sessionActorRef.send({ type: 'RETURN_TO_TITLE' })}
+        >
           Return to Hangar
         </button>
       </div>

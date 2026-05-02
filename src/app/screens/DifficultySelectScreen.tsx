@@ -1,4 +1,5 @@
 import { cx } from '../classNames'
+import type { BattleSessionActorRef } from '../battleSessionMachine'
 import type { Difficulty } from '../../game/types'
 import styles from './DifficultySelectScreen.module.css'
 
@@ -9,10 +10,10 @@ const difficultyCardClasses = {
 } satisfies Record<Difficulty, string>
 
 type DifficultySelectScreenProps = {
-  onSelectDifficulty: (difficulty: Difficulty) => void
+  sessionActorRef: BattleSessionActorRef
 }
 
-export function DifficultySelectScreen({ onSelectDifficulty }: DifficultySelectScreenProps) {
+export function DifficultySelectScreen({ sessionActorRef }: DifficultySelectScreenProps) {
   return (
     <section className={styles.screen}>
       <div className={styles.heading}>
@@ -25,7 +26,7 @@ export function DifficultySelectScreen({ onSelectDifficulty }: DifficultySelectS
             key={level}
             type="button"
             className={cx(styles.card, difficultyCardClasses[level])}
-            onClick={() => onSelectDifficulty(level)}
+            onClick={() => sessionActorRef.send({ type: 'SELECT_DIFFICULTY', difficulty: level })}
           >
             <span className={styles.label}>{level.toUpperCase()}</span>
             <strong className={styles.name}>

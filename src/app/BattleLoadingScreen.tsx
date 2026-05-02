@@ -1,22 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSelector } from '@xstate/react'
 
+import type { BattleSessionActorRef } from './battleSessionMachine'
 import {
   getBattleAssetPreloadItems,
   preloadBattleAssets,
   type BattleAssetProgress,
 } from './battleAssetPreload'
 import styles from './BattleLoadingScreen.module.css'
-import type { CharacterDefinition, StageDefinition } from '../game/types'
+import { resolvePlayableCharacter } from '../game/content/characters'
+import { createBattleStageDefinition } from '../game/content/battleStage'
 
 const loadBattleViewModule = () => import('../game/ui/BattleView')
 
 type BattleLoadingScreenProps = {
-  character: CharacterDefinition
-  stage: StageDefinition
-  onReady: () => void
+  sessionActorRef: BattleSessionActorRef
+  fastStage?: boolean
 }
 
-export function BattleLoadingScreen({ character, stage, onReady }: BattleLoadingScreenProps) {
+export function BattleLoadingScreen({ sessionActorRef, fastStage }: BattleLoadingScreenProps) {
+  const difficulty = useSelector(sessionActorRef, (snapshot) => snapshot.context.difficulty)
+  const selectedCharacterId = useSelector(
+    sessionActorRef,
+    (snapshot) => snapshot.context.selectedCharacterId,
+  )
+  const stageNumber = useSelector(
+    sessionActorRef,
+    (snapshot) => snapshot.context.currentStageNumber,
+  )
+  const character = resolvePlayableCharacter(selectedCharacterId)
+  const stage = useMemo(
+    () => createBattleStageDefinition(stageNumber, difficulty, { fastStage }),
+    [difficulty, fastStage, stageNumber],
+  )
   const [retrySeed, setRetrySeed] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [progress, setProgress] = useState<BattleAssetProgress>({
@@ -66,9 +82,9 @@ export function BattleLoadingScreen({ character, stage, onReady }: BattleLoading
             loadedItems: items.length,
             totalItems: items.length,
             ratio: 1,
-            currentLabel: 'Ready',
+          currentLabel: 'Ready',
           })
-          onReady()
+          sessionActorRef.send({ type: 'BATTLE_ASSETS_READY' })
         }
       } catch {
         if (!cancelled) {
@@ -82,7 +98,7 @@ export function BattleLoadingScreen({ character, stage, onReady }: BattleLoading
     return () => {
       cancelled = true
     }
-  }, [character, onReady, retrySeed, stage])
+  }, [character, retrySeed, sessionActorRef, stage])
 
   return (
     <div className={styles.screen}>

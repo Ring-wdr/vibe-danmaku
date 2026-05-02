@@ -1,4 +1,4 @@
-import { assign, setup } from 'xstate'
+import { assign, setup, type Actor } from 'xstate'
 
 import type { Difficulty, RunResult } from '../game/types'
 
@@ -175,3 +175,5 @@ export const battleSessionMachine = setup({
     },
   },
 })
+
+export type BattleSessionActorRef = Actor<typeof battleSessionMachine>

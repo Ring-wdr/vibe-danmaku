@@ -15,35 +15,60 @@ const { mockBattleView, mockGetBattleAssetPreloadItems, mockPreloadBattleAssets 
 
 vi.mock('../game/ui/BattleView', () => ({
   BattleView: (props: {
-    difficulty: Difficulty
+    difficulty?: Difficulty
     stage?: StageDefinition
-    onComplete: (result: RunResult) => void
+    sessionActorRef?: {
+      getSnapshot: () => {
+        context: {
+          currentStageNumber: number
+          difficulty: Difficulty
+        }
+      }
+      send: (event: { type: 'BATTLE_COMPLETED'; result: RunResult }) => void
+    }
+    onComplete?: (result: RunResult) => void
   }) => {
     mockBattleView(props)
-    const stage = props.stage
+    const sessionContext = props.sessionActorRef?.getSnapshot().context
+    const stageNumber = sessionContext?.currentStageNumber ?? props.stage?.stageNumber
+    const difficulty = sessionContext?.difficulty ?? props.difficulty
 
-    if (!stage) {
+    if (!stageNumber || !difficulty) {
       return <section aria-label="Mock battle missing stage" />
     }
 
     const createResult = (outcome: RunResult['outcome']): RunResult => ({
       outcome,
-      stageId: stage.id,
-      stageName: stage.name,
-      stageNumber: stage.stageNumber,
-      difficulty: props.difficulty,
+      stageId: stageNumber === 1 ? 'brass-cloud-gate' : 'burning-ruin-corridor',
+      stageName: stageNumber === 1 ? 'Brass Cloud Gate' : 'Burning Ruin Corridor',
+      stageNumber,
+      difficulty,
       duration: 12.5,
       remainingHp: outcome === 'victory' ? 2 : 0,
       hitsTaken: outcome === 'victory' ? 1 : 3,
     })
 
     return (
-      <section aria-label={`Mock Stage ${stage.stageNumber} battle`}>
-        <span data-testid="mock-battle-stage">{stage.stageNumber}</span>
-        <button type="button" onClick={() => props.onComplete(createResult('victory'))}>
+      <section aria-label={`Mock Stage ${stageNumber} battle`}>
+        <span data-testid="mock-battle-stage">{stageNumber}</span>
+        <button
+          type="button"
+          onClick={() => {
+            const result = createResult('victory')
+            props.onComplete?.(result)
+            props.sessionActorRef?.send({ type: 'BATTLE_COMPLETED', result })
+          }}
+        >
           Complete Victory
         </button>
-        <button type="button" onClick={() => props.onComplete(createResult('defeat'))}>
+        <button
+          type="button"
+          onClick={() => {
+            const result = createResult('defeat')
+            props.onComplete?.(result)
+            props.sessionActorRef?.send({ type: 'BATTLE_COMPLETED', result })
+          }}
+        >
           Complete Defeat
         </button>
       </section>
@@ -214,9 +239,10 @@ describe('App', () => {
 
     expect(mockBattleView).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        stage: expect.objectContaining({ stageNumber: 1 }),
+        sessionActorRef: expect.objectContaining({ getSnapshot: expect.any(Function) }),
       }),
     )
+    expect(mockBattleView.mock.lastCall?.[0]).not.toHaveProperty('stage')
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
 
@@ -230,12 +256,13 @@ describe('App', () => {
     expect(screen.queryByRole('heading', { name: /burning ruin corridor/i })).not.toBeInTheDocument()
     expect(mockBattleView).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        stage: expect.objectContaining({
-          stageNumber: 2,
-          name: 'Burning Ruin Corridor',
-        }),
+        sessionActorRef: expect.objectContaining({ getSnapshot: expect.any(Function) }),
       }),
     )
+    expect(mockBattleView.mock.lastCall?.[0].sessionActorRef.getSnapshot().context).toMatchObject({
+      currentStageNumber: 2,
+      difficulty: 'normal',
+    })
   })
 
   it('shows the final stage result after stage 2 victory', async () => {
@@ -271,7 +298,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(mockBattleView).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          stage: expect.objectContaining({ stageNumber: 2 }),
+          sessionActorRef: expect.objectContaining({ getSnapshot: expect.any(Function) }),
         }),
       )
     })
