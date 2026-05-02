@@ -268,7 +268,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
 
-    await screen.findByLabelText(/mock stage 2 battle/i)
+    await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 })
     expect(mockGetBattleAssetPreloadItems).toHaveBeenLastCalledWith(
       expect.objectContaining({
         stage: expect.objectContaining({ stageNumber: 2 }),
@@ -284,11 +284,60 @@ describe('App', () => {
     )
   })
 
+  it('keeps the stage 2 loading title visible before starting the next battle', async () => {
+    await deployToBattle()
+    let resolveStageTwoPreload!: () => void
+    const stageTwoPreloadDone = new Promise<void>((resolve) => {
+      resolveStageTwoPreload = resolve
+    })
+    mockPreloadBattleAssets.mockImplementationOnce(
+      async (
+        items: { label: string }[],
+        onProgress: (progress: {
+          loadedItems: number
+          totalItems: number
+          ratio: number
+          currentLabel: string
+        }) => void,
+      ) => {
+        onProgress({
+          loadedItems: 0,
+          totalItems: items.length,
+          ratio: 0.25,
+          currentLabel: 'Burning ruin gate',
+        })
+        await stageTwoPreloadDone
+      },
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+
+    expect(
+      await screen.findByRole('heading', { name: /burning ruin corridor/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/stage 2/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/mock stage 2 battle/i)).not.toBeInTheDocument()
+
+    const preloadResolvedAt = performance.now()
+    resolveStageTwoPreload()
+
+    await waitFor(() => {
+      expect(screen.getByText(/battle renderer/i)).toBeInTheDocument()
+    })
+    expect(screen.getByRole('heading', { name: /burning ruin corridor/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/mock stage 2 battle/i)).not.toBeInTheDocument()
+
+    expect(
+      await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 }),
+    ).toBeInTheDocument()
+    expect(performance.now() - preloadResolvedAt).toBeGreaterThanOrEqual(1700)
+  })
+
   it('shows the final stage result after stage 2 victory', async () => {
     await deployToBattle('hard')
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
-    await screen.findByLabelText(/mock stage 2 battle/i)
+    await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 })
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
 
@@ -304,7 +353,7 @@ describe('App', () => {
     await deployToBattle()
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
-    await screen.findByLabelText(/mock stage 2 battle/i)
+    await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 })
 
     fireEvent.click(screen.getByRole('button', { name: /complete defeat/i }))
 
@@ -322,6 +371,8 @@ describe('App', () => {
         }),
       )
     })
-    expect(await screen.findByLabelText(/mock stage 2 battle/i)).toBeInTheDocument()
+    expect(
+      await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 }),
+    ).toBeInTheDocument()
   })
 })

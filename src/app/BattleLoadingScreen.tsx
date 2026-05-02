@@ -10,11 +10,18 @@ import styles from './BattleLoadingScreen.module.css'
 import type { CharacterDefinition, StageDefinition } from '../game/types'
 
 const loadBattleViewModule = () => import('../game/ui/BattleView')
+const nextStageTitleMinimumDurationMs = 1800
 
 type BattleLoadingScreenProps = {
   sessionActorRef: BattleSessionActorRef
   stage: StageDefinition
   character: CharacterDefinition
+}
+
+function waitForDuration(milliseconds: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, milliseconds)
+  })
 }
 
 export function BattleLoadingScreen({
@@ -34,6 +41,7 @@ export function BattleLoadingScreen({
 
   useEffect(() => {
     let cancelled = false
+    const startedAt = performance.now()
     const items = getBattleAssetPreloadItems({ stage, character })
     const battleModule = loadBattleViewModule()
 
@@ -65,6 +73,13 @@ export function BattleLoadingScreen({
         })
 
         await battleModule
+
+        const minimumDuration = stage.stageNumber > 1 ? nextStageTitleMinimumDurationMs : 0
+        const remainingDuration = minimumDuration - (performance.now() - startedAt)
+
+        if (remainingDuration > 0) {
+          await waitForDuration(remainingDuration)
+        }
 
         if (!cancelled) {
           setProgress({
