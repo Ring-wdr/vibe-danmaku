@@ -31,7 +31,6 @@ type EnemyThemeVariant = {
 
 type StageEnemyPlacement = {
   id: string
-  eventAt: number
   archetype: EnemyArchetypeId
   variant: EnemyVariantId
   count: number

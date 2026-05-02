@@ -40,7 +40,6 @@ describe('enemy content resolver', () => {
   it('resolves a wave with archetype defaults, theme metadata, and difficulty tuning', () => {
     const wave = resolveEnemyWave('hard', {
       id: 'test-lancer',
-      eventAt: 12,
       archetype: 'lancer',
       variant: 'brass-cloud-lancer',
       count: 2,
@@ -63,7 +62,6 @@ describe('enemy content resolver', () => {
       },
       resolution: { type: 'allInactive' },
     })
-    expect(wave).not.toHaveProperty('eventAt')
     expect(wave).not.toHaveProperty('startAt')
     expect(wave).not.toHaveProperty('speed')
     expect(wave).not.toHaveProperty('path')
@@ -75,7 +73,6 @@ describe('enemy content resolver', () => {
   it('resolves regular enemy waves as fly-through spawn groups', () => {
     const wave = resolveEnemyWave('normal', {
       id: 'test-scout',
-      eventAt: 12,
       archetype: 'scout',
       variant: 'brass-cloud-scout',
       count: 2,
@@ -93,7 +90,6 @@ describe('enemy content resolver', () => {
   it('allows placement overrides for guard-style strafe waves', () => {
     const wave = resolveEnemyWave('normal', {
       id: 'test-guard',
-      eventAt: 12,
       archetype: 'sentinel',
       variant: 'brass-cloud-sentinel',
       count: 2,
@@ -187,7 +183,6 @@ describe('enemy content resolver', () => {
     expect(() =>
       resolveEnemyWave('normal', {
         id: 'mismatched-wave',
-        eventAt: 4,
         archetype: 'scout',
         variant: 'brass-cloud-lancer',
         count: 1,
