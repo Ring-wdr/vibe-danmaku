@@ -42,11 +42,43 @@ type StageEnemyPlacement = {
 
 const tuningByDifficulty: Record<
   Difficulty,
-  { hp: number; bulletCount: number; bulletSpeed: number; interval: number }
+  {
+    hp: number
+    bulletCount: number
+    bulletSpeed: number
+    interval: number
+    spread: number
+    splitCount: number
+    waveAmplitude: number
+  }
 > = {
-  easy: { hp: 1, bulletCount: 1, bulletSpeed: 1, interval: 1 },
-  normal: { hp: 1.12, bulletCount: 1.08, bulletSpeed: 1.08, interval: 0.92 },
-  hard: { hp: 1.28, bulletCount: 1.22, bulletSpeed: 1.18, interval: 0.82 },
+  easy: {
+    hp: 1,
+    bulletCount: 0.72,
+    bulletSpeed: 0.86,
+    interval: 1.28,
+    spread: 0.72,
+    splitCount: 0.5,
+    waveAmplitude: 0.7,
+  },
+  normal: {
+    hp: 1.12,
+    bulletCount: 1.08,
+    bulletSpeed: 1.08,
+    interval: 0.92,
+    spread: 1,
+    splitCount: 1,
+    waveAmplitude: 1,
+  },
+  hard: {
+    hp: 1.28,
+    bulletCount: 1.22,
+    bulletSpeed: 1.18,
+    interval: 0.82,
+    spread: 1.12,
+    splitCount: 1.35,
+    waveAmplitude: 1.12,
+  },
 }
 
 export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition> = {
@@ -209,12 +241,28 @@ export function resolvePatternForDifficulty(
   difficulty: Difficulty,
 ): BulletPatternConfig {
   const tuning = tuningByDifficulty[difficulty]
+  const minimumCount = pattern.shape === 'ring' ? 4 : 2
 
   return {
     ...pattern,
-    count: Math.max(3, Math.round(pattern.count * tuning.bulletCount)),
+    count: Math.max(minimumCount, Math.round(pattern.count * tuning.bulletCount)),
     interval: Number((pattern.interval * tuning.interval).toFixed(2)),
     speed: Number((pattern.speed * tuning.bulletSpeed).toFixed(2)),
+    spread: Number((pattern.spread * tuning.spread).toFixed(2)),
+    split:
+      pattern.split === undefined
+        ? undefined
+        : {
+            ...pattern.split,
+            count: Math.max(1, Math.round(pattern.split.count * tuning.splitCount)),
+          },
+    wave:
+      pattern.wave === undefined
+        ? undefined
+        : {
+            ...pattern.wave,
+            amplitude: Number((pattern.wave.amplitude * tuning.waveAmplitude).toFixed(2)),
+          },
   }
 }
 

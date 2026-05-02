@@ -103,6 +103,24 @@ describe('enemy content resolver', () => {
     expect(hard.interval).toBeLessThan(easy.interval)
   })
 
+  it('reduces easy regular enemy bullet pressure below normal', () => {
+    const easy = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'easy')
+    const normal = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'normal')
+
+    expect(easy.count).toBeLessThan(normal.count)
+    expect(easy.speed).toBeLessThan(normal.speed)
+    expect(easy.spread).toBeLessThan(normal.spread)
+    expect(easy.wave?.amplitude).toBeLessThan(normal.wave?.amplitude ?? 0)
+    expect(easy.interval).toBeGreaterThan(normal.interval)
+  })
+
+  it('reduces easy split-pattern secondary bullets', () => {
+    const easy = resolvePatternForDifficulty(enemyArchetypes.splitter.pattern, 'easy')
+    const normal = resolvePatternForDifficulty(enemyArchetypes.splitter.pattern, 'normal')
+
+    expect(easy.split?.count).toBeLessThan(normal.split?.count ?? 0)
+  })
+
   it('keeps difficulty bullet-count tuning restrained after enemy density increases', () => {
     const pattern = enemyArchetypes.weaver.pattern
 
