@@ -163,7 +163,11 @@ function getBossDefinitionsByRole(stage: StageDefinition, role: 'midboss' | 'fin
 export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string } | null) {
   const eventMidbosses = getBossDefinitionsByRole(stage, 'midboss')
   const legacyMidbosses = stage.midboss ? [stage.midboss] : []
-  if (boss && [...eventMidbosses, ...legacyMidbosses].some((definition) => definition.id === boss.id)) {
+  if (
+    boss &&
+    [...eventMidbosses, ...legacyMidbosses].some((definition) => definition.id === boss.id) &&
+    stage.backgroundTheme === 'burning-ruins'
+  ) {
     return gameAssets.stage2MidbossCoreUrl
   }
 

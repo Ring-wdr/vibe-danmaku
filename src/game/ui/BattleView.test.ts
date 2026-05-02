@@ -228,6 +228,34 @@ describe('getBossCoreTextureUrl', () => {
     expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, null)).toBe(gameAssets.bossCoreUrl)
   })
 
+  it('keeps an event-owned midboss on the generic core outside burning ruins', () => {
+    const stage = createStageDefinition('normal')
+    const stageWithEventMidboss: StageDefinition = {
+      ...stage,
+      events: [
+        ...(stage.events ?? []),
+        {
+          id: 'test-midboss-spawn',
+          trigger: { type: 'time', at: 1 },
+          actions: [
+            {
+              type: 'spawnBoss',
+              role: 'midboss',
+              boss: {
+                ...stage.boss,
+                id: 'brass-cloud-midboss',
+              },
+            },
+          ],
+        },
+      ],
+    }
+
+    expect(getBossCoreTextureUrl(stageWithEventMidboss, { id: 'brass-cloud-midboss' })).toBe(
+      gameAssets.bossCoreUrl,
+    )
+  })
+
   it('uses the Stage 2 final boss core asset by matching the stage boss id', () => {
     const stage = createStage2Definition('normal')
     const finalBoss = getBossFromStage(stage, 'final')
