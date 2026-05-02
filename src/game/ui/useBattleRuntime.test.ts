@@ -11,8 +11,15 @@ function createImmediateVictoryStage(): StageDefinition {
 
   return {
     ...stage,
-    duration: 0.01,
+    duration: 999,
     waves: [],
+    events: [
+      {
+        id: 'immediate-victory',
+        trigger: { type: 'time', at: 0.01 },
+        actions: [{ type: 'finishStage', outcome: 'victory' }],
+      },
+    ],
     boss: {
       ...stage.boss,
       startAt: 999,

@@ -13,6 +13,7 @@ import type {
   RunResult,
   SpecialSlotId,
   StageDefinition,
+  StageEvent,
 } from '../types'
 
 type RuntimeBullet = {
@@ -40,6 +41,7 @@ type RuntimeBullet = {
 type RuntimeEnemy = {
   id: string
   waveId: string
+  groupId: string
   kind: EnemyWave['kind']
   archetype: EnemyWave['archetype']
   variant: EnemyWave['variant']
@@ -53,18 +55,41 @@ type RuntimeEnemy = {
   drift: number
   travel: number
   path: EnemyWave['path']
+  movement: NonNullable<EnemyWave['movement']>
+  strafeOriginX: number
   scale: number
   hitRadius: number
 }
 
 type RuntimeBoss = {
   id: string
+  role: 'midboss' | 'final'
+  definition: BossDefinition
   x: number
   z: number
   hp: number
   maxHp: number
   shootTimer: number
   supportLaserTimer: number
+  currentPhaseId: string | null
+  enteredPhaseIds: Set<string>
+}
+
+type EventState = {
+  fired: boolean
+  lastFiredAt: number | null
+}
+
+type SpawnGroupState = {
+  id: string
+  kind: 'wave' | 'summon'
+  resolution: NonNullable<EnemyWave['resolution']>
+  spawned: number
+  defeated: number
+  escaped: number
+  forcedResolved: boolean
+  spawnedAt: number
+  resolvedAt: number | null
 }
 
 type RuntimeSparkle = {
@@ -154,6 +179,37 @@ function getEnemyEntryShootDelay(spawnZ: number, speed: number) {
   return timeToVisibleArena + enemySpawnEntry.firstShotBuffer
 }
 
+function createLegacyStageEvents(stage: StageDefinition): StageEvent[] {
+  const events: StageEvent[] = stage.waves.map((wave) => ({
+    id: `${wave.id}-legacy-spawn`,
+    trigger: { type: 'time', at: wave.startAt },
+    actions: [{ type: 'spawnWave', wave }],
+  }))
+
+  if (stage.midboss) {
+    events.push({
+      id: `${stage.midboss.id}-legacy-spawn`,
+      trigger: { type: 'time', at: stage.midboss.startAt },
+      actions: [{ type: 'spawnBoss', boss: stage.midboss, role: 'midboss' }],
+    })
+  }
+
+  events.push({
+    id: `${stage.boss.id}-legacy-spawn`,
+    trigger: stage.midboss
+      ? { type: 'afterDefeated', target: stage.midboss.id, delay: stage.boss.startAt }
+      : { type: 'time', at: stage.boss.startAt },
+    actions: [{ type: 'spawnBoss', boss: stage.boss, role: 'final' }],
+  })
+  events.push({
+    id: `${stage.boss.id}-legacy-victory`,
+    trigger: { type: 'afterDefeated', target: stage.boss.id, delay: 0 },
+    actions: [{ type: 'finishStage', outcome: 'victory' }],
+  })
+
+  return events
+}
+
 export function createBattleRuntime({
   difficulty,
   stage,
@@ -171,13 +227,12 @@ export function createBattleRuntime({
   const pilot = character
   const bullets: RuntimeBullet[] = []
   const enemies: RuntimeEnemy[] = []
+  const bosses: RuntimeBoss[] = []
   const sparkles: RuntimeSparkle[] = []
-  let boss: RuntimeBoss | null = null
-  let activeBossRole: 'midboss' | 'final' | null = null
-  let midbossDefeated = !stage.midboss
-  let midbossGateDelay = 0
-  const midbossGateAfterWaveIndex = stage.midboss?.gateAfterWaveIndex ?? -1
-  const waveQueue = stage.waves.map((wave, index) => ({ wave, index }))
+  const eventStates = new Map<string, EventState>()
+  const spawnGroups = new Map<string, SpawnGroupState>()
+  const defeatedBosses = new Map<string, number>()
+  const stageEvents = stage.events ?? createLegacyStageEvents(stage)
   const specialChargeRate =
     stage.boss.startAt > 0
       ? beamLanceConfig.chargeAtBossRatio / stage.boss.startAt
@@ -197,39 +252,18 @@ export function createBattleRuntime({
   let lastSparkleId = 0
   let cachedSnapshot: BattleSnapshot | null = null
 
-  const getActiveBossDefinition = () => {
-    if (activeBossRole === 'midboss') {
-      return stage.midboss ?? null
-    }
-
-    if (activeBossRole === 'final') {
-      return stage.boss
-    }
-
-    return null
-  }
-
-  const getBossPhase = () => {
-    const bossDefinition = getActiveBossDefinition()
-
-    if (!boss || !bossDefinition) {
+  const getBossPhase = (boss: RuntimeBoss | null) => {
+    if (!boss) {
       return null
     }
 
     const ratio = boss.hp / boss.maxHp
     return (
-      bossDefinition.phases.find((phase) => ratio >= phase.threshold) ??
-      bossDefinition.phases[bossDefinition.phases.length - 1] ??
+      boss.definition.phases.find((phase) => ratio >= phase.threshold) ??
+      boss.definition.phases[boss.definition.phases.length - 1] ??
       null
     )
   }
-
-  const getPostMidbossTimelineElapsed = () => elapsed - midbossGateDelay
-
-  const getWaveTimelineElapsed = (waveIndex: number) =>
-    waveIndex > midbossGateAfterWaveIndex && stage.midboss
-      ? getPostMidbossTimelineElapsed()
-      : elapsed
 
   const getSpecialSlot = (): RenderSpecialSlot => ({
     id: beamLanceConfig.id,
@@ -258,7 +292,8 @@ export function createBattleRuntime({
   }
 
   const buildSnapshot = (): BattleSnapshot => {
-    const phase = getBossPhase()
+    const primaryBoss = bosses.find((candidate) => candidate.role === 'final') ?? bosses[0] ?? null
+    const phase = getBossPhase(primaryBoss)
     const renderEnemies: RenderEnemy[] = enemies.map((enemy) => ({
       id: enemy.id,
       waveId: enemy.waveId,
@@ -278,14 +313,19 @@ export function createBattleRuntime({
       radius: bullet.radius,
       glow: bullet.glow,
     }))
-    const renderBoss: RenderBoss | null = boss
-      ? {
-          id: boss.id,
-          position: { x: boss.x, z: boss.z },
-          hpRatio: clamp(boss.hp / boss.maxHp, 0, 1),
-          phaseLabel: phase?.label ?? 'Phase',
-          supportLaser: phase?.supportLaser ?? false,
-        }
+    const renderBosses: RenderBoss[] = bosses.map((candidate) => {
+      const bossPhase = getBossPhase(candidate)
+
+      return {
+        id: candidate.id,
+        position: { x: candidate.x, z: candidate.z },
+        hpRatio: clamp(candidate.hp / candidate.maxHp, 0, 1),
+        phaseLabel: bossPhase?.label ?? 'Phase',
+        supportLaser: bossPhase?.supportLaser ?? false,
+      }
+    })
+    const renderBoss: RenderBoss | null = primaryBoss
+      ? (renderBosses.find((candidate) => candidate.id === primaryBoss.id) ?? null)
       : null
 
     return {
@@ -293,7 +333,7 @@ export function createBattleRuntime({
       stageName: stage.name,
       elapsed,
       duration: stage.duration,
-      phaseLabel: phase?.label ?? (boss ? 'Boss Arrival' : 'Wave Assault'),
+      phaseLabel: phase?.label ?? (primaryBoss ? 'Boss Arrival' : 'Wave Assault'),
       player: {
         position: { x: player.x, z: player.z },
         hp: player.hp,
@@ -301,6 +341,7 @@ export function createBattleRuntime({
       },
       enemies: renderEnemies,
       boss: renderBoss,
+      bosses: renderBosses,
       bullets: renderBullets,
       specialSlots: [getSpecialSlot()],
       specialBeam: getSpecialBeam(),
@@ -438,13 +479,34 @@ export function createBattleRuntime({
     }
   }
 
-  const spawnWave = (wave: EnemyWave) => {
+  const spawnWave = (wave: EnemyWave, groupKind: 'wave' | 'summon' = 'wave') => {
+    const movement = wave.movement ?? {
+      type: 'flyThrough',
+      path: wave.path,
+      speed: wave.speed,
+    }
+    const resolution = wave.resolution ?? { type: 'allInactive' }
+    const group: SpawnGroupState = {
+      id: wave.id,
+      kind: groupKind,
+      resolution,
+      spawned: wave.count,
+      defeated: 0,
+      escaped: 0,
+      forcedResolved: false,
+      spawnedAt: elapsed,
+      resolvedAt: wave.count === 0 ? elapsed : null,
+    }
+    spawnGroups.set(wave.id, group)
+
     const halfSpread = ((wave.count - 1) * wave.spacing) / 2
     for (let index = 0; index < wave.count; index += 1) {
       const spawnZ = enemySpawnEntry.startZ + index * enemySpawnEntry.rowOffset
+      const entrySpeed = movement.type === 'flyThrough' ? movement.speed : movement.entrySpeed
       enemies.push({
         id: `enemy-${lastEnemyId++}`,
         waveId: wave.id,
+        groupId: wave.id,
         kind: wave.kind,
         archetype: wave.archetype,
         variant: wave.variant,
@@ -454,10 +516,12 @@ export function createBattleRuntime({
         z: spawnZ,
         hp: wave.hp,
         pattern: wave.pattern,
-        shootTimer: getEnemyEntryShootDelay(spawnZ, wave.speed) + index * 0.18,
+        shootTimer: getEnemyEntryShootDelay(spawnZ, entrySpeed) + index * 0.18,
         drift: index * 0.7,
-        travel: wave.speed,
-        path: wave.path,
+        travel: entrySpeed,
+        path: movement.type === 'flyThrough' ? movement.path : wave.path,
+        movement,
+        strafeOriginX: -halfSpread + index * wave.spacing,
         scale: wave.scale,
         hitRadius: wave.hitRadius,
       })
@@ -466,16 +530,25 @@ export function createBattleRuntime({
 
   const spawnBoss = (definition: BossDefinition, role: 'midboss' | 'final') => {
     const bossHp = invincible ? Math.round(definition.hp * 0.28) : definition.hp
-    boss = {
+    const boss: RuntimeBoss = {
       id: definition.id,
+      role,
+      definition,
       x: 0,
       z: 2.15,
       hp: bossHp,
       maxHp: bossHp,
       shootTimer: 0.45,
       supportLaserTimer: 1.1,
+      currentPhaseId: null,
+      enteredPhaseIds: new Set<string>(),
     }
-    activeBossRole = role
+    const phase = getBossPhase(boss)
+    if (phase) {
+      boss.currentPhaseId = phase.id
+      boss.enteredPhaseIds.add(phase.id)
+    }
+    bosses.push(boss)
     bossEnteredCount += 1
     cuePulse += 1
   }
@@ -550,6 +623,74 @@ export function createBattleRuntime({
     )
   }
 
+  const resolveSpawnGroup = (group: SpawnGroupState) => {
+    if (group.resolvedAt !== null) {
+      return
+    }
+
+    group.resolvedAt = elapsed
+  }
+
+  const recordEnemyDefeated = (enemy: RuntimeEnemy) => {
+    const group = spawnGroups.get(enemy.groupId)
+    if (group) {
+      group.defeated += 1
+    }
+  }
+
+  const recordEnemyEscaped = (enemy: RuntimeEnemy) => {
+    const group = spawnGroups.get(enemy.groupId)
+    if (group) {
+      group.escaped += 1
+    }
+  }
+
+  const updateSpawnGroupResolutions = () => {
+    for (const group of spawnGroups.values()) {
+      if (group.resolvedAt !== null) {
+        continue
+      }
+
+      if (group.resolution.type === 'allInactive') {
+        if (group.spawned > 0 && group.defeated + group.escaped >= group.spawned) {
+          resolveSpawnGroup(group)
+        }
+        continue
+      }
+
+      if (group.resolution.type === 'allDefeated') {
+        if (group.spawned > 0 && group.defeated >= group.spawned) {
+          resolveSpawnGroup(group)
+        }
+        continue
+      }
+
+      if (elapsed - group.spawnedAt < group.resolution.seconds) {
+        continue
+      }
+
+      if (group.resolution.then === 'resolve') {
+        resolveSpawnGroup(group)
+        continue
+      }
+
+      if (group.resolution.then === 'forceEscape') {
+        let escaped = 0
+        for (let index = enemies.length - 1; index >= 0; index -= 1) {
+          if (enemies[index]?.groupId !== group.id) {
+            continue
+          }
+
+          enemies.splice(index, 1)
+          escaped += 1
+        }
+        group.escaped += escaped
+        group.forcedResolved = true
+        resolveSpawnGroup(group)
+      }
+    }
+  }
+
   const updateSpecial = (delta: number) => {
     for (let index = sparkles.length - 1; index >= 0; index -= 1) {
       const sparkle = sparkles[index]
@@ -582,11 +723,13 @@ export function createBattleRuntime({
       }
     }
 
-    if (boss && isInsideBeam({ x: boss.x, z: boss.z }, 0.44)) {
-      boss.hp -= damage
-      if (canSpawnSparkle) {
-        spawnSparkle(boss.x, boss.z, 1.25)
-        spawnedSparkle = true
+    for (const boss of bosses) {
+      if (isInsideBeam({ x: boss.x, z: boss.z }, 0.44)) {
+        boss.hp -= damage
+        if (canSpawnSparkle) {
+          spawnSparkle(boss.x, boss.z, 1.25)
+          spawnedSparkle = true
+        }
       }
     }
 
@@ -598,14 +741,24 @@ export function createBattleRuntime({
   const updateEnemies = (delta: number) => {
     for (let index = enemies.length - 1; index >= 0; index -= 1) {
       const enemy = enemies[index]
-      enemy.z -= enemy.travel * delta
-      const waveShift = elapsed * 1.8 + enemy.drift
-      if (enemy.path === 'swoop-left') {
-        enemy.x += Math.sin(waveShift) * 0.012
-      } else if (enemy.path === 'swoop-right') {
-        enemy.x -= Math.sin(waveShift) * 0.012
+      if (enemy.movement.type === 'enterAndStrafe') {
+        if (enemy.z > enemy.movement.holdZ) {
+          enemy.z = Math.max(enemy.movement.holdZ, enemy.z - enemy.movement.entrySpeed * delta)
+        }
+        enemy.x =
+          enemy.strafeOriginX +
+          Math.sin(elapsed * enemy.movement.strafeSpeed + enemy.drift) *
+            enemy.movement.strafeRange
       } else {
-        enemy.x += Math.sin(waveShift * 1.2) * 0.02
+        enemy.z -= enemy.movement.speed * delta
+        const waveShift = elapsed * 1.8 + enemy.drift
+        if (enemy.movement.path === 'swoop-left') {
+          enemy.x += Math.sin(waveShift) * 0.012
+        } else if (enemy.movement.path === 'swoop-right') {
+          enemy.x -= Math.sin(waveShift) * 0.012
+        } else {
+          enemy.x += Math.sin(waveShift * 1.2) * 0.02
+        }
       }
 
       enemy.shootTimer -= delta
@@ -615,66 +768,60 @@ export function createBattleRuntime({
       }
 
       if (enemy.hp <= 0) {
+        recordEnemyDefeated(enemy)
         addSpecialCharge(beamLanceConfig.enemyDefeatCharge)
         enemies.splice(index, 1)
         continue
       }
 
-      if (enemy.z < -3.3) {
+      if (enemy.movement.type === 'flyThrough' && enemy.z < -3.3) {
+        recordEnemyEscaped(enemy)
         enemies.splice(index, 1)
       }
     }
   }
 
-  const updateBoss = (delta: number) => {
-    if (!boss) {
-      return
-    }
-
-    boss.x = Math.sin(elapsed * 0.7) * 1.8
-    boss.z = 1.9 + Math.sin(elapsed * 0.9) * 0.18
-    const phase = getBossPhase()
-    if (!phase) {
-      return
-    }
-
-    boss.shootTimer -= delta
-    if (boss.shootTimer <= 0) {
-      firePattern(boss.x, boss.z, phase.pattern)
-      boss.shootTimer = phase.pattern.interval
-    }
-
-    if (phase.supportLaser) {
-      boss.supportLaserTimer -= delta
-      if (boss.supportLaserTimer <= 0) {
-        addBullet({
-          source: 'enemy',
-          x: boss.x,
-          z: boss.z - 0.2,
-          vx: 0,
-          vz: -phase.pattern.speed * 1.5,
-          radius: 0.18,
-          glow: 1.7,
-          life: 3.6,
-          damage: 1,
-        })
-        boss.supportLaserTimer = 0.9
+  const updateBosses = (delta: number) => {
+    for (let index = bosses.length - 1; index >= 0; index -= 1) {
+      const boss = bosses[index]
+      boss.x = Math.sin(elapsed * 0.7) * 1.8
+      boss.z = 1.9 + Math.sin(elapsed * 0.9) * 0.18
+      const phase = getBossPhase(boss)
+      if (!phase) {
+        continue
       }
-    }
 
-    if (boss.hp <= 0) {
-      if (activeBossRole === 'midboss') {
-        midbossGateDelay = Math.max(0, elapsed - (stage.midboss?.startAt ?? elapsed))
-        boss = null
-        activeBossRole = null
-        midbossDefeated = true
+      boss.currentPhaseId = phase.id
+      boss.enteredPhaseIds.add(phase.id)
+      boss.shootTimer -= delta
+      if (boss.shootTimer <= 0) {
+        firePattern(boss.x, boss.z, phase.pattern)
+        boss.shootTimer = phase.pattern.interval
+      }
+
+      if (phase.supportLaser) {
+        boss.supportLaserTimer -= delta
+        if (boss.supportLaserTimer <= 0) {
+          addBullet({
+            source: 'enemy',
+            x: boss.x,
+            z: boss.z - 0.2,
+            vx: 0,
+            vz: -phase.pattern.speed * 1.5,
+            radius: 0.18,
+            glow: 1.7,
+            life: 3.6,
+            damage: 1,
+          })
+          boss.supportLaserTimer = 0.9
+        }
+      }
+
+      if (boss.hp <= 0) {
+        defeatedBosses.set(boss.id, elapsed)
+        bosses.splice(index, 1)
         cuePulse += 1
-        return
       }
-
-      boss = null
-      activeBossRole = null
-      finish('victory')
     }
   }
 
@@ -754,7 +901,8 @@ export function createBattleRuntime({
           continue
         }
 
-        if (boss) {
+        let hitBoss = false
+        for (const boss of bosses) {
           const hitDistance = bullet.radius + 0.44
           if (
             distanceSquared(
@@ -763,9 +911,13 @@ export function createBattleRuntime({
             ) < hitDistance * hitDistance
           ) {
             boss.hp -= bullet.damage
-            bullets.splice(index, 1)
-            continue
+            hitBoss = true
           }
+        }
+
+        if (hitBoss) {
+          bullets.splice(index, 1)
+          continue
         }
       }
 
@@ -781,6 +933,107 @@ export function createBattleRuntime({
     }
   }
 
+  const getEventState = (event: StageEvent) => {
+    let state = eventStates.get(event.id)
+    if (!state) {
+      state = { fired: false, lastFiredAt: null }
+      eventStates.set(event.id, state)
+    }
+
+    return state
+  }
+
+  const isConditionMet = (condition: Extract<StageEvent['trigger'], { type: 'interval' }>['while']) => {
+    if (condition.type === 'bossActive') {
+      return bosses.some((boss) => boss.id === condition.bossId)
+    }
+
+    return bosses.some(
+      (boss) =>
+        boss.id === condition.bossId && boss.enteredPhaseIds.has(condition.phaseId),
+    )
+  }
+
+  const isTriggerReady = (event: StageEvent, state: EventState) => {
+    const trigger = event.trigger
+
+    if (trigger.type !== 'interval' && state.fired && event.once !== false) {
+      return false
+    }
+
+    if (trigger.type === 'time') {
+      return elapsed >= trigger.at
+    }
+
+    if (trigger.type === 'afterResolved') {
+      const group = spawnGroups.get(trigger.target)
+      return group?.resolvedAt != null && elapsed >= group.resolvedAt + trigger.delay
+    }
+
+    if (trigger.type === 'afterDefeated') {
+      const group = spawnGroups.get(trigger.target)
+      if (group && group.spawned > 0 && group.defeated >= group.spawned) {
+        const defeatedAt = group.resolvedAt ?? elapsed
+        return elapsed >= defeatedAt + trigger.delay
+      }
+
+      const defeatedAt = defeatedBosses.get(trigger.target)
+      return defeatedAt !== undefined && elapsed >= defeatedAt + trigger.delay
+    }
+
+    if (trigger.type === 'bossHp') {
+      return bosses.some(
+        (boss) =>
+          boss.id === trigger.bossId && boss.hp / boss.maxHp <= trigger.atOrBelow,
+      )
+    }
+
+    if (trigger.type === 'bossPhase') {
+      return bosses.some(
+        (boss) =>
+          boss.id === trigger.bossId && boss.enteredPhaseIds.has(trigger.phaseId),
+      )
+    }
+
+    if (!isConditionMet(trigger.while)) {
+      return false
+    }
+
+    return state.lastFiredAt === null || elapsed >= state.lastFiredAt + trigger.every
+  }
+
+  const fireEvent = (event: StageEvent, state: EventState) => {
+    state.fired = true
+    state.lastFiredAt = elapsed
+
+    for (const action of event.actions) {
+      if (action.type === 'spawnWave') {
+        spawnWave(action.wave, action.groupKind ?? 'wave')
+        continue
+      }
+
+      if (action.type === 'spawnBoss') {
+        spawnBoss(action.boss, action.role)
+        continue
+      }
+
+      finish(action.outcome)
+    }
+  }
+
+  const evaluateEvents = () => {
+    if (result) {
+      return
+    }
+
+    for (const event of stageEvents) {
+      const state = getEventState(event)
+      if (isTriggerReady(event, state)) {
+        fireEvent(event, state)
+      }
+    }
+  }
+
   const update = (delta: number) => {
     if (result) {
       return
@@ -791,33 +1044,7 @@ export function createBattleRuntime({
       player.invulnerableFor = Math.max(0, player.invulnerableFor - delta)
     }
 
-    while (
-      waveQueue[0] &&
-      getWaveTimelineElapsed(waveQueue[0].index) >= waveQueue[0].wave.startAt
-    ) {
-      if (!midbossDefeated && waveQueue[0].index > midbossGateAfterWaveIndex) {
-        break
-      }
-
-      const nextWave = waveQueue.shift()
-      if (nextWave) {
-        spawnWave(nextWave.wave)
-      }
-    }
-
-    if (
-      !boss &&
-      stage.midboss &&
-      !midbossDefeated &&
-      elapsed >= stage.midboss.startAt
-    ) {
-      spawnBoss(stage.midboss, 'midboss')
-    }
-
-    const bossTimelineElapsed = stage.midboss ? getPostMidbossTimelineElapsed() : elapsed
-    if (!boss && midbossDefeated && bossTimelineElapsed >= stage.boss.startAt) {
-      spawnBoss(stage.boss, 'final')
-    }
+    evaluateEvents()
 
     player.shotTimer -= delta
     if (player.shotTimer <= 0) {
@@ -838,10 +1065,14 @@ export function createBattleRuntime({
 
     updateSpecial(delta)
     updateEnemies(delta)
-    updateBoss(delta)
+    updateSpawnGroupResolutions()
+    updateBosses(delta)
     updateBullets(delta)
+    updateSpawnGroupResolutions()
+    updateBosses(0)
+    evaluateEvents()
 
-    if (!result && !stage.midboss && elapsed >= stage.duration && !boss) {
+    if (!result && !stage.events && !stage.midboss && elapsed >= stage.duration && bosses.length === 0) {
       finish('victory')
     }
 
