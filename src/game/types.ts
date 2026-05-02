@@ -1,6 +1,6 @@
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
-export type StageId = 'brass-cloud-gate' | 'burning-ruin-corridor'
+export type StageId = string
 export type StageBackgroundTheme = 'brass-cloud' | 'burning-ruins'
 
 export type AppScreen =
@@ -60,9 +60,47 @@ export type BulletPatternConfig = {
   }
 }
 
+export type StageCondition =
+  | { type: 'bossActive'; bossId: string }
+  | { type: 'bossPhase'; bossId: string; phaseId: string }
+
+export type StageTrigger =
+  | { type: 'time'; at: number }
+  | { type: 'afterResolved'; target: string; delay: number }
+  | { type: 'afterDefeated'; target: string; delay: number }
+  | { type: 'bossHp'; bossId: string; atOrBelow: number }
+  | { type: 'bossPhase'; bossId: string; phaseId: string }
+  | { type: 'interval'; every: number; while: StageCondition }
+
+export type StageAction =
+  | { type: 'spawnWave'; wave: EnemyWave; groupKind?: 'wave' | 'summon' }
+  | { type: 'spawnBoss'; boss: BossDefinition; role: 'midboss' | 'final' }
+  | { type: 'finishStage'; outcome: 'victory' }
+
+export type StageEvent = {
+  id: string
+  trigger: StageTrigger
+  actions: StageAction[]
+  once?: boolean
+}
+
+export type EnemyMovementConfig =
+  | { type: 'flyThrough'; path: 'swoop-left' | 'swoop-right' | 'helix'; speed: number }
+  | {
+      type: 'enterAndStrafe'
+      entrySpeed: number
+      holdZ: number
+      strafeSpeed: number
+      strafeRange: number
+    }
+
+export type SpawnGroupResolution =
+  | { type: 'allInactive' }
+  | { type: 'allDefeated' }
+  | { type: 'timeout'; seconds: number; then: 'resolve' | 'fail' | 'forceEscape' }
+
 export type EnemyWave = {
   id: string
-  startAt: number
   kind: EnemyKind
   archetype: EnemyArchetypeId
   variant: EnemyVariantId
@@ -71,10 +109,10 @@ export type EnemyWave = {
   count: number
   spacing: number
   hp: number
-  speed: number
+  movement: EnemyMovementConfig
+  resolution: SpawnGroupResolution
   scale: number
   hitRadius: number
-  path: 'swoop-left' | 'swoop-right' | 'helix'
   pattern: BulletPatternConfig
 }
 
@@ -88,7 +126,6 @@ export type BossPhaseDefinition = {
 
 export type BossDefinition = {
   id: string
-  startAt: number
   hp: number
   phases: BossPhaseDefinition[]
 }
@@ -97,14 +134,15 @@ export type MidbossDefinition = BossDefinition & { gateAfterWaveIndex: number }
 
 export type StageDefinition = {
   id: StageId
-  stageNumber: 1 | 2
+  stageNumber: number
   backgroundTheme: StageBackgroundTheme
   name: string
   lore: string
-  duration: number
-  waves: EnemyWave[]
+  duration?: number
+  events: StageEvent[]
+  waves?: EnemyWave[]
   midboss?: MidbossDefinition
-  boss: BossDefinition
+  boss?: BossDefinition
 }
 
 export type CharacterDefinition = {
@@ -129,7 +167,7 @@ export type RunResult = {
   outcome: 'victory' | 'defeat'
   stageId: StageId
   stageName: string
-  stageNumber: 1 | 2
+  stageNumber: number
   difficulty: Difficulty
   duration: number
   remainingHp: number
@@ -206,6 +244,7 @@ export type BattleSnapshot = {
   }
   enemies: RenderEnemy[]
   boss: RenderBoss | null
+  bosses: RenderBoss[]
   bullets: RenderBullet[]
   specialSlots: RenderSpecialSlot[]
   specialBeam: RenderSpecialBeam | null
