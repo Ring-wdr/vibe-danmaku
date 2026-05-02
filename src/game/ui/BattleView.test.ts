@@ -111,6 +111,22 @@ function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
   return action.boss
 }
 
+function withEventBossId(stage: StageDefinition, role: 'midboss' | 'final', id: string) {
+  const boss = getBossFromStage(stage, role)
+
+  return {
+    ...stage,
+    events: stage.events?.map((event) => ({
+      ...event,
+      actions: event.actions.map((action) =>
+        action.type === 'spawnBoss' && action.role === role
+          ? { ...action, boss: { ...boss, id } }
+          : action,
+      ),
+    })),
+  }
+}
+
 function createMockRuntime() {
   return {
     update: vi.fn(),
@@ -201,18 +217,7 @@ describe('getPlayerBattleSpritePose', () => {
 describe('getBossCoreTextureUrl', () => {
   it('uses the Stage 2 midboss core asset by matching the event-owned midboss id', () => {
     const stage = createStage2Definition('normal')
-    const midboss = getBossFromStage(stage, 'midboss')
-    const stageWithUnprefixedMidboss: StageDefinition = {
-      ...stage,
-      events: stage.events?.map((event) => ({
-        ...event,
-        actions: event.actions.map((action) =>
-          action.type === 'spawnBoss' && action.role === 'midboss'
-            ? { ...action, boss: { ...midboss, id: 'ember-gate' } }
-            : action,
-        ),
-      })),
-    }
+    const stageWithUnprefixedMidboss = withEventBossId(stage, 'midboss', 'ember-gate')
 
     expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, { id: 'ember-gate' })).toBe(
       gameAssets.stage2MidbossCoreUrl,
@@ -228,6 +233,15 @@ describe('getBossCoreTextureUrl', () => {
     const finalBoss = getBossFromStage(stage, 'final')
 
     expect(getBossCoreTextureUrl(stage, { id: finalBoss.id })).toBe(
+      gameAssets.stage2BossCoreUrl,
+    )
+  })
+
+  it('uses the Stage 2 final boss core asset by matching the event-owned final boss id', () => {
+    const stage = createStage2Definition('normal')
+    const stageWithEventFinalBoss = withEventBossId(stage, 'final', 'ash-citadel-core')
+
+    expect(getBossCoreTextureUrl(stageWithEventFinalBoss, { id: 'ash-citadel-core' })).toBe(
       gameAssets.stage2BossCoreUrl,
     )
   })
