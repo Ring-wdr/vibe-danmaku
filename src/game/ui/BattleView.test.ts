@@ -99,6 +99,18 @@ const controlRect = {
 } as DOMRect
 const defaultStage = createStageDefinition('normal')
 
+function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
+  const action = (stage.events ?? [])
+    .flatMap((event) => event.actions)
+    .find((candidate) => candidate.type === 'spawnBoss' && candidate.role === role)
+
+  if (!action || action.type !== 'spawnBoss') {
+    throw new Error(`stage must include a ${role} boss`)
+  }
+
+  return action.boss
+}
+
 function createMockRuntime() {
   return {
     update: vi.fn(),
@@ -187,17 +199,19 @@ describe('getPlayerBattleSpritePose', () => {
 })
 
 describe('getBossCoreTextureUrl', () => {
-  it('uses the Stage 2 midboss core asset by matching the stage midboss id', () => {
+  it('uses the Stage 2 midboss core asset by matching the event-owned midboss id', () => {
     const stage = createStage2Definition('normal')
-    if (!stage.midboss) {
-      throw new Error('Stage 2 test fixture must include a midboss')
-    }
+    const midboss = getBossFromStage(stage, 'midboss')
     const stageWithUnprefixedMidboss: StageDefinition = {
       ...stage,
-      midboss: {
-        ...stage.midboss,
-        id: 'ember-gate',
-      },
+      events: stage.events?.map((event) => ({
+        ...event,
+        actions: event.actions.map((action) =>
+          action.type === 'spawnBoss' && action.role === 'midboss'
+            ? { ...action, boss: { ...midboss, id: 'ember-gate' } }
+            : action,
+        ),
+      })),
     }
 
     expect(getBossCoreTextureUrl(stageWithUnprefixedMidboss, { id: 'ember-gate' })).toBe(
@@ -211,8 +225,9 @@ describe('getBossCoreTextureUrl', () => {
 
   it('uses the Stage 2 final boss core asset by matching the stage boss id', () => {
     const stage = createStage2Definition('normal')
+    const finalBoss = getBossFromStage(stage, 'final')
 
-    expect(getBossCoreTextureUrl(stage, { id: stage.boss.id })).toBe(
+    expect(getBossCoreTextureUrl(stage, { id: finalBoss.id })).toBe(
       gameAssets.stage2BossCoreUrl,
     )
   })
