@@ -23,7 +23,7 @@ function scaleTriggerTime(trigger: StageTrigger, multiplier: number): StageTrigg
 export function scaleEventTime<TEvent extends StageEvent>(
   event: TEvent,
   multiplier: number,
-): TEvent {
+): Omit<TEvent, 'trigger'> & { trigger: StageTrigger } {
   return {
     ...event,
     trigger: scaleTriggerTime(event.trigger, multiplier),
