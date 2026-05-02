@@ -206,6 +206,10 @@ export function BattleView({
   } | null>(null)
   const [isPaused, setIsPaused] = useState(false)
 
+  const deliverResult = useEffectEvent((result: RunResult) => {
+    onComplete(result)
+  })
+
   useEffect(() => {
     settingsRef.current = settings
   }, [settings])
@@ -290,9 +294,9 @@ export function BattleView({
   useEffect(() => {
     if (snapshot.result && deliveredResultRef.current !== snapshot.result) {
       deliveredResultRef.current = snapshot.result
-      onComplete(snapshot.result)
+      deliverResult(snapshot.result)
     }
-  }, [onComplete, snapshot.result])
+  }, [snapshot.result])
 
   return (
     <section className={styles.shell} aria-label={`Stage ${stage.stageNumber} battle`}>
