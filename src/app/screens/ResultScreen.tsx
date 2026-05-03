@@ -14,7 +14,7 @@ export function ResultScreen({ sessionActorRef }: ResultScreenProps) {
     return null
   }
 
-  const canContinueCampaign = result.outcome === 'victory' && result.stageNumber < 3
+  const canContinueCampaign = result.outcome === 'victory' && result.stageNumber < 4
 
   return (
     <section className={styles.screen}>

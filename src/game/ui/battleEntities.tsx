@@ -105,9 +105,15 @@ function getAtlasFrameUvForAtlas(frame: AtlasFrame, atlasId: EnemyAtlasId) {
 }
 
 export function getEnemyAtlasTextureUrl(atlasId: EnemyAtlasId) {
-  return atlasId === 'enemy-abyssal-biomech'
-    ? gameAssets.enemyAbyssalBiomechAtlasUrl
-    : gameAssets.enemyBrassCloudAtlasUrl
+  if (atlasId === 'enemy-city-state') {
+    return gameAssets.enemyCityStateAtlasUrl
+  }
+
+  if (atlasId === 'enemy-abyssal-biomech') {
+    return gameAssets.enemyAbyssalBiomechAtlasUrl
+  }
+
+  return gameAssets.enemyBrassCloudAtlasUrl
 }
 
 function getActiveEnemyAtlasKey(enemies: readonly Pick<RenderEnemy, 'atlasId'>[]) {
@@ -369,6 +375,10 @@ function getBossDefinitionsByRole(stage: StageDefinition, role: 'midboss' | 'fin
 export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string } | null) {
   const eventMidbosses = getBossDefinitionsByRole(stage, 'midboss')
   if (boss && eventMidbosses.some((definition) => definition.id === boss.id)) {
+    if (stage.backgroundTheme === 'city-states') {
+      return gameAssets.stage4MidbossKnightUrl
+    }
+
     if (stage.backgroundTheme === 'abyssal-biomech') {
       return gameAssets.stage3MidbossCoreUrl
     }
@@ -380,6 +390,10 @@ export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string
 
   const eventFinalBosses = getBossDefinitionsByRole(stage, 'final')
   if (boss && eventFinalBosses.some((definition) => definition.id === boss.id)) {
+    if (stage.backgroundTheme === 'city-states') {
+      return gameAssets.stage4GunslingerSheetUrl
+    }
+
     if (stage.backgroundTheme === 'abyssal-biomech') {
       return gameAssets.stage3BossCoreUrl
     }
@@ -460,6 +474,24 @@ function shouldRenderStage3FinalBossModel(stage: StageDefinition, boss: RenderBo
     stage.backgroundTheme === 'abyssal-biomech' &&
     getBossDefinitionsByRole(stage, 'final').some((definition) => definition.id === boss.id)
   )
+}
+
+function shouldRenderStage4KnightMidboss(stage: StageDefinition, boss: RenderBoss) {
+  return (
+    stage.backgroundTheme === 'city-states' &&
+    getBossDefinitionsByRole(stage, 'midboss').some((definition) => definition.id === boss.id)
+  )
+}
+
+function shouldRenderStage4GunslingerBoss(stage: StageDefinition, boss: RenderBoss) {
+  return (
+    stage.backgroundTheme === 'city-states' &&
+    getBossDefinitionsByRole(stage, 'final').some((definition) => definition.id === boss.id)
+  )
+}
+
+export function getStage4GunslingerFrameIndex(phaseIndex: number | null) {
+  return Math.min(4, Math.max(0, phaseIndex ?? 0))
 }
 
 export function getStage3BossClawMotion({
@@ -625,6 +657,166 @@ function Stage3BossHighDetailModel({
   )
 }
 
+function Stage4KnightMidbossModel({
+  battleElapsed,
+  bossId,
+}: {
+  battleElapsed: number
+  bossId: string
+}) {
+  const armorTexture = useLoadedTexture(gameAssets.stage4KnightArmorTextureUrl)
+  const stance = Math.sin(battleElapsed * 1.8) * 0.04
+  const plumeSway = Math.sin(battleElapsed * 2.2) * 0.08
+  const shoulderLift = Math.sin(battleElapsed * 1.5) * 0.025
+  const armorMaterial = {
+    map: armorTexture ?? undefined,
+    color: '#aeb8c5',
+    metalness: 0.92,
+    roughness: 0.28,
+  } as const
+
+  return (
+    <group data-testid={`stage4-knight-high-detail-${bossId}`} rotation={[0.18, stance, 0]}>
+      <ambientLight color="#dbeafe" intensity={0.42} />
+      <pointLight color="#f8d58a" intensity={22} distance={3.4} position={[0.2, 0.8, 1.1]} />
+      <pointLight color="#60a5fa" intensity={10} distance={2.7} position={[-0.55, 0.3, 0.9]} />
+      <mesh data-testid={`stage4-knight-cloak-${bossId}`} position={[0, -0.24, -0.22]}>
+        <planeGeometry args={[1.18, 1.72]} />
+        <meshBasicMaterial
+          color="#12264d"
+          transparent
+          opacity={0.72}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh position={[0, 0.4, 0]}>
+        <sphereGeometry args={[0.28, 32, 18]} />
+        <meshStandardMaterial {...armorMaterial} color="#d7dde6" />
+      </mesh>
+      <mesh position={[0, -0.08, 0]} scale={[0.68, 0.94, 0.34]}>
+        <sphereGeometry args={[0.55, 36, 24]} />
+        <meshStandardMaterial {...armorMaterial} />
+      </mesh>
+      <mesh position={[0, -0.15, 0.29]}>
+        <boxGeometry args={[0.82, 0.08, 0.04]} />
+        <meshBasicMaterial color="#f7d174" transparent opacity={0.78} toneMapped={false} />
+      </mesh>
+      <mesh position={[-0.52, 0.13 + shoulderLift, 0.03]} rotation={[0, 0, -0.18]}>
+        <sphereGeometry args={[0.2, 28, 16]} />
+        <meshStandardMaterial {...armorMaterial} color="#c4ccd8" />
+      </mesh>
+      <mesh position={[0.52, 0.13 - shoulderLift, 0.03]} rotation={[0, 0, 0.18]}>
+        <sphereGeometry args={[0.2, 28, 16]} />
+        <meshStandardMaterial {...armorMaterial} color="#c4ccd8" />
+      </mesh>
+      <mesh position={[-0.56, -0.08, 0.03]} rotation={[0, 0, -0.24]}>
+        <capsuleGeometry args={[0.08, 0.58, 8, 14]} />
+        <meshStandardMaterial {...armorMaterial} />
+      </mesh>
+      <mesh position={[0.56, -0.08, 0.03]} rotation={[0, 0, 0.24]}>
+        <capsuleGeometry args={[0.08, 0.58, 8, 14]} />
+        <meshStandardMaterial {...armorMaterial} />
+      </mesh>
+      <mesh position={[-0.26, -0.82, 0.02]} rotation={[0, 0, 0.04]}>
+        <capsuleGeometry args={[0.1, 0.68, 8, 14]} />
+        <meshStandardMaterial {...armorMaterial} color="#8f99a8" />
+      </mesh>
+      <mesh position={[0.26, -0.82, 0.02]} rotation={[0, 0, -0.04]}>
+        <capsuleGeometry args={[0.1, 0.68, 8, 14]} />
+        <meshStandardMaterial {...armorMaterial} color="#8f99a8" />
+      </mesh>
+      <mesh position={[-0.26, -1.24, 0.06]} rotation={[0, 0, 0.08]}>
+        <capsuleGeometry args={[0.075, 0.38, 8, 12]} />
+        <meshStandardMaterial {...armorMaterial} color="#b9c2cf" />
+      </mesh>
+      <mesh position={[0.26, -1.24, 0.06]} rotation={[0, 0, -0.08]}>
+        <capsuleGeometry args={[0.075, 0.38, 8, 12]} />
+        <meshStandardMaterial {...armorMaterial} color="#b9c2cf" />
+      </mesh>
+      <mesh data-testid={`stage4-knight-shield-${bossId}`} position={[-0.78, -0.18, 0.08]} rotation={[0, 0, 0.16]}>
+        <cylinderGeometry args={[0.28, 0.34, 0.07, 6]} />
+        <meshStandardMaterial {...armorMaterial} color="#758195" />
+      </mesh>
+      <mesh position={[-0.78, -0.18, 0.13]}>
+        <ringGeometry args={[0.17, 0.22, 6]} />
+        <meshBasicMaterial color="#f2cc72" transparent opacity={0.72} toneMapped={false} />
+      </mesh>
+      <mesh data-testid={`stage4-knight-lance-${bossId}`} position={[0.78, -0.12, 0.04]} rotation={[0, 0, -0.45]}>
+        <boxGeometry args={[0.055, 1.28, 0.04]} />
+        <meshBasicMaterial color="#e8eef8" toneMapped={false} />
+      </mesh>
+      <mesh position={[0.82, -0.76, 0.04]} rotation={[0, 0, -0.45]}>
+        <coneGeometry args={[0.1, 0.28, 4]} />
+        <meshBasicMaterial color="#f8d58a" toneMapped={false} />
+      </mesh>
+      <mesh position={[0, -0.5, 0.3]}>
+        <ringGeometry args={[0.18, 0.22, 32]} />
+        <meshBasicMaterial
+          color="#2563eb"
+          transparent
+          opacity={0.52}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <mesh position={[0, 0.76, 0.02]} rotation={[0, 0, plumeSway]}>
+        <coneGeometry args={[0.09, 0.42, 8]} />
+        <meshBasicMaterial color="#3b82f6" transparent opacity={0.8} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+function Stage4GunslingerBossSprite({
+  boss,
+  texture,
+}: {
+  boss: RenderBoss
+  texture: THREE.Texture
+}) {
+  const frameIndex = getStage4GunslingerFrameIndex(boss.fsm.phaseIndex)
+
+  return (
+    <group data-testid={`stage4-gunslinger-${boss.id}`}>
+      <mesh>
+        <planeGeometry args={[bossSpriteSize * 1.06, bossSpriteSize * 1.22]} />
+        <RestoredTextureMaterial
+          texture={texture}
+          frameColumns={5}
+          frameIndex={frameIndex}
+          exposure={1.08}
+          saturation={1.1}
+          contrast={1.04}
+        />
+      </mesh>
+      <mesh position={[-0.72, 0.08, -0.03]} rotation={[0, 0, 0.38]}>
+        <planeGeometry args={[0.76, 1.3]} />
+        <meshBasicMaterial
+          color="#93c5fd"
+          transparent
+          opacity={0.14}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <mesh position={[0.72, 0.08, -0.03]} rotation={[0, 0, -0.38]}>
+        <planeGeometry args={[0.76, 1.3]} />
+        <meshBasicMaterial
+          color="#93c5fd"
+          transparent
+          opacity={0.14}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 function BossSprite({
   battleElapsed,
   boss,
@@ -640,6 +832,15 @@ function BossSprite({
   const phaseBreakEffect = shouldShowBossPhaseBreakEffect(boss) ? (
     <BossPhaseBreakEffect battleElapsed={battleElapsed} bossId={boss.id} />
   ) : null
+
+  if (shouldRenderStage4KnightMidboss(stage, boss)) {
+    return (
+      <group position={position}>
+        <Stage4KnightMidbossModel battleElapsed={battleElapsed} bossId={boss.id} />
+        {phaseBreakEffect}
+      </group>
+    )
+  }
 
   if (!bossTexture) {
     return (
@@ -661,6 +862,8 @@ function BossSprite({
           boss={boss}
           bossTexture={bossTexture}
         />
+      ) : shouldRenderStage4GunslingerBoss(stage, boss) ? (
+        <Stage4GunslingerBossSprite boss={boss} texture={bossTexture} />
       ) : (
         <mesh>
           <planeGeometry args={[bossSpriteSize, bossSpriteSize]} />

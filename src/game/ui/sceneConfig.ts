@@ -7,6 +7,9 @@ export type BackgroundTextureKey =
   | 'ruinFloor'
   | 'abyssalFloor'
   | 'abyssalPressure'
+  | 'cityBlockA'
+  | 'cityBlockB'
+  | 'cityBlockC'
 
 export type BackgroundMotionLayerConfig = {
   textureKey: BackgroundTextureKey
@@ -367,6 +370,82 @@ export const stageBackgroundMotionConfigs = {
         coreColor: '#d8b4fe',
         ringOpacity: 0.22,
         crossOpacity: 0.17,
+        coreOpacity: 0.1,
+      },
+    ],
+  },
+  'city-states': {
+    floorLayers: [],
+    cloudLayers: [
+      {
+        textureKey: 'cityBlockA',
+        x: -0.08,
+        startY: 0.72,
+        z: -1.84,
+        width: 8.4,
+        height: 4.9,
+        opacity: 0.62,
+        speed: 0.42,
+        spacing: 4.9,
+        rotation: -0.02,
+        sway: 0.018,
+      },
+      {
+        textureKey: 'cityBlockB',
+        x: 0.2,
+        startY: 3.74,
+        z: -1.92,
+        width: 8.8,
+        height: 5.05,
+        opacity: 0.5,
+        speed: 0.52,
+        spacing: 5,
+        rotation: 0.018,
+        sway: 0.022,
+      },
+      {
+        textureKey: 'cityBlockC',
+        x: -0.24,
+        startY: 6.84,
+        z: -2,
+        width: 9.1,
+        height: 5.15,
+        opacity: 0.44,
+        speed: 0.62,
+        spacing: 5.05,
+        rotation: -0.012,
+        sway: 0.025,
+      },
+    ],
+    fixtures: [
+      {
+        x: -2.7,
+        y: 3.18,
+        z: -1.08,
+        scale: 0.5,
+        speed: 0.78,
+        spin: 0.2,
+        phase: 0.6,
+        ringColor: '#d7b56d',
+        crossColor: '#9db4c7',
+        coreColor: '#6ee7f9',
+        ringOpacity: 0.22,
+        crossOpacity: 0.18,
+        coreOpacity: 0.11,
+      },
+      {
+        x: 2.48,
+        y: 1.2,
+        z: -1.02,
+        scale: 0.42,
+        speed: 0.72,
+        spin: -0.22,
+        phase: 1.9,
+        ringColor: '#b7954e',
+        crossColor: '#c8d3dd',
+        coreColor: '#93c5fd',
+        ringOpacity: 0.2,
+        crossOpacity: 0.16,
         coreOpacity: 0.1,
       },
     ],

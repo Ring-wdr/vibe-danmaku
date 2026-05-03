@@ -55,6 +55,23 @@ describe('enemy content resolver', () => {
     }
   })
 
+  it('defines a city-state variant and atlas frame for every regular archetype', () => {
+    for (const archetype of enemyArchetypeIds) {
+      const variant = enemyVariants[`city-state-${archetype}`]
+
+      expect(variant).toEqual(
+        expect.objectContaining({
+          id: `city-state-${archetype}`,
+          archetype,
+          theme: 'city-state',
+          atlasId: 'enemy-city-state',
+          frameId: archetype,
+          displayName: expect.stringMatching(/^City-State /),
+        }),
+      )
+    }
+  })
+
   it('resolves abyssal placements without changing the authored archetype role', () => {
     const wave = resolveEnemyWave('normal', {
       id: 'abyssal-test-wave',

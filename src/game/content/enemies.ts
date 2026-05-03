@@ -298,9 +298,67 @@ export const abyssalEnemyVariants = {
   },
 } satisfies Record<`abyssal-biomech-${EnemyArchetypeId}`, EnemyThemeVariant>
 
+export const cityStateEnemyVariants = {
+  'city-state-scout': {
+    id: 'city-state-scout',
+    archetype: 'scout',
+    theme: 'city-state',
+    atlasId: 'enemy-city-state',
+    frameId: 'scout',
+    displayName: 'City-State Scout',
+    patternOverride: { interval: 1.02, speed: 1.24, spread: 1.18 },
+  },
+  'city-state-sentinel': {
+    id: 'city-state-sentinel',
+    archetype: 'sentinel',
+    theme: 'city-state',
+    atlasId: 'enemy-city-state',
+    frameId: 'sentinel',
+    displayName: 'City-State Sentinel',
+    patternOverride: { count: 8, interval: 1.45, speed: 0.98 },
+  },
+  'city-state-lancer': {
+    id: 'city-state-lancer',
+    archetype: 'lancer',
+    theme: 'city-state',
+    atlasId: 'enemy-city-state',
+    frameId: 'lancer',
+    displayName: 'City-State Lancer',
+    patternOverride: { count: 4, speed: 1.7, spread: 0.28 },
+  },
+  'city-state-splitter': {
+    id: 'city-state-splitter',
+    archetype: 'splitter',
+    theme: 'city-state',
+    atlasId: 'enemy-city-state',
+    frameId: 'splitter',
+    displayName: 'City-State Splitter',
+    patternOverride: { split: { delay: 0.5, count: 3, speedMultiplier: 0.82 } },
+  },
+  'city-state-mine-layer': {
+    id: 'city-state-mine-layer',
+    archetype: 'mine-layer',
+    theme: 'city-state',
+    atlasId: 'enemy-city-state',
+    frameId: 'mine-layer',
+    displayName: 'City-State Mine Layer',
+    patternOverride: { interval: 1.55, speed: 0.64, life: 8.4 },
+  },
+  'city-state-weaver': {
+    id: 'city-state-weaver',
+    archetype: 'weaver',
+    theme: 'city-state',
+    atlasId: 'enemy-city-state',
+    frameId: 'weaver',
+    displayName: 'City-State Weaver',
+    patternOverride: { wave: { amplitude: 0.62, frequency: 3 } },
+  },
+} satisfies Record<`city-state-${EnemyArchetypeId}`, EnemyThemeVariant>
+
 export const enemyVariants: Record<EnemyVariantId, EnemyThemeVariant> = {
   ...brassCloudEnemyVariants,
   ...abyssalEnemyVariants,
+  ...cityStateEnemyVariants,
 }
 
 export { brassCloudEnemyFrames }

@@ -16,6 +16,14 @@ import type { StageDefinition } from '../types'
 export function getBackgroundTextureUrls(
   stage: StageDefinition,
 ): Partial<Record<BackgroundTextureKey, string>> {
+  if (stage.backgroundTheme === 'city-states') {
+    return {
+      cityBlockA: gameAssets.stage4CityBlockAUrl,
+      cityBlockB: gameAssets.stage4CityBlockBUrl,
+      cityBlockC: gameAssets.stage4CityBlockCUrl,
+    }
+  }
+
   if (stage.backgroundTheme === 'abyssal-biomech') {
     return {
       abyssalFloor: gameAssets.stage3TrenchFloorUrl,

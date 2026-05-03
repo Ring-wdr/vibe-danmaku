@@ -77,7 +77,7 @@ export function App({ initialViewport }: AppProps) {
       return
     }
 
-    const shouldRecord = result.outcome === 'defeat' || result.stageNumber >= 3
+    const shouldRecord = result.outcome === 'defeat' || result.stageNumber >= 4
 
     if (!shouldRecord) {
       return

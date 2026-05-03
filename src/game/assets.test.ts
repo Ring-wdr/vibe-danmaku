@@ -36,6 +36,10 @@ const stage3BossArmorTexturePaths = [
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-armor-texture.png'),
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-armor-texture.webp'),
 ]
+const stage4KnightArmorTexturePaths = [
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage4-knight-armor-texture.png'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage4-knight-armor-texture.webp'),
+]
 
 async function getFrameAlphaBounds(filePath: string) {
   const image = sharp(filePath)
@@ -158,6 +162,7 @@ async function getTextureDetailStats(filePath: string) {
 
   const raw = await image.raw().toBuffer()
   let cyanAccent = 0
+  let blueAccent = 0
   let darkMetal = 0
   let contrastEdges = 0
 
@@ -170,6 +175,10 @@ async function getTextureDetailStats(filePath: string) {
 
       if (g > 120 && b > 120 && r < 80) {
         cyanAccent += 1
+      }
+
+      if (b > 120 && r < 95 && g < 150) {
+        blueAccent += 1
       }
 
       if (Math.max(r, g, b) < 70) {
@@ -186,6 +195,7 @@ async function getTextureDetailStats(filePath: string) {
 
   return {
     cyanAccentRatio: cyanAccent / area,
+    blueAccentRatio: blueAccent / area,
     darkMetalRatio: darkMetal / area,
     contrastEdgeRatio: contrastEdges / area,
   }
@@ -214,6 +224,16 @@ describe('gameAssets', () => {
     expect(gameAssets.stage3BossBodyUrl).toMatch(/bosses\/stage3-boss-body/)
     expect(gameAssets.stage3BossAppendagesUrl).toMatch(/bosses\/stage3-boss-appendages/)
     expect(gameAssets.stage3BossArmorTextureUrl).toMatch(/bosses\/stage3-boss-armor-texture/)
+  })
+
+  it('registers stage 4 city-state placeholder runtime asset slots', () => {
+    expect(gameAssets.stage4CityBlockAUrl).toMatch(/backgrounds\/city-states\/stage4-city-block-a/)
+    expect(gameAssets.stage4CityBlockBUrl).toMatch(/backgrounds\/city-states\/stage4-city-block-b/)
+    expect(gameAssets.stage4CityBlockCUrl).toMatch(/backgrounds\/city-states\/stage4-city-block-c/)
+    expect(gameAssets.enemyCityStateAtlasUrl).toMatch(/enemies\/enemy-city-state-atlas/)
+    expect(gameAssets.stage4MidbossKnightUrl).toMatch(/bosses\/stage4-midboss-knight/)
+    expect(gameAssets.stage4KnightArmorTextureUrl).toMatch(/bosses\/stage4-knight-armor-texture/)
+    expect(gameAssets.stage4GunslingerSheetUrl).toMatch(/bosses\/stage4-gunslinger-sheet/)
   })
 
   it('groups generated runtime assets by role and theme', () => {
@@ -289,6 +309,16 @@ describe('gameAssets', () => {
       expect(stats.darkMetalRatio).toBeGreaterThan(0.7)
       expect(stats.contrastEdgeRatio).toBeGreaterThan(0.12)
       expect(stats.cyanAccentRatio).toBeGreaterThan(0.006)
+    }
+  })
+
+  it('keeps the stage 4 knight armor texture dark, detailed, and blue accented', async () => {
+    for (const texturePath of stage4KnightArmorTexturePaths) {
+      const stats = await getTextureDetailStats(texturePath)
+
+      expect(stats.darkMetalRatio).toBeGreaterThan(0.35)
+      expect(stats.contrastEdgeRatio).toBeGreaterThan(0.09)
+      expect(stats.blueAccentRatio).toBeGreaterThan(0.01)
     }
   })
 })

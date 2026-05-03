@@ -64,6 +64,12 @@ vi.mock('../game/ui/BattleView', () => ({
         score: 52800,
         maxCombo: 21,
       },
+      4: {
+        stageId: 'crowned-city-states',
+        stageName: 'Crowned City-States',
+        score: 74400,
+        maxCombo: 28,
+      },
     } as const
     const stageResult = resultByStage[stageNumber as keyof typeof resultByStage]
 
@@ -468,7 +474,7 @@ describe('App', () => {
     expect(performance.now() - preloadResolvedAt).toBeGreaterThanOrEqual(1700)
   })
 
-  it('continues from stage 2 victory into stage 3 and shows the final stage result after stage 3 victory', async () => {
+  it('continues through stage 4 and shows the final campaign result after stage 4 victory', async () => {
     await deployToBattle('hard')
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
@@ -511,6 +517,32 @@ describe('App', () => {
     expect(screen.getByText('HARD')).toBeInTheDocument()
     expect(screen.getByText('52,800')).toBeInTheDocument()
     expect(screen.getByText('21')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/mock stage 4 battle/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+
+    await screen.findByLabelText(/mock stage 4 battle/i, undefined, { timeout: 2500 })
+    expect(mockGetBattleAssetPreloadItems).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stage: expect.objectContaining({ stageNumber: 4 }),
+      }),
+    )
+    expect(mockBattleView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        difficulty: 'hard',
+        stage: expect.objectContaining({ stageNumber: 4 }),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+
+    expect(
+      await screen.findByRole('heading', { name: /crowned city-states cleared/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/stage 4/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/crowned city-states/i)).toHaveLength(2)
+    expect(screen.getByText('74,400')).toBeInTheDocument()
+    expect(screen.getByText('28')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /confirm/i })).not.toBeInTheDocument()
 
     const entries = JSON.parse(window.localStorage.getItem(leaderboardStorageKey) ?? '[]')
@@ -518,12 +550,12 @@ describe('App', () => {
       expect.objectContaining({
         outcome: 'victory',
         difficulty: 'hard',
-        stageNumber: 3,
-        stageName: 'Abyssal Biomech Trench',
-        score: 97000,
+        stageNumber: 4,
+        stageName: 'Crowned City-States',
+        score: 171400,
       }),
     ])
-  })
+  }, 10000)
 
   it('records accumulated score when the player reaches game over', async () => {
     await deployToBattle('normal')

@@ -222,7 +222,7 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().context.campaignScore).toBe(0)
   })
 
-  it('stores stage 3 victory and does not continue past final result', () => {
+  it('stores stage 3 victory and waits for confirmation before stage 4 loading', () => {
     const service = createService()
     deployToBattle(service)
 
@@ -253,8 +253,33 @@ describe('battleSessionMachine', () => {
 
     service.send({ type: 'CONTINUE_CAMPAIGN' })
 
+    expect(service.getSnapshot().matches('battleLoading')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(4)
+    expect(service.getSnapshot().context.battleSeed).toBe(3)
+    expect(service.getSnapshot().context.campaignScore).toBe(37200)
+    expect(service.getSnapshot().context.result).toBeNull()
+  })
+
+  it('stores stage 4 victory and does not continue past final result', () => {
+    const service = createService()
+    deployToBattle(service)
+
+    service.send({
+      type: 'BATTLE_COMPLETED',
+      result: createResult({
+        stageId: 'stage-4',
+        stageName: 'Crowned City-States',
+        stageNumber: 4,
+      }),
+    })
+
     expect(service.getSnapshot().matches('result')).toBe(true)
-    expect(service.getSnapshot().context.currentStageNumber).toBe(3)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(1)
+
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
+
+    expect(service.getSnapshot().matches('result')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(1)
   })
 
   it('stores defeat and moves to result', () => {
@@ -302,7 +327,7 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().context.result).toBeNull()
   })
 
-  it('retries stage 3 from a stage 3 result', () => {
+  it('retries stage 4 from a stage 4 result', () => {
     const service = createService()
     deployToBattle(service)
 
@@ -310,15 +335,15 @@ describe('battleSessionMachine', () => {
       type: 'BATTLE_COMPLETED',
       result: createResult({
         outcome: 'defeat',
-        stageId: 'stage-3',
-        stageName: 'Abyssal Biomech Trench',
-        stageNumber: 3,
+        stageId: 'stage-4',
+        stageName: 'Crowned City-States',
+        stageNumber: 4,
       }),
     })
     service.send({ type: 'RETRY_STAGE' })
 
     expect(service.getSnapshot().matches('battleLoading')).toBe(true)
-    expect(service.getSnapshot().context.currentStageNumber).toBe(3)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(4)
     expect(service.getSnapshot().context.result).toBeNull()
   })
 

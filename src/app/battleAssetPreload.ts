@@ -67,7 +67,9 @@ export function getBattleAssetPreloadItems({
       id: 'enemy-atlas',
       label: 'Enemy atlas',
       url:
-        stage.backgroundTheme === 'abyssal-biomech'
+        stage.backgroundTheme === 'city-states'
+          ? gameAssets.enemyCityStateAtlasUrl
+          : stage.backgroundTheme === 'abyssal-biomech'
           ? gameAssets.enemyAbyssalBiomechAtlasUrl
           : gameAssets.enemyBrassCloudAtlasUrl,
     },
@@ -79,6 +81,41 @@ export function getBattleAssetPreloadItems({
   ]
 
   const stageItems = (() => {
+    if (stage.backgroundTheme === 'city-states') {
+      return [
+        {
+          id: 'stage4-city-block-a',
+          label: 'Crowned city block A',
+          url: gameAssets.stage4CityBlockAUrl,
+        },
+        {
+          id: 'stage4-city-block-b',
+          label: 'Crowned city block B',
+          url: gameAssets.stage4CityBlockBUrl,
+        },
+        {
+          id: 'stage4-city-block-c',
+          label: 'Crowned city block C',
+          url: gameAssets.stage4CityBlockCUrl,
+        },
+        {
+          id: 'stage4-midboss-knight',
+          label: 'Full plate knight midboss',
+          url: gameAssets.stage4MidbossKnightUrl,
+        },
+        {
+          id: 'stage4-knight-armor-texture',
+          label: 'Full plate knight armor texture',
+          url: gameAssets.stage4KnightArmorTextureUrl,
+        },
+        {
+          id: 'stage4-gunslinger-sheet',
+          label: 'Winged gunslinger boss sheet',
+          url: gameAssets.stage4GunslingerSheetUrl,
+        },
+      ]
+    }
+
     if (stage.backgroundTheme === 'abyssal-biomech') {
       return [
         {

@@ -7,6 +7,7 @@ import { gameAssets } from '../assets'
 import { lyraAerCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { createStage3Definition } from '../content/stage3'
+import { createStage4Definition } from '../content/stage4'
 import { getStage3BossClawMotion, RuntimeEntityLayer } from './battleEntities'
 import { useLoadedTexture, useLoadedTextureMap } from './battleTexture'
 import type { BattleSnapshot, StageDefinition } from '../types'
@@ -119,6 +120,18 @@ function getFinalBossFromStage(stage: StageDefinition) {
 
   if (!action || action.type !== 'spawnBoss') {
     throw new Error('Stage test fixture must include a final boss')
+  }
+
+  return action.boss
+}
+
+function getMidbossFromStage(stage: StageDefinition) {
+  const action = stage.events
+    .flatMap((event) => event.actions)
+    .find((candidate) => candidate.type === 'spawnBoss' && candidate.role === 'midboss')
+
+  if (!action || action.type !== 'spawnBoss') {
+    throw new Error('Stage test fixture must include a midboss')
   }
 
   return action.boss
@@ -375,6 +388,44 @@ describe('RuntimeEntityLayer', () => {
     expect(vi.mocked(useLoadedTexture)).not.toHaveBeenCalledWith(
       gameAssets.stage3BossArmorTextureUrl,
       expect.any(Function),
+    )
+  })
+
+  it('renders the Stage 4 midboss as a textured full plate 3D knight', () => {
+    const stage = createStage4Definition('normal')
+    const midboss = getMidbossFromStage(stage)
+    const { container } = render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={stage}
+        snapshot={{
+          ...snapshot,
+          elapsed: 1.4,
+          bosses: [
+            {
+              id: midboss.id,
+              position: { x: 0, z: 1.2 },
+              hpRatio: 0.72,
+              phaseLabel: midboss.phases[0]?.label ?? 'Midboss',
+              supportLaser: false,
+              fsm: defaultBossFsm,
+            },
+          ],
+        }}
+        isPaused={false}
+      />,
+    )
+
+    expect(screen.getByTestId(`stage4-knight-high-detail-${midboss.id}`)).toBeInTheDocument()
+    expect(screen.getByTestId(`stage4-knight-cloak-${midboss.id}`)).toBeInTheDocument()
+    expect(screen.getByTestId(`stage4-knight-shield-${midboss.id}`)).toBeInTheDocument()
+    expect(screen.getByTestId(`stage4-knight-lance-${midboss.id}`)).toBeInTheDocument()
+    expect(container.querySelectorAll('capsulegeometry')).toHaveLength(6)
+    expect(container.querySelectorAll('spheregeometry').length).toBeGreaterThanOrEqual(3)
+    expect(container.querySelectorAll('meshstandardmaterial').length).toBeGreaterThanOrEqual(8)
+    expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(gameAssets.stage4MidbossKnightUrl)
+    expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(
+      gameAssets.stage4KnightArmorTextureUrl,
     )
   })
 

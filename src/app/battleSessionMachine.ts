@@ -2,7 +2,7 @@ import { assign, setup, type Actor } from 'xstate'
 
 import type { Difficulty, RunResult } from '../game/types'
 
-export type BattleStageNumber = 1 | 2 | 3
+export type BattleStageNumber = 1 | 2 | 3 | 4
 
 export type BattleSessionInput = {
   selectedCharacterId: string
@@ -39,7 +39,7 @@ export const battleSessionMachine = setup({
   },
   guards: {
     canContinueCampaign: ({ context }) =>
-      context.result?.outcome === 'victory' && context.result.stageNumber < 3,
+      context.result?.outcome === 'victory' && context.result.stageNumber < 4,
   },
   actions: {
     resetForNewSortie: assign({
@@ -69,7 +69,7 @@ export const battleSessionMachine = setup({
       currentStageNumber: 1,
     }),
     advanceToNextStage: assign(({ context }) => ({
-      currentStageNumber: context.result?.stageNumber === 2 ? 3 : 2,
+      currentStageNumber: Math.min(4, Math.max(1, (context.result?.stageNumber ?? 1) + 1)) as BattleStageNumber,
       battleSeed: context.battleSeed + 1,
       campaignScore: context.campaignScore + (context.result?.score ?? 0),
       result: null,
@@ -89,7 +89,7 @@ export const battleSessionMachine = setup({
       }
 
       return {
-        currentStageNumber: Math.min(3, Math.max(1, context.result.stageNumber)) as BattleStageNumber,
+        currentStageNumber: Math.min(4, Math.max(1, context.result.stageNumber)) as BattleStageNumber,
         battleSeed: context.battleSeed + 1,
         result: null,
       }

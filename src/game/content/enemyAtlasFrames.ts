@@ -10,6 +10,7 @@ export type AtlasFrame = {
 export const enemyAtlasSizeById: Record<EnemyAtlasId, { width: number; height: number }> = {
   'enemy-brass-cloud': { width: 576, height: 384 },
   'enemy-abyssal-biomech': { width: 576, height: 384 },
+  'enemy-city-state': { width: 576, height: 384 },
 }
 
 const sharedFrames: Record<EnemyFrameId, AtlasFrame> = {
@@ -24,6 +25,7 @@ const sharedFrames: Record<EnemyFrameId, AtlasFrame> = {
 export const enemyAtlasFramesById: Record<EnemyAtlasId, Record<EnemyFrameId, AtlasFrame>> = {
   'enemy-brass-cloud': sharedFrames,
   'enemy-abyssal-biomech': sharedFrames,
+  'enemy-city-state': sharedFrames,
 }
 
 export const brassCloudEnemyFrames = enemyAtlasFramesById['enemy-brass-cloud']

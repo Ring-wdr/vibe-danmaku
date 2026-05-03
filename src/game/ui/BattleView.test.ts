@@ -9,6 +9,7 @@ import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
 import { createStageDefinition } from '../content/stage1'
 import { createStage2Definition } from '../content/stage2'
 import { createStage3Definition } from '../content/stage3'
+import { createStage4Definition } from '../content/stage4'
 import {
   battleDragInputConfig,
   BattleView,
@@ -314,6 +315,19 @@ describe('getBossCoreTextureUrl', () => {
       gameAssets.stage3BossCoreUrl,
     )
   })
+
+  it('uses Stage 4 boss texture slots by event-owned boss role', () => {
+    const stage = createStage4Definition('normal')
+    const midboss = getBossFromStage(stage, 'midboss')
+    const finalBoss = getBossFromStage(stage, 'final')
+
+    expect(getBossCoreTextureUrl(stage, { id: midboss.id })).toBe(
+      gameAssets.stage4MidbossKnightUrl,
+    )
+    expect(getBossCoreTextureUrl(stage, { id: finalBoss.id })).toBe(
+      gameAssets.stage4GunslingerSheetUrl,
+    )
+  })
 })
 
 describe('getEnemyAtlasTextureUrl', () => {
@@ -323,6 +337,12 @@ describe('getEnemyAtlasTextureUrl', () => {
     )
     expect(getEnemyAtlasTextureUrl('enemy-brass-cloud')).toBe(
       gameAssets.enemyBrassCloudAtlasUrl,
+    )
+  })
+
+  it('uses the Stage 4 enemy atlas for city-state enemies', () => {
+    expect(getEnemyAtlasTextureUrl('enemy-city-state')).toBe(
+      gameAssets.enemyCityStateAtlasUrl,
     )
   })
 })
@@ -392,6 +412,19 @@ describe('getBackgroundTextureUrls', () => {
       abyssalFloor: gameAssets.stage3TrenchFloorUrl,
       abyssalPressure: gameAssets.stage3PressureLayerUrl,
     })
+  })
+
+  it('returns three stitched city-state background textures for Stage 4', () => {
+    const textures = getBackgroundTextureUrls(createStage4Definition('normal'))
+
+    expect(textures).toEqual({
+      cityBlockA: gameAssets.stage4CityBlockAUrl,
+      cityBlockB: gameAssets.stage4CityBlockBUrl,
+      cityBlockC: gameAssets.stage4CityBlockCUrl,
+    })
+    expect(textures).not.toHaveProperty('a')
+    expect(textures).not.toHaveProperty('b')
+    expect(textures).not.toHaveProperty('abyssalPressure')
   })
 }
 )

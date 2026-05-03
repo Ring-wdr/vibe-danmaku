@@ -8,6 +8,7 @@ import {
 import { createStageDefinition } from '../game/content/stage1'
 import { createStage2Definition } from '../game/content/stage2'
 import { createStage3Definition } from '../game/content/stage3'
+import { createStage4Definition } from '../game/content/stage4'
 import { getBattleAssetPreloadItems } from './battleAssetPreload'
 
 describe('getBattleAssetPreloadItems', () => {
@@ -74,6 +75,24 @@ describe('getBattleAssetPreloadItems', () => {
     expect(urls.some((url) => url.includes('/bosses/stage3-boss-body'))).toBe(true)
     expect(urls.some((url) => url.includes('/bosses/stage3-boss-appendages'))).toBe(true)
     expect(urls.some((url) => url.includes('/bosses/stage3-boss-armor-texture'))).toBe(false)
+  })
+
+  it('preloads stage 4 city-state background and boss asset slots', () => {
+    const items = getBattleAssetPreloadItems({
+      stage: createStage4Definition('normal'),
+      character: lyraAerCharacter,
+    })
+    const urls = items.map((item) => item.url)
+
+    expect(urls.some((url) => url.includes('/enemies/enemy-city-state-atlas'))).toBe(true)
+    expect(urls.some((url) => url.includes('/backgrounds/city-states/stage4-city-block-a'))).toBe(true)
+    expect(urls.some((url) => url.includes('/backgrounds/city-states/stage4-city-block-b'))).toBe(true)
+    expect(urls.some((url) => url.includes('/backgrounds/city-states/stage4-city-block-c'))).toBe(true)
+    expect(urls.some((url) => url.includes('/bosses/stage4-midboss-knight'))).toBe(true)
+    expect(urls.some((url) => url.includes('/bosses/stage4-knight-armor-texture'))).toBe(true)
+    expect(urls.some((url) => url.includes('/bosses/stage4-gunslinger-sheet'))).toBe(true)
+    expect(urls.some((url) => url.includes('/backgrounds/brass-cloud/'))).toBe(false)
+    expect(urls.some((url) => url.includes('/backgrounds/abyssal-biomech/'))).toBe(false)
   })
 
   it('preloads the selected character sprite sheet instead of only Lyra assets', () => {
