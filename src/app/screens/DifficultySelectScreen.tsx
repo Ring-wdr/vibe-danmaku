@@ -16,6 +16,13 @@ type DifficultySelectScreenProps = {
 export function DifficultySelectScreen({ sessionActorRef }: DifficultySelectScreenProps) {
   return (
     <section className={styles.screen}>
+      <button
+        type="button"
+        className={styles.backButton}
+        onClick={() => sessionActorRef.send({ type: 'BACK' })}
+      >
+        Back
+      </button>
       <div className={styles.heading}>
         <p className={styles.eyebrow}>Select Hazard</p>
         <h2 className={styles.title}>Choose difficulty</h2>

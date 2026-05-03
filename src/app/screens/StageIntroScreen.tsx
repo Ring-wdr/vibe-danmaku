@@ -18,6 +18,13 @@ export function StageIntroScreen({ sessionActorRef }: StageIntroScreenProps) {
 
   return (
     <section className={styles.screen}>
+      <button
+        type="button"
+        className={styles.backButton}
+        onClick={() => sessionActorRef.send({ type: 'BACK' })}
+      >
+        Back
+      </button>
       <p className={styles.eyebrow}>Stage 1</p>
       <h2 className={styles.title}>Brass Cloud Gate</h2>
       <p className={styles.difficulty}>Difficulty {difficulty.toUpperCase()} engaged</p>

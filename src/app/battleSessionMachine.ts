@@ -18,6 +18,8 @@ export type BattleSessionContext = {
 
 export type BattleSessionEvent =
   | { type: 'START_SORTIE' }
+  | { type: 'OPEN_SETTINGS' }
+  | { type: 'BACK' }
   | { type: 'SELECT_DIFFICULTY'; difficulty: Difficulty }
   | { type: 'SELECT_CHARACTER'; characterId: string }
   | { type: 'DEPLOY_CHARACTER' }
@@ -106,14 +108,27 @@ export const battleSessionMachine = setup({
   states: {
     title: {
       on: {
+        OPEN_SETTINGS: {
+          target: 'settings',
+        },
         START_SORTIE: {
           target: 'difficultySelect',
           actions: 'resetForNewSortie',
         },
       },
     },
+    settings: {
+      on: {
+        BACK: {
+          target: 'title',
+        },
+      },
+    },
     difficultySelect: {
       on: {
+        BACK: {
+          target: 'title',
+        },
         SELECT_DIFFICULTY: {
           target: 'characterSelect',
           actions: 'selectDifficulty',
@@ -122,6 +137,9 @@ export const battleSessionMachine = setup({
     },
     characterSelect: {
       on: {
+        BACK: {
+          target: 'difficultySelect',
+        },
         SELECT_CHARACTER: {
           actions: 'selectCharacter',
         },
@@ -132,6 +150,9 @@ export const battleSessionMachine = setup({
     },
     stageIntro: {
       on: {
+        BACK: {
+          target: 'characterSelect',
+        },
         DEPLOY_CHARACTER: {
           target: 'battleLoading',
           actions: 'prepareStageOneBattle',
@@ -155,6 +176,10 @@ export const battleSessionMachine = setup({
     },
     result: {
       on: {
+        BACK: {
+          target: 'title',
+          actions: 'returnToTitle',
+        },
         CONTINUE_CAMPAIGN: {
           guard: 'canContinueCampaign',
           target: 'battleLoading',

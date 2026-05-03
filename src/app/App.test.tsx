@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from './App'
 import { lastCharacterStorageKey } from './characterSelectionStorage'
+import { battleSettingsStorageKey } from '../game/ui/battleSettingsStorage'
 import type { Difficulty, RunResult, StageDefinition } from '../game/types'
 
 const { mockBattleView, mockGetBattleAssetPreloadItems, mockPreloadBattleAssets } = vi.hoisted(() => ({
@@ -178,6 +179,51 @@ describe('App', () => {
       'aria-pressed',
       'true',
     )
+  })
+
+  it('opens settings from the title screen and persists control settings', () => {
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }))
+
+    expect(screen.getByRole('heading', { name: /settings/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
+    fireEvent.click(screen.getByRole('radio', { name: '2x' }))
+    fireEvent.click(screen.getByRole('button', { name: /apply settings/i }))
+
+    expect(JSON.parse(window.localStorage.getItem(battleSettingsStorageKey) ?? '{}')).toMatchObject({
+      controlMode: 'drag',
+      dragSensitivity: 2,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+
+    expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
+  })
+
+  it('renders back buttons through the menu flow', () => {
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    expect(screen.getByRole('heading', { name: /choose difficulty/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    fireEvent.click(screen.getByRole('button', { name: /hard/i }))
+    expect(screen.getByRole('heading', { name: /select pilot/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    expect(screen.getByRole('heading', { name: /choose difficulty/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /normal/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
+    expect(screen.getByRole('heading', { name: /brass cloud gate/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+    expect(screen.getByRole('heading', { name: /select pilot/i })).toBeInTheDocument()
   })
 
   it('lets players select and deploy Vesper Noire without unlock restrictions', () => {

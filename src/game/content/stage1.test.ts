@@ -121,25 +121,24 @@ describe('createStageDefinition', () => {
     const finalBossEvent = getSpawnBossEvents(stage).find((event) =>
       event.actions.some((action) => action.type === 'spawnBoss' && action.role === 'final'),
     )
-    const startTimes = [
-      ...spawnWaveEvents.map(getAuthoredStartTime),
-      getAuthoredStartTime(finalBossEvent!),
-    ]
-    const gaps = startTimes.slice(1).map((time, index) => time - startTimes[index]!)
+    const waveGaps = spawnWaveEvents
+      .map(getAuthoredStartTime)
+      .slice(1)
+      .map((time, index) => time - getAuthoredStartTime(spawnWaveEvents[index]!))
 
     expect(spawnWaveEvents).toHaveLength(8)
     expect(spawnWaveEvents.map((event) => event.trigger)).toEqual([
       { type: 'time', at: 1.8 },
-      { type: 'time', at: 8.5 },
-      { type: 'time', at: 15.2 },
-      { type: 'time', at: 22 },
-      { type: 'time', at: 29 },
-      { type: 'time', at: 36 },
-      { type: 'time', at: 43 },
-      { type: 'time', at: 50 },
+      { type: 'time', at: 6.8 },
+      { type: 'time', at: 11.8 },
+      { type: 'time', at: 16.8 },
+      { type: 'time', at: 21.8 },
+      { type: 'time', at: 26.8 },
+      { type: 'time', at: 31.8 },
+      { type: 'time', at: 36.8 },
     ])
-    expect(Math.max(...gaps)).toBeLessThanOrEqual(8)
-    expect(finalBossEvent?.trigger).toEqual({ type: 'time', at: 58 })
+    expect(Math.max(...waveGaps)).toBeLessThanOrEqual(5.2)
+    expect(finalBossEvent?.trigger).toEqual({ type: 'time', at: 44.8 })
   })
 
   it('uses every regular enemy archetype in Stage 1', () => {
@@ -158,10 +157,10 @@ describe('createStageDefinition', () => {
 
     expect(spawnWaveEvents).toHaveLength(8)
     expect(spawnWaveEvents[0]?.trigger).toEqual({ type: 'time', at: 1.8 })
-    expect(spawnWaveEvents[1]?.trigger).toEqual({ type: 'time', at: 8.5 })
+    expect(spawnWaveEvents[1]?.trigger).toEqual({ type: 'time', at: 6.8 })
     expect(spawnBossEvents).toHaveLength(1)
     expect(spawnBossEvents[0]?.id).toBe('boss-brass-core-spawn')
-    expect(spawnBossEvents[0]?.trigger).toEqual({ type: 'time', at: 58 })
+    expect(spawnBossEvents[0]?.trigger).toEqual({ type: 'time', at: 44.8 })
     expect(spawnBossEvents[0]?.actions[0]).toMatchObject({
       type: 'spawnBoss',
       role: 'final',

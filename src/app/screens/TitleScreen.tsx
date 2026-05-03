@@ -20,13 +20,22 @@ export function TitleScreen({ sessionActorRef }: TitleScreenProps) {
         <img className={styles.portrait} src={gameAssets.playerPortraitUrl} alt="Lyra Aer portrait" />
         <img className={styles.crest} src={gameAssets.uiOrnamentUrl} alt="" />
       </div>
-      <button
-        type="button"
-        className={styles.startButton}
-        onClick={() => sessionActorRef.send({ type: 'START_SORTIE' })}
-      >
-        Start Sortie
-      </button>
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={() => sessionActorRef.send({ type: 'OPEN_SETTINGS' })}
+        >
+          Settings
+        </button>
+        <button
+          type="button"
+          className={styles.startButton}
+          onClick={() => sessionActorRef.send({ type: 'START_SORTIE' })}
+        >
+          Start Sortie
+        </button>
+      </div>
     </section>
   )
 }

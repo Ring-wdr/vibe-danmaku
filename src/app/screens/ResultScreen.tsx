@@ -18,6 +18,13 @@ export function ResultScreen({ sessionActorRef }: ResultScreenProps) {
 
   return (
     <section className={styles.screen}>
+      <button
+        type="button"
+        className={styles.backButton}
+        onClick={() => sessionActorRef.send({ type: 'BACK' })}
+      >
+        Back
+      </button>
       <p className={styles.eyebrow}>
         {result.outcome === 'victory' ? 'Mission Cleared' : 'Hull Breached'}
       </p>

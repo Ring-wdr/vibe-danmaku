@@ -38,8 +38,8 @@ describe('menu layout CSS', () => {
   })
 
   it('places menu decisions in the lower thumb zone on tall mobile screens', () => {
-    expect(blockFor(titleStyles, '.startButton')).toContain('margin-top: auto')
-    expect(blockFor(titleStyles, '.startButton')).toContain(
+    expect(blockFor(titleStyles, '.actions')).toContain('margin-top: auto')
+    expect(blockFor(titleStyles, '.actions')).toContain(
       'margin-bottom: var(--thumb-zone-lift)',
     )
     expect(blockFor(characterStyles, '.deployButton')).toContain('margin-top: auto')

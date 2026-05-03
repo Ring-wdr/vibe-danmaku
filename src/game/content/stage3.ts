@@ -15,8 +15,8 @@ import type {
   StageEvent,
 } from '../types'
 
-const midbossAt = 44
-const finalBossAt = 96
+const midbossAt = 38.4
+const finalBossAt = 82.4
 const fastStageMultiplier = 0.22
 const rankExpression = { type: 'rank' } satisfies BulletmlExpression
 
@@ -306,19 +306,19 @@ const leviathanCollapsePattern = {
 
 const baseWavePlacements = [
   { id: 'wave-1', at: 2, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 18, spacing: 0.34 },
-  { id: 'wave-2', at: 8.4, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 16, spacing: 0.38 },
-  { id: 'wave-3', at: 14.8, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 18, spacing: 0.34 },
-  { id: 'wave-4', at: 21.2, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 20, spacing: 0.3 },
-  { id: 'wave-5', at: 27.6, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 20, spacing: 0.3 },
-  { id: 'wave-6', at: 34, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 20, spacing: 0.3 },
-  { id: 'wave-7', at: 40.4, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 24, spacing: 0.26 },
-  { id: 'wave-8', at: 52, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25 },
-  { id: 'wave-9', at: 58.4, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 20, spacing: 0.3 },
-  { id: 'wave-10', at: 64.8, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 22, spacing: 0.28 },
-  { id: 'wave-11', at: 71.2, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 22, spacing: 0.28 },
-  { id: 'wave-12', at: 77.6, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 18, spacing: 0.34 },
-  { id: 'wave-13', at: 84, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25 },
-  { id: 'wave-14', at: 90.4, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 28, spacing: 0.22 },
+  { id: 'wave-2', at: 7.2, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 16, spacing: 0.38 },
+  { id: 'wave-3', at: 12.4, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 18, spacing: 0.34 },
+  { id: 'wave-4', at: 17.6, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 20, spacing: 0.3 },
+  { id: 'wave-5', at: 22.8, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 20, spacing: 0.3 },
+  { id: 'wave-6', at: 28, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 20, spacing: 0.3 },
+  { id: 'wave-7', at: 33.2, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 24, spacing: 0.26 },
+  { id: 'wave-8', at: 43.2, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25 },
+  { id: 'wave-9', at: 48.4, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 20, spacing: 0.3 },
+  { id: 'wave-10', at: 53.6, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 22, spacing: 0.28 },
+  { id: 'wave-11', at: 58.8, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 22, spacing: 0.28 },
+  { id: 'wave-12', at: 64, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 18, spacing: 0.34 },
+  { id: 'wave-13', at: 69.2, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25 },
+  { id: 'wave-14', at: 74.4, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 28, spacing: 0.22 },
 ] as const
 
 const baseMidboss: BossDefinition = {
@@ -353,7 +353,7 @@ const baseMidboss: BossDefinition = {
 
 const baseBoss: BossDefinition = {
   id: 'boss-abyssal-leviathan-core',
-  hp: 2300,
+  hp: 9200,
   phaseBreakDuration: 3,
   phases: [
     {

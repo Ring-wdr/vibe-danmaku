@@ -119,6 +119,7 @@
 }
 
 .applyButton,
+.backButton,
 .resumeButton {
   border: 0;
   cursor: pointer;
@@ -133,6 +134,12 @@
   background: rgba(105, 240, 227, 0.16);
   color: #e9fffb;
   border: 1px solid rgba(105, 240, 227, 0.34);
+}
+
+.backButton {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  border: 1px solid rgba(213, 168, 105, 0.28);
 }
 
 .resumeButton {

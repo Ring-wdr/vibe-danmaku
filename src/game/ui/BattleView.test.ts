@@ -848,6 +848,45 @@ describe('BattleView', () => {
     })
   })
 
+  it('closes pause settings from the Back button without applying draft changes', async () => {
+    const runtime = createMockRuntime()
+    mockUseBattleRuntime.mockReturnValue({
+      runtime,
+      snapshot: mockSnapshot,
+    })
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
+    fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
+    })
+
+    const controls = screen.getByTestId('battle-controls')
+    Object.defineProperty(controls, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => controlRect,
+    })
+    controls.setPointerCapture = vi.fn()
+    controls.hasPointerCapture = vi.fn(() => true)
+    controls.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: 466 })
+
+    expect(runtime.beginDrag).toHaveBeenCalledWith(createArenaPoint(215, 466, controlRect))
+  })
+
   it('activates beam-lance from the ready circular slot', () => {
     mockSnapshot.specialSlots = [
       {

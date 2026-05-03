@@ -54,20 +54,53 @@ describe('createStage3Definition', () => {
 
     expect(stage.events.find((event) => event.id === 'midboss-pressure-lure-spawn')?.trigger).toEqual({
       type: 'time',
-      at: 44,
+      at: 38.4,
     })
     expect(wave8Event?.trigger).toEqual({
       type: 'timeAfterDefeated',
-      at: 52,
+      at: 43.2,
       target: 'midboss-pressure-lure',
-      delay: 8,
+      delay: 4.8,
     })
     expect(finalBossEvent?.trigger).toEqual({
       type: 'timeAfterDefeated',
-      at: 96,
+      at: 82.4,
       target: 'midboss-pressure-lure',
-      delay: 52,
+      delay: 44,
     })
+  })
+
+  it('keeps Stage 3 wave pressure denser with shorter authored gaps', () => {
+    const stage = createStage3Definition('normal')
+    const waveEvents = stage.events.filter((event) =>
+      event.actions.some((action) => action.type === 'spawnWave'),
+    )
+    const waveTimes = waveEvents.map((event) => {
+      if (event.trigger.type !== 'time' && event.trigger.type !== 'timeAfterDefeated') {
+        throw new Error(`expected timed wave trigger for ${event.id}`)
+      }
+
+      return event.trigger.at
+    })
+    const gaps = waveTimes.slice(1).map((time, index) => time - waveTimes[index]!)
+
+    expect(waveTimes).toEqual([
+      2,
+      7.2,
+      12.4,
+      17.6,
+      22.8,
+      28,
+      33.2,
+      43.2,
+      48.4,
+      53.6,
+      58.8,
+      64,
+      69.2,
+      74.4,
+    ])
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(10)
   })
 
   it('defines two midboss phases and four final boss phases with Stage 3 phase breaks', () => {
@@ -75,6 +108,7 @@ describe('createStage3Definition', () => {
     const midboss = getBossFromStage(stage, 'midboss')
     const boss = getBossFromStage(stage, 'final')
 
+    expect(boss.hp).toBe(9200)
     expect(midboss.phaseBreakDuration).toBe(3)
     expect(midboss.phases.map((phase) => phase.threshold)).toEqual([0.5, 0])
     expect(boss.phaseBreakDuration).toBe(3)
@@ -90,7 +124,7 @@ describe('createStage3Definition', () => {
     expect(fast.duration).toBeCloseTo((regular.duration ?? 0) * 0.22)
     expect(fast.events.find((event) => event.id === 'midboss-pressure-lure-spawn')?.trigger).toEqual({
       type: 'time',
-      at: 9.68,
+      at: 8.45,
     })
   })
 

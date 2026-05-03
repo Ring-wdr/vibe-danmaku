@@ -23,6 +23,13 @@ export function CharacterSelectScreen({ sessionActorRef }: CharacterSelectScreen
 
   return (
     <section className={styles.screen}>
+      <button
+        type="button"
+        className={styles.backButton}
+        onClick={() => sessionActorRef.send({ type: 'BACK' })}
+      >
+        Back
+      </button>
       <div className={styles.heading}>
         <h2 className={styles.title}>Select Pilot</h2>
       </div>

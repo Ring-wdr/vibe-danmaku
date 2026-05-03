@@ -61,6 +61,43 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().context.result).toBeNull()
   })
 
+  it('opens settings from title and returns with the back event', () => {
+    const service = createService()
+
+    service.send({ type: 'OPEN_SETTINGS' })
+
+    expect(service.getSnapshot().matches('settings')).toBe(true)
+
+    service.send({ type: 'BACK' })
+
+    expect(service.getSnapshot().matches('title')).toBe(true)
+  })
+
+  it('navigates backward through menu screens without resetting selected options', () => {
+    const service = createService()
+
+    service.send({ type: 'START_SORTIE' })
+    service.send({ type: 'SELECT_DIFFICULTY', difficulty: 'hard' })
+    service.send({ type: 'SELECT_CHARACTER', characterId: 'vesper-noire' })
+    service.send({ type: 'DEPLOY_CHARACTER' })
+
+    expect(service.getSnapshot().matches('stageIntro')).toBe(true)
+
+    service.send({ type: 'BACK' })
+
+    expect(service.getSnapshot().matches('characterSelect')).toBe(true)
+    expect(service.getSnapshot().context.selectedCharacterId).toBe('vesper-noire')
+
+    service.send({ type: 'BACK' })
+
+    expect(service.getSnapshot().matches('difficultySelect')).toBe(true)
+    expect(service.getSnapshot().context.difficulty).toBe('hard')
+
+    service.send({ type: 'BACK' })
+
+    expect(service.getSnapshot().matches('title')).toBe(true)
+  })
+
   it('stores difficulty and moves to character selection', () => {
     const service = createService()
 

@@ -9,6 +9,7 @@ import { OrientationLock } from './OrientationLock'
 import { CharacterSelectScreen } from './screens/CharacterSelectScreen'
 import { DifficultySelectScreen } from './screens/DifficultySelectScreen'
 import { ResultScreen } from './screens/ResultScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
 import { StageIntroScreen } from './screens/StageIntroScreen'
 import { TitleScreen } from './screens/TitleScreen'
 import { cx } from './classNames'
@@ -85,6 +86,10 @@ export function App({ initialViewport }: AppProps) {
         <div className={cx(styles.screenStack, portraitOnly && styles.screenStackBlocked)}>
           {sessionSnapshot.matches('title') ? (
             <TitleScreen sessionActorRef={sessionActorRef} />
+          ) : null}
+
+          {sessionSnapshot.matches('settings') ? (
+            <SettingsScreen sessionActorRef={sessionActorRef} />
           ) : null}
 
           {sessionSnapshot.matches('difficultySelect') ? (
