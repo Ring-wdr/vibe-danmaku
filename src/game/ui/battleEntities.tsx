@@ -3,13 +3,13 @@ import * as THREE from 'three'
 
 import { gameAssets } from '../assets'
 import {
-  brassCloudEnemyFrames,
-  enemyBrassCloudAtlasSize,
   type AtlasFrame,
-} from '../content/enemyBrassCloudAtlas'
+  enemyAtlasFramesById,
+  enemyAtlasSizeById,
+} from '../content/enemyAtlasFrames'
 import { getSidePanelPosition, getSidePanelTilt } from '../content/sidePanelOrbit'
 import { arenaPointToView } from './battleViewMath'
-import { RestoredTextureMaterial, useLoadedTexture } from './battleTexture'
+import { RestoredTextureMaterial, useLoadedTexture, useLoadedTextureMap } from './battleTexture'
 import {
   BulletMesh,
   EnemyDestructionEffectMesh,
@@ -20,6 +20,7 @@ import {
 import type {
   BattleSnapshot,
   CharacterDefinition,
+  EnemyAtlasId,
   RenderBoss,
   RenderEnemy,
   RenderItemDrop,
@@ -30,16 +31,31 @@ const bossSpriteSize = 2.05
 const bossFallbackRadius = 0.9
 
 export function getAtlasFrameUv(frame: AtlasFrame) {
+  return getAtlasFrameUvForAtlas(frame, 'enemy-brass-cloud')
+}
+
+function getAtlasFrameUvForAtlas(frame: AtlasFrame, atlasId: EnemyAtlasId) {
+  const atlasSize = enemyAtlasSizeById[atlasId]
   const uvScale = new THREE.Vector2(
-    frame.w / enemyBrassCloudAtlasSize.width,
-    frame.h / enemyBrassCloudAtlasSize.height,
+    frame.w / atlasSize.width,
+    frame.h / atlasSize.height,
   )
   const uvOffset = new THREE.Vector2(
-    frame.x / enemyBrassCloudAtlasSize.width,
-    1 - (frame.y + frame.h) / enemyBrassCloudAtlasSize.height,
+    frame.x / atlasSize.width,
+    1 - (frame.y + frame.h) / atlasSize.height,
   )
 
   return { uvScale, uvOffset }
+}
+
+export function getEnemyAtlasTextureUrl(atlasId: EnemyAtlasId) {
+  return atlasId === 'enemy-abyssal-biomech'
+    ? gameAssets.enemyAbyssalBiomechAtlasUrl
+    : gameAssets.enemyBrassCloudAtlasUrl
+}
+
+function getActiveEnemyAtlasKey(enemies: readonly Pick<RenderEnemy, 'atlasId'>[]) {
+  return Array.from(new Set(enemies.map((enemy) => enemy.atlasId))).sort().join('|')
 }
 
 export function getPlayerBattleSpritePose({
@@ -136,19 +152,24 @@ function PlayerSprite({
 }
 
 function EnemySprite({
+  atlasId,
   enemyTexture,
   frameId,
   hitFlashRatio,
   position,
   scale,
 }: {
+  atlasId: EnemyAtlasId
   enemyTexture: THREE.Texture | null
   frameId: RenderEnemy['frameId']
   hitFlashRatio: number
   position: [number, number, number]
   scale: number
 }) {
-  const atlasUv = useMemo(() => getAtlasFrameUv(brassCloudEnemyFrames[frameId]), [frameId])
+  const atlasUv = useMemo(
+    () => getAtlasFrameUvForAtlas(enemyAtlasFramesById[atlasId][frameId], atlasId),
+    [atlasId, frameId],
+  )
   const flashOpacity = Math.min(0.72, Math.max(0, hitFlashRatio) * 0.72)
 
   if (!enemyTexture) {
@@ -301,21 +322,25 @@ function getBossDefinitionsByRole(stage: StageDefinition, role: 'midboss' | 'fin
 
 export function getBossCoreTextureUrl(stage: StageDefinition, boss: { id: string } | null) {
   const eventMidbosses = getBossDefinitionsByRole(stage, 'midboss')
-  if (
-    boss &&
-    eventMidbosses.some((definition) => definition.id === boss.id) &&
-    stage.backgroundTheme === 'burning-ruins'
-  ) {
-    return gameAssets.stage2MidbossCoreUrl
+  if (boss && eventMidbosses.some((definition) => definition.id === boss.id)) {
+    if (stage.backgroundTheme === 'abyssal-biomech') {
+      return gameAssets.stage3MidbossCoreUrl
+    }
+
+    if (stage.backgroundTheme === 'burning-ruins') {
+      return gameAssets.stage2MidbossCoreUrl
+    }
   }
 
   const eventFinalBosses = getBossDefinitionsByRole(stage, 'final')
-  if (
-    boss &&
-    eventFinalBosses.some((definition) => definition.id === boss.id) &&
-    stage.backgroundTheme === 'burning-ruins'
-  ) {
-    return gameAssets.stage2BossCoreUrl
+  if (boss && eventFinalBosses.some((definition) => definition.id === boss.id)) {
+    if (stage.backgroundTheme === 'abyssal-biomech') {
+      return gameAssets.stage3BossCoreUrl
+    }
+
+    if (stage.backgroundTheme === 'burning-ruins') {
+      return gameAssets.stage2BossCoreUrl
+    }
   }
 
   return gameAssets.bossCoreUrl
@@ -358,7 +383,23 @@ export function RuntimeEntityLayer({
   snapshot: BattleSnapshot
   isPaused: boolean
 }) {
-  const enemyTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
+  const activeEnemyAtlasKey = getActiveEnemyAtlasKey(snapshot.enemies)
+  const enemyAtlasTextureUrls = useMemo(
+    () =>
+      activeEnemyAtlasKey.split('|').reduce<Partial<Record<EnemyAtlasId, string>>>(
+        (textureUrls, atlasId) => {
+          if (atlasId) {
+            const enemyAtlasId = atlasId as EnemyAtlasId
+            textureUrls[enemyAtlasId] = getEnemyAtlasTextureUrl(enemyAtlasId)
+          }
+
+          return textureUrls
+        },
+        {},
+      ),
+    [activeEnemyAtlasKey],
+  )
+  const enemyTexturesByAtlasId = useLoadedTextureMap(enemyAtlasTextureUrls)
 
   return (
     <>
@@ -393,7 +434,8 @@ export function RuntimeEntityLayer({
       {snapshot.enemies.map((enemy) => (
         <EnemySprite
           key={enemy.id}
-          enemyTexture={enemyTexture}
+          atlasId={enemy.atlasId}
+          enemyTexture={enemyTexturesByAtlasId[enemy.atlasId] ?? null}
           frameId={enemy.frameId}
           hitFlashRatio={enemy.hitFlashRatio}
           position={arenaPointToView(enemy.position, 0.7)}

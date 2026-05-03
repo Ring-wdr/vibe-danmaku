@@ -2,6 +2,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
 
+import { removeDarkEdgeBackground } from './image-transparency.mjs'
+
 const root = process.cwd()
 const generatedDir = path.join(root, 'src/assets/generated')
 
@@ -91,6 +93,21 @@ const runtimeAssets = [
     alphaQuality: 72,
   },
   {
+    source: 'backgrounds/abyssal-biomech/stage3-trench-floor.png',
+    output: 'backgrounds/abyssal-biomech/stage3-trench-floor.webp',
+    width: 1536,
+    quality: 58,
+    alphaQuality: 72,
+    allowEnlargement: true,
+  },
+  {
+    source: 'backgrounds/abyssal-biomech/stage3-pressure-layer.png',
+    output: 'backgrounds/abyssal-biomech/stage3-pressure-layer.webp',
+    width: 1536,
+    quality: 56,
+    alphaQuality: 72,
+  },
+  {
     source: 'bosses/stage2-midboss-core.png',
     output: 'bosses/stage2-midboss-core.webp',
     width: 512,
@@ -103,6 +120,22 @@ const runtimeAssets = [
     width: 512,
     quality: 74,
     alphaQuality: 86,
+  },
+  {
+    source: 'bosses/stage3-midboss-core.png',
+    output: 'bosses/stage3-midboss-core.webp',
+    width: 512,
+    quality: 74,
+    alphaQuality: 86,
+    removeDarkEdgeBackground: true,
+  },
+  {
+    source: 'bosses/stage3-boss-core.png',
+    output: 'bosses/stage3-boss-core.webp',
+    width: 768,
+    quality: 74,
+    alphaQuality: 86,
+    removeDarkEdgeBackground: true,
   },
   {
     source: 'ui/ui-player-portrait.png',
@@ -158,10 +191,14 @@ for (const asset of runtimeAssets) {
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
 
-  await sharp(sourcePath)
+  const source = asset.removeDarkEdgeBackground
+    ? await removeDarkEdgeBackground(sourcePath)
+    : sharp(sourcePath)
+
+  await source
     .resize({
       width: asset.width,
-      withoutEnlargement: true,
+      withoutEnlargement: asset.allowEnlargement !== true,
     })
     .webp({
       quality: asset.quality,

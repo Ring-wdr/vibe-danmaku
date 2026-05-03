@@ -16,12 +16,12 @@ export function getPhaseState(
     return 'Intro'
   }
 
-  if (update.hpRatio <= 0.34) {
-    return 'Desperation'
-  }
-
   if (armorBreakFor > 0) {
     return 'Break'
+  }
+
+  if (update.hpRatio <= 0.34) {
+    return 'Desperation'
   }
 
   return 'CombatPhase'

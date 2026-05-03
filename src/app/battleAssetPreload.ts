@@ -58,7 +58,10 @@ export function getBattleAssetPreloadItems({
     {
       id: 'enemy-atlas',
       label: 'Enemy atlas',
-      url: gameAssets.enemyBrassCloudAtlasUrl,
+      url:
+        stage.backgroundTheme === 'abyssal-biomech'
+          ? gameAssets.enemyAbyssalBiomechAtlasUrl
+          : gameAssets.enemyBrassCloudAtlasUrl,
     },
     {
       id: 'item-atlas',
@@ -67,9 +70,34 @@ export function getBattleAssetPreloadItems({
     },
   ]
 
-  const stageItems =
-    stage.backgroundTheme === 'burning-ruins'
-      ? [
+  const stageItems = (() => {
+    if (stage.backgroundTheme === 'abyssal-biomech') {
+      return [
+        {
+          id: 'stage3-trench-floor',
+          label: 'Abyssal trench floor',
+          url: gameAssets.stage3TrenchFloorUrl,
+        },
+        {
+          id: 'stage3-pressure-layer',
+          label: 'Abyssal pressure layer',
+          url: gameAssets.stage3PressureLayerUrl,
+        },
+        {
+          id: 'stage3-midboss-core',
+          label: 'Pressure Lure core',
+          url: gameAssets.stage3MidbossCoreUrl,
+        },
+        {
+          id: 'stage3-boss-core',
+          label: 'Abyssal Leviathan core',
+          url: gameAssets.stage3BossCoreUrl,
+        },
+      ]
+    }
+
+    if (stage.backgroundTheme === 'burning-ruins') {
+      return [
           {
             id: 'stage2-ruin-floor',
             label: 'Burning ruins floor',
@@ -91,23 +119,26 @@ export function getBattleAssetPreloadItems({
             url: gameAssets.stage2BossCoreUrl,
           },
         ]
-      : [
-          {
-            id: 'cloud-layer-a',
-            label: 'Brass cloud layer A',
-            url: gameAssets.cloudLayerAUrl,
-          },
-          {
-            id: 'cloud-layer-b',
-            label: 'Brass cloud layer B',
-            url: gameAssets.cloudLayerBUrl,
-          },
-          {
-            id: 'boss-core',
-            label: 'Brass boss core',
-            url: gameAssets.bossCoreUrl,
-          },
-        ]
+    }
+
+    return [
+      {
+        id: 'cloud-layer-a',
+        label: 'Brass cloud layer A',
+        url: gameAssets.cloudLayerAUrl,
+      },
+      {
+        id: 'cloud-layer-b',
+        label: 'Brass cloud layer B',
+        url: gameAssets.cloudLayerBUrl,
+      },
+      {
+        id: 'boss-core',
+        label: 'Brass boss core',
+        url: gameAssets.bossCoreUrl,
+      },
+    ]
+  })()
 
   return uniqueItems([...commonItems, ...stageItems])
 }

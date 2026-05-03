@@ -2,7 +2,7 @@ import { assign, setup, type Actor } from 'xstate'
 
 import type { Difficulty, RunResult } from '../game/types'
 
-export type BattleStageNumber = 1 | 2
+export type BattleStageNumber = 1 | 2 | 3
 
 export type BattleSessionInput = {
   selectedCharacterId: string
@@ -35,7 +35,7 @@ export const battleSessionMachine = setup({
   },
   guards: {
     canContinueCampaign: ({ context }) =>
-      context.result?.outcome === 'victory' && context.result.stageNumber === 1,
+      context.result?.outcome === 'victory' && context.result.stageNumber < 3,
   },
   actions: {
     resetForNewSortie: assign({
@@ -63,8 +63,8 @@ export const battleSessionMachine = setup({
     prepareStageOneBattle: assign({
       currentStageNumber: 1,
     }),
-    advanceToStageTwo: assign(({ context }) => ({
-      currentStageNumber: 2,
+    advanceToNextStage: assign(({ context }) => ({
+      currentStageNumber: context.result?.stageNumber === 2 ? 3 : 2,
       battleSeed: context.battleSeed + 1,
       result: null,
     })),
@@ -83,7 +83,7 @@ export const battleSessionMachine = setup({
       }
 
       return {
-        currentStageNumber: context.result.stageNumber === 2 ? 2 : 1,
+        currentStageNumber: Math.min(3, Math.max(1, context.result.stageNumber)) as BattleStageNumber,
         battleSeed: context.battleSeed + 1,
         result: null,
       }
@@ -158,7 +158,7 @@ export const battleSessionMachine = setup({
         CONTINUE_CAMPAIGN: {
           guard: 'canContinueCampaign',
           target: 'battleLoading',
-          actions: 'advanceToStageTwo',
+          actions: 'advanceToNextStage',
         },
         RETRY_STAGE: {
           target: 'battleLoading',

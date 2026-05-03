@@ -7,6 +7,7 @@ import {
 } from '../game/content/characters'
 import { createStageDefinition } from '../game/content/stage1'
 import { createStage2Definition } from '../game/content/stage2'
+import { createStage3Definition } from '../game/content/stage3'
 import { getBattleAssetPreloadItems } from './battleAssetPreload'
 
 describe('getBattleAssetPreloadItems', () => {
@@ -46,6 +47,30 @@ describe('getBattleAssetPreloadItems', () => {
     expect(urls.some((url) => url.includes('/bosses/stage2-boss-core'))).toBe(true)
     expect(urls.some((url) => url.includes('/backgrounds/brass-cloud/'))).toBe(false)
     expect(urls.some((url) => url.includes('/bosses/boss-core'))).toBe(false)
+  })
+
+  it('preloads stage 3 abyssal biomech assets', () => {
+    const items = getBattleAssetPreloadItems({
+      stage: createStage3Definition('normal'),
+      character: lyraAerCharacter,
+    })
+    const urls = items.map((item) => item.url)
+
+    expect(urls.some((url) => url.includes('/enemies/enemy-abyssal-biomech-atlas'))).toBe(
+      true,
+    )
+    expect(
+      urls.some((url) =>
+        url.includes('/backgrounds/abyssal-biomech/stage3-trench-floor'),
+      ),
+    ).toBe(true)
+    expect(
+      urls.some((url) =>
+        url.includes('/backgrounds/abyssal-biomech/stage3-pressure-layer'),
+      ),
+    ).toBe(true)
+    expect(urls.some((url) => url.includes('/bosses/stage3-midboss-core'))).toBe(true)
+    expect(urls.some((url) => url.includes('/bosses/stage3-boss-core'))).toBe(true)
   })
 
   it('preloads the selected character sprite sheet instead of only Lyra assets', () => {

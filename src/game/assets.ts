@@ -1,10 +1,15 @@
 import cloudLayerAUrl from '../assets/generated/backgrounds/brass-cloud/cloud-layer-a.webp'
 import cloudLayerBUrl from '../assets/generated/backgrounds/brass-cloud/cloud-layer-b.webp'
+import stage3PressureLayerUrl from '../assets/generated/backgrounds/abyssal-biomech/stage3-pressure-layer.webp'
+import stage3TrenchFloorUrl from '../assets/generated/backgrounds/abyssal-biomech/stage3-trench-floor.webp'
 import stage2RuinFloorUrl from '../assets/generated/backgrounds/burning-ruins/stage2-ruin-floor.webp'
 import stage2SmokeLayerUrl from '../assets/generated/backgrounds/burning-ruins/stage2-smoke-layer.webp'
 import bossCoreUrl from '../assets/generated/bosses/boss-core.webp'
 import stage2BossCoreUrl from '../assets/generated/bosses/stage2-boss-core.webp'
 import stage2MidbossCoreUrl from '../assets/generated/bosses/stage2-midboss-core.webp'
+import stage3BossCoreUrl from '../assets/generated/bosses/stage3-boss-core.webp'
+import stage3MidbossCoreUrl from '../assets/generated/bosses/stage3-midboss-core.webp'
+import enemyAbyssalBiomechAtlasUrl from '../assets/generated/enemies/enemy-abyssal-biomech-atlas.webp'
 import enemyBrassCloudAtlasUrl from '../assets/generated/enemies/enemy-brass-cloud-atlas.webp'
 import itemAtlasUrl from '../assets/generated/items/item-atlas.webp'
 import astraVoltPanelUrl from '../assets/generated/players/astra-volt-panel.webp'
@@ -24,6 +29,7 @@ export const gameAssets = {
   bossCoreUrl,
   cloudLayerAUrl,
   cloudLayerBUrl,
+  enemyAbyssalBiomechAtlasUrl,
   enemyBrassCloudAtlasUrl,
   astraVoltPanelUrl,
   astraVoltPortraitUrl,
@@ -38,6 +44,10 @@ export const gameAssets = {
   stage2MidbossCoreUrl,
   stage2RuinFloorUrl,
   stage2SmokeLayerUrl,
+  stage3BossCoreUrl,
+  stage3MidbossCoreUrl,
+  stage3PressureLayerUrl,
+  stage3TrenchFloorUrl,
   uiOrnamentUrl,
   vesperNoirePanelUrl,
   vesperNoirePortraitUrl,

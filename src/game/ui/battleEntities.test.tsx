@@ -1,13 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import { createElement } from 'react'
 import * as THREE from 'three'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { gameAssets } from '../assets'
 import { lyraAerCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { RuntimeEntityLayer } from './battleEntities'
-import { useLoadedTexture } from './battleTexture'
+import { useLoadedTexture, useLoadedTextureMap } from './battleTexture'
 import type { BattleSnapshot } from '../types'
 
 const defaultBossFsm = {
@@ -25,6 +25,10 @@ vi.mock('@react-three/fiber', () => ({
 
 vi.mock('./battleTexture', () => ({
   useLoadedTexture: vi.fn(() => new THREE.Texture()),
+  useLoadedTextureMap: vi.fn(() => ({
+    'enemy-brass-cloud': new THREE.Texture(),
+    'enemy-abyssal-biomech': new THREE.Texture(),
+  })),
   RestoredTextureMaterial: ({
     tintColor,
     tintStrength,
@@ -99,6 +103,73 @@ const snapshot = {
 } satisfies BattleSnapshot
 
 describe('RuntimeEntityLayer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('loads only enemy atlas textures used by the active enemies', () => {
+    render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={snapshot}
+        isPaused={false}
+      />,
+    )
+
+    expect(vi.mocked(useLoadedTextureMap)).toHaveBeenCalledWith({
+      'enemy-brass-cloud': gameAssets.enemyBrassCloudAtlasUrl,
+    })
+    expect(vi.mocked(useLoadedTexture)).not.toHaveBeenCalledWith(
+      gameAssets.enemyAbyssalBiomechAtlasUrl,
+    )
+  })
+
+  it('keeps the active enemy atlas texture URL map stable across enemy-order rerenders', () => {
+    const abyssalEnemy = {
+      ...snapshot.enemies[0],
+      id: 'abyssal-sentinel-1',
+      kind: 'abyssal-biomech-sentinel',
+      variant: 'abyssal-biomech-sentinel',
+      atlasId: 'enemy-abyssal-biomech',
+    } satisfies BattleSnapshot['enemies'][number]
+    const firstSnapshot = {
+      ...snapshot,
+      enemies: [snapshot.enemies[0], abyssalEnemy],
+    } satisfies BattleSnapshot
+    const secondSnapshot = {
+      ...snapshot,
+      elapsed: 0.16,
+      enemies: [{ ...abyssalEnemy }, { ...snapshot.enemies[0] }],
+    } satisfies BattleSnapshot
+
+    const { rerender } = render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={firstSnapshot}
+        isPaused={false}
+      />,
+    )
+    const firstTextureUrls = vi.mocked(useLoadedTextureMap).mock.calls.at(-1)?.[0]
+
+    rerender(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={secondSnapshot}
+        isPaused={false}
+      />,
+    )
+    const secondTextureUrls = vi.mocked(useLoadedTextureMap).mock.calls.at(-1)?.[0]
+
+    expect(secondTextureUrls).toBe(firstTextureUrls)
+    expect(secondTextureUrls).toEqual({
+      'enemy-abyssal-biomech': gameAssets.enemyAbyssalBiomechAtlasUrl,
+      'enemy-brass-cloud': gameAssets.enemyBrassCloudAtlasUrl,
+    })
+  })
+
   it('renders enemy hit flash through the sprite texture alpha instead of a solid plane', () => {
     render(
       <RuntimeEntityLayer

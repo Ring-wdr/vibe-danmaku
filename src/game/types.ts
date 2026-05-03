@@ -1,7 +1,7 @@
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
 export type StageId = string
-export type StageBackgroundTheme = 'brass-cloud' | 'burning-ruins'
+export type StageBackgroundTheme = 'brass-cloud' | 'burning-ruins' | 'abyssal-biomech'
 
 export type AppScreen =
   | 'title'
@@ -20,8 +20,8 @@ export type EnemyArchetypeId =
   | 'mine-layer'
   | 'weaver'
 
-export type EnemyThemeId = 'brass-cloud'
-export type EnemyAtlasId = 'enemy-brass-cloud'
+export type EnemyThemeId = 'brass-cloud' | 'abyssal-biomech'
+export type EnemyAtlasId = 'enemy-brass-cloud' | 'enemy-abyssal-biomech'
 export type EnemyFrameId = EnemyArchetypeId
 export type EnemyVariantId = `${EnemyThemeId}-${EnemyArchetypeId}`
 export type EnemyKind = EnemyVariantId | 'boss-core'
@@ -190,6 +190,7 @@ export type BossPhaseDefinition = {
 export type BossDefinition = {
   id: string
   hp: number
+  phaseBreakDuration?: number
   phases: BossPhaseDefinition[]
 }
 

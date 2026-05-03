@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   brassCloudEnemyFrames,
   brassCloudEnemyVariants,
+  enemyArchetypeIds,
   enemyArchetypes,
+  enemyVariants,
   resolveEnemyWave,
   resolvePatternForDifficulty,
 } from './enemies'
@@ -35,6 +37,38 @@ describe('enemy content resolver', () => {
       expect(frame.w).toBeGreaterThan(0)
       expect(frame.h).toBeGreaterThan(0)
     }
+  })
+
+  it('defines an abyssal variant and atlas frame for every regular archetype', () => {
+    for (const archetype of enemyArchetypeIds) {
+      const variant = enemyVariants[`abyssal-biomech-${archetype}`]
+
+      expect(variant).toEqual({
+        id: `abyssal-biomech-${archetype}`,
+        archetype,
+        theme: 'abyssal-biomech',
+        atlasId: 'enemy-abyssal-biomech',
+        frameId: archetype,
+        displayName: expect.stringMatching(/^Abyssal /),
+        patternOverride: expect.any(Object),
+      })
+    }
+  })
+
+  it('resolves abyssal placements without changing the authored archetype role', () => {
+    const wave = resolveEnemyWave('normal', {
+      id: 'abyssal-test-wave',
+      archetype: 'weaver',
+      variant: 'abyssal-biomech-weaver',
+      count: 3,
+      spacing: 0.4,
+    })
+
+    expect(wave.kind).toBe('abyssal-biomech-weaver')
+    expect(wave.archetype).toBe('weaver')
+    expect(wave.atlasId).toBe('enemy-abyssal-biomech')
+    expect(wave.frameId).toBe('weaver')
+    expect(wave.pattern.shape).toBe('wave')
   })
 
   it('resolves a wave with archetype defaults, theme metadata, and difficulty tuning', () => {

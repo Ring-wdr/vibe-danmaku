@@ -74,6 +74,14 @@ describe('gameAssets', () => {
     expect(gameAssets.stage2BossCoreUrl).toMatch(/bosses\/stage2-boss-core/)
   })
 
+  it('registers stage 3 abyssal biomech runtime assets', () => {
+    expect(gameAssets.stage3TrenchFloorUrl).toMatch(/backgrounds\/abyssal-biomech\/stage3-trench-floor/)
+    expect(gameAssets.stage3PressureLayerUrl).toMatch(/backgrounds\/abyssal-biomech\/stage3-pressure-layer/)
+    expect(gameAssets.enemyAbyssalBiomechAtlasUrl).toMatch(/enemies\/enemy-abyssal-biomech-atlas/)
+    expect(gameAssets.stage3MidbossCoreUrl).toMatch(/bosses\/stage3-midboss-core/)
+    expect(gameAssets.stage3BossCoreUrl).toMatch(/bosses\/stage3-boss-core/)
+  })
+
   it('groups generated runtime assets by role and theme', () => {
     expect(gameAssets.bossCoreUrl).toMatch(/bosses\/boss-core/)
     expect(gameAssets.cloudLayerAUrl).toMatch(/backgrounds\/brass-cloud\/cloud-layer-a/)

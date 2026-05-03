@@ -8,6 +8,7 @@ import { gameAssets } from '../assets'
 import { brassCloudEnemyFrames } from '../content/enemyBrassCloudAtlas'
 import { createStageDefinition } from '../content/stage1'
 import { createStage2Definition } from '../content/stage2'
+import { createStage3Definition } from '../content/stage3'
 import {
   battleDragInputConfig,
   BattleView,
@@ -19,6 +20,7 @@ import {
   getPlayerBattleSpritePose,
   getRenderableBosses,
 } from './BattleView'
+import { getEnemyAtlasTextureUrl } from './battleEntities'
 import type { BattleSnapshot, StageDefinition } from '../types'
 
 vi.mock('@react-three/fiber', () => ({
@@ -299,6 +301,30 @@ describe('getBossCoreTextureUrl', () => {
       gameAssets.stage2BossCoreUrl,
     )
   })
+
+  it('uses Stage 3 boss textures by event-owned boss role', () => {
+    const stage = createStage3Definition('normal')
+    const midboss = getBossFromStage(stage, 'midboss')
+    const finalBoss = getBossFromStage(stage, 'final')
+
+    expect(getBossCoreTextureUrl(stage, { id: midboss.id })).toBe(
+      gameAssets.stage3MidbossCoreUrl,
+    )
+    expect(getBossCoreTextureUrl(stage, { id: finalBoss.id })).toBe(
+      gameAssets.stage3BossCoreUrl,
+    )
+  })
+})
+
+describe('getEnemyAtlasTextureUrl', () => {
+  it('uses the Stage 3 enemy atlas for abyssal enemies', () => {
+    expect(getEnemyAtlasTextureUrl('enemy-abyssal-biomech')).toBe(
+      gameAssets.enemyAbyssalBiomechAtlasUrl,
+    )
+    expect(getEnemyAtlasTextureUrl('enemy-brass-cloud')).toBe(
+      gameAssets.enemyBrassCloudAtlasUrl,
+    )
+  })
 })
 
 describe('getRenderableBosses', () => {
@@ -357,6 +383,15 @@ describe('getBackgroundTextureUrls', () => {
     )
     expect(textures).not.toHaveProperty('a')
     expect(textures).not.toHaveProperty('b')
+  })
+
+  it('returns only abyssal biomech textures for Stage 3', () => {
+    const textures = getBackgroundTextureUrls(createStage3Definition('normal'))
+
+    expect(textures).toEqual({
+      abyssalFloor: gameAssets.stage3TrenchFloorUrl,
+      abyssalPressure: gameAssets.stage3PressureLayerUrl,
+    })
   })
 }
 )
