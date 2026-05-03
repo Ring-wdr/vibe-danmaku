@@ -2,6 +2,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
 
+import { removeDarkEdgeBackground } from './image-transparency.mjs'
+
 const root = process.cwd()
 const generatedDir = path.join(root, 'src/assets/generated')
 
@@ -125,6 +127,7 @@ const runtimeAssets = [
     width: 512,
     quality: 74,
     alphaQuality: 86,
+    removeDarkEdgeBackground: true,
   },
   {
     source: 'bosses/stage3-boss-core.png',
@@ -132,6 +135,7 @@ const runtimeAssets = [
     width: 768,
     quality: 74,
     alphaQuality: 86,
+    removeDarkEdgeBackground: true,
   },
   {
     source: 'ui/ui-player-portrait.png',
@@ -187,7 +191,11 @@ for (const asset of runtimeAssets) {
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true })
 
-  await sharp(sourcePath)
+  const source = asset.removeDarkEdgeBackground
+    ? await removeDarkEdgeBackground(sourcePath)
+    : sharp(sourcePath)
+
+  await source
     .resize({
       width: asset.width,
       withoutEnlargement: asset.allowEnlargement !== true,

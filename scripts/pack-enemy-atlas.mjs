@@ -2,6 +2,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import sharp from 'sharp'
 
+import { removeDarkEdgeBackground } from './image-transparency.mjs'
+
 const root = process.cwd()
 const cellSize = 192
 const spriteSize = 168
@@ -18,10 +20,12 @@ const atlases = [
   {
     sourceDir: 'src/assets/generated/enemies/abyssal',
     outPath: 'src/assets/generated/enemies/enemy-abyssal-biomech-atlas.webp',
+    removeDarkEdgeBackground: true,
   },
 ]
 
-async function packAtlas({ sourceDir, outPath }) {
+async function packAtlas(atlas) {
+  const { sourceDir, outPath } = atlas
   const sourcePath = path.join(root, sourceDir)
   const outputPath = path.join(root, outPath)
 
@@ -29,7 +33,11 @@ async function packAtlas({ sourceDir, outPath }) {
 
   const composites = await Promise.all(
     frames.map(async (frame, index) => {
-      const input = await sharp(path.join(sourcePath, `${frame}.png`))
+      const framePath = path.join(sourcePath, `${frame}.png`)
+      const source = atlas.removeDarkEdgeBackground
+        ? await removeDarkEdgeBackground(framePath)
+        : sharp(framePath)
+      const input = await source
         .resize({
           width: spriteSize,
           height: spriteSize,
