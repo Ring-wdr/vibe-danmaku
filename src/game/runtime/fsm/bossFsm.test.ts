@@ -11,7 +11,7 @@ import {
   sendBossFsmTick,
   vulnerabilityFsmMachine,
 } from './bossFsm'
-import type { BossPhaseDefinition } from '../types'
+import type { BossPhaseDefinition } from '../../types'
 
 const fanPhase = {
   id: 'opening',
