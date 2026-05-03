@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -81,6 +81,64 @@ function MovingCloudPlane({
   )
 }
 
+function RepeatingFloorPlane({
+  layers,
+  texture,
+  isPaused,
+}: {
+  layers: readonly BackgroundMotionLayerConfig[]
+  texture: THREE.Texture
+  isPaused: boolean
+}) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const primaryLayer = layers[0]
+  const averageSpeed =
+    layers.reduce((totalSpeed, layer) => totalSpeed + layer.speed, 0) / layers.length
+  const opacity = Math.min(
+    0.72,
+    layers.reduce((maxOpacity, layer) => Math.max(maxOpacity, layer.opacity), 0),
+  )
+
+  useEffect(() => {
+    texture.wrapS = THREE.RepeatWrapping
+    texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(2.8, 4.4)
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.needsUpdate = true
+  }, [texture])
+
+  useFrame(({ clock }) => {
+    if (isPaused || !meshRef.current) {
+      return
+    }
+
+    const elapsed = clock.elapsedTime
+    texture.offset.y = -(elapsed * averageSpeed * 0.045) % 1
+    texture.offset.x = Math.sin(elapsed * 0.08) * 0.015
+  })
+
+  if (!primaryLayer) {
+    return null
+  }
+
+  return (
+    <mesh
+      ref={meshRef}
+      position={[primaryLayer.x, 1.25, primaryLayer.z]}
+      rotation={[0, 0, primaryLayer.rotation]}
+    >
+      <planeGeometry args={[8.8, 11.8]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        opacity={opacity}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
 export function MovingBackgroundLayer({
   stage,
   isPaused,
@@ -91,6 +149,8 @@ export function MovingBackgroundLayer({
   const config = stageBackgroundMotionConfigs[stage.backgroundTheme]
   const textureUrls = useMemo(() => getBackgroundTextureUrls(stage), [stage])
   const textures = useLoadedTextureMap(textureUrls)
+  const firstFloorLayer = config.floorLayers[0]
+  const floorTexture = firstFloorLayer ? textures[firstFloorLayer.textureKey] : undefined
   const renderLayer = (layerConfig: BackgroundMotionLayerConfig, layerIndex: number) => {
     const texture = textures[layerConfig.textureKey]
 
@@ -111,7 +171,13 @@ export function MovingBackgroundLayer({
 
   return (
     <group name="battle-background-motion" userData={{ testId: 'battle-background-motion' }}>
-      {config.floorLayers.map(renderLayer)}
+      {firstFloorLayer && floorTexture ? (
+        <RepeatingFloorPlane
+          layers={config.floorLayers}
+          texture={floorTexture}
+          isPaused={isPaused}
+        />
+      ) : null}
       {config.cloudLayers.map(renderLayer)}
     </group>
   )

@@ -6,9 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { gameAssets } from '../assets'
 import { lyraAerCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
-import { RuntimeEntityLayer } from './battleEntities'
+import { createStage3Definition } from '../content/stage3'
+import { getStage3BossClawMotion, RuntimeEntityLayer } from './battleEntities'
 import { useLoadedTexture, useLoadedTextureMap } from './battleTexture'
-import type { BattleSnapshot } from '../types'
+import type { BattleSnapshot, StageDefinition } from '../types'
 
 const defaultBossFsm = {
   phase: 'CombatPhase',
@@ -110,6 +111,18 @@ const snapshot = {
   cuePulse: 0,
   result: null,
 } satisfies BattleSnapshot
+
+function getFinalBossFromStage(stage: StageDefinition) {
+  const action = stage.events
+    .flatMap((event) => event.actions)
+    .find((candidate) => candidate.type === 'spawnBoss' && candidate.role === 'final')
+
+  if (!action || action.type !== 'spawnBoss') {
+    throw new Error('Stage test fixture must include a final boss')
+  }
+
+  return action.boss
+}
 
 describe('RuntimeEntityLayer', () => {
   beforeEach(() => {
@@ -290,6 +303,56 @@ describe('RuntimeEntityLayer', () => {
     )
 
     expect(bossPlane).toBeInTheDocument()
+  })
+
+  it('renders the Stage 3 final boss as a low-poly 3D model with generated appendage sprites', () => {
+    const stage = createStage3Definition('normal')
+    const finalBoss = getFinalBossFromStage(stage)
+
+    const { container } = render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={stage}
+        snapshot={{
+          ...snapshot,
+          elapsed: 1.2,
+          bosses: [
+            {
+              id: finalBoss.id,
+              position: { x: 0, z: 1.9 },
+              hpRatio: 1,
+              phaseLabel: 'Boss',
+              supportLaser: false,
+              fsm: defaultBossFsm,
+            },
+          ],
+        }}
+        isPaused={false}
+      />,
+    )
+
+    expect(screen.getByTestId(`stage3-boss-low-poly-${finalBoss.id}`)).toBeInTheDocument()
+    expect(screen.getByTestId(`stage3-boss-white-core-${finalBoss.id}`)).toBeInTheDocument()
+    expect(screen.getByTestId('stage3-boss-claw-left')).toBeInTheDocument()
+    expect(screen.getByTestId('stage3-boss-claw-right')).toBeInTheDocument()
+    expect(container.querySelector('icosahedrongeometry')).toBeInTheDocument()
+    expect(container.querySelector('spheregeometry')).toBeInTheDocument()
+    expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(gameAssets.stage3BossAppendagesUrl)
+    expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(
+      gameAssets.stage3BossArmorTextureUrl,
+      expect.any(Function),
+    )
+  })
+
+  it('moves Stage 3 boss claws subtly in opposite horizontal directions', () => {
+    const left = getStage3BossClawMotion({ battleElapsed: 0.6, side: -1 })
+    const right = getStage3BossClawMotion({ battleElapsed: 0.6, side: 1 })
+
+    expect(Math.abs(left.xOffset)).toBeLessThanOrEqual(0.055)
+    expect(Math.abs(right.xOffset)).toBeLessThanOrEqual(0.055)
+    expect(left.xOffset).toBeCloseTo(-right.xOffset, 5)
+    expect(Math.abs(left.rotationOffset)).toBeLessThanOrEqual(0.045)
+    expect(Math.abs(right.rotationOffset)).toBeLessThanOrEqual(0.045)
   })
 
   it('renders a phase-break shield effect while a boss is invulnerable during phase changes', () => {

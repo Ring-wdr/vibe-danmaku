@@ -26,6 +26,14 @@ const stage3BossCutoutPaths = [
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-core.png'),
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-core.webp'),
 ]
+const stage3BossAppendagePaths = [
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-appendages.png'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-appendages.webp'),
+]
+const stage3BossArmorTexturePaths = [
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-armor-texture.png'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-armor-texture.webp'),
+]
 
 async function getFrameAlphaBounds(filePath: string) {
   const image = sharp(filePath)
@@ -138,6 +146,49 @@ async function getCutoutStats(filePath: string) {
   }
 }
 
+async function getTextureDetailStats(filePath: string) {
+  const image = sharp(filePath).ensureAlpha()
+  const metadata = await image.metadata()
+
+  if (!metadata.width || !metadata.height) {
+    throw new Error(`Missing texture dimensions for ${filePath}`)
+  }
+
+  const raw = await image.raw().toBuffer()
+  let cyanAccent = 0
+  let darkMetal = 0
+  let contrastEdges = 0
+
+  for (let y = 0; y < metadata.height; y += 1) {
+    for (let x = 0; x < metadata.width; x += 1) {
+      const offset = (y * metadata.width + x) * 4
+      const r = raw[offset]
+      const g = raw[offset + 1]
+      const b = raw[offset + 2]
+
+      if (g > 120 && b > 120 && r < 80) {
+        cyanAccent += 1
+      }
+
+      if (Math.max(r, g, b) < 70) {
+        darkMetal += 1
+      }
+
+      if (Math.max(r, g, b) - Math.min(r, g, b) > 26) {
+        contrastEdges += 1
+      }
+    }
+  }
+
+  const area = metadata.width * metadata.height
+
+  return {
+    cyanAccentRatio: cyanAccent / area,
+    darkMetalRatio: darkMetal / area,
+    contrastEdgeRatio: contrastEdges / area,
+  }
+}
+
 describe('gameAssets', () => {
   it('serves runtime raster assets from web-optimized files', () => {
     expect(Object.values(gameAssets).every((assetUrl) => assetUrl.endsWith('.webp'))).toBe(
@@ -158,6 +209,8 @@ describe('gameAssets', () => {
     expect(gameAssets.enemyAbyssalBiomechAtlasUrl).toMatch(/enemies\/enemy-abyssal-biomech-atlas/)
     expect(gameAssets.stage3MidbossCoreUrl).toMatch(/bosses\/stage3-midboss-core/)
     expect(gameAssets.stage3BossCoreUrl).toMatch(/bosses\/stage3-boss-core/)
+    expect(gameAssets.stage3BossAppendagesUrl).toMatch(/bosses\/stage3-boss-appendages/)
+    expect(gameAssets.stage3BossArmorTextureUrl).toMatch(/bosses\/stage3-boss-armor-texture/)
   })
 
   it('groups generated runtime assets by role and theme', () => {
@@ -213,6 +266,26 @@ describe('gameAssets', () => {
       expect(stats.transparentRatio).toBeGreaterThan(0.25)
       expect(stats.darkOpaqueRatio).toBeGreaterThan(0.08)
       expect(stats.greenOpaque).toBe(0)
+    }
+  })
+
+  it('keeps stage 3 generated appendage sprites transparent and chroma-key free', async () => {
+    for (const appendagePath of stage3BossAppendagePaths) {
+      const stats = await getCutoutStats(appendagePath)
+
+      expect(stats.transparentRatio).toBeGreaterThan(0.65)
+      expect(stats.darkOpaqueRatio).toBeGreaterThan(0.04)
+      expect(stats.greenOpaque).toBe(0)
+    }
+  })
+
+  it('keeps stage 3 boss armor textures dark, detailed, and cyan accented', async () => {
+    for (const texturePath of stage3BossArmorTexturePaths) {
+      const stats = await getTextureDetailStats(texturePath)
+
+      expect(stats.darkMetalRatio).toBeGreaterThan(0.7)
+      expect(stats.contrastEdgeRatio).toBeGreaterThan(0.12)
+      expect(stats.cyanAccentRatio).toBeGreaterThan(0.006)
     }
   })
 })
