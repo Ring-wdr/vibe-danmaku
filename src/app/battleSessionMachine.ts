@@ -23,6 +23,7 @@ export type BattleSessionEvent =
   | { type: 'DEPLOY_CHARACTER' }
   | { type: 'BATTLE_ASSETS_READY' }
   | { type: 'BATTLE_COMPLETED'; result: RunResult }
+  | { type: 'CONTINUE_CAMPAIGN' }
   | { type: 'RETRY_STAGE' }
   | { type: 'RETURN_TO_TITLE' }
 
@@ -33,10 +34,8 @@ export const battleSessionMachine = setup({
     input: BattleSessionInput
   },
   guards: {
-    completedStageOneVictory: ({ event }) =>
-      event.type === 'BATTLE_COMPLETED' &&
-      event.result.outcome === 'victory' &&
-      event.result.stageNumber === 1,
+    canContinueCampaign: ({ context }) =>
+      context.result?.outcome === 'victory' && context.result.stageNumber === 1,
   },
   actions: {
     resetForNewSortie: assign({
@@ -148,21 +147,19 @@ export const battleSessionMachine = setup({
     },
     battle: {
       on: {
-        BATTLE_COMPLETED: [
-          {
-            guard: 'completedStageOneVictory',
-            target: 'battleLoading',
-            actions: 'advanceToStageTwo',
-          },
-          {
-            target: 'result',
-            actions: 'storeBattleResult',
-          },
-        ],
+        BATTLE_COMPLETED: {
+          target: 'result',
+          actions: 'storeBattleResult',
+        },
       },
     },
     result: {
       on: {
+        CONTINUE_CAMPAIGN: {
+          guard: 'canContinueCampaign',
+          target: 'battleLoading',
+          actions: 'advanceToStageTwo',
+        },
         RETRY_STAGE: {
           target: 'battleLoading',
           actions: 'retryResultStage',

@@ -200,6 +200,11 @@ const enemyFeedbackConfig = {
   destructionLife: 0.62,
 } as const
 
+const scoreConfig = {
+  enemyHit: 100,
+  comboWindow: 10,
+} as const
+
 const itemDropConfig = {
   waveInterval: 4,
   spawnZ: bulletViewportBounds.maxZ + 1.35,
@@ -326,6 +331,10 @@ export function createBattleRuntime({
   let specialSparkleTimer = 0
   let playerShots = 0
   let hitsTaken = 0
+  let score = 0
+  let combo = 0
+  let maxCombo = 0
+  let lastEnemyHitAt: number | null = null
   let bossEnteredCount = 0
   let cuePulse = 0
   let regularWaveSpawnCount = 0
@@ -392,6 +401,8 @@ export function createBattleRuntime({
   const buildSnapshot = (): BattleSnapshot => {
     const primaryBoss = bosses.find((candidate) => candidate.role === 'final') ?? bosses[0] ?? null
     const phase = getBossPhase(primaryBoss)
+    const visibleCombo =
+      lastEnemyHitAt !== null && elapsed - lastEnemyHitAt <= scoreConfig.comboWindow ? combo : 0
     const renderEnemies: RenderEnemy[] = enemies.map((enemy) => ({
       id: enemy.id,
       waveId: enemy.waveId,
@@ -477,6 +488,9 @@ export function createBattleRuntime({
       ),
       playerShots,
       hitsTaken,
+      score,
+      combo: visibleCombo,
+      maxCombo,
       bossEnteredCount,
       cuePulse,
       result,
@@ -786,6 +800,8 @@ export function createBattleRuntime({
       duration: elapsed,
       remainingHp: player.hp,
       hitsTaken,
+      score,
+      maxCombo,
     }
     cuePulse += 1
     emit()
@@ -840,9 +856,28 @@ export function createBattleRuntime({
     })
   }
 
-  const damageEnemy = (enemy: RuntimeEnemy, damage: number) => {
+  const recordTargetHit = () => {
+    if (lastEnemyHitAt !== null && elapsed - lastEnemyHitAt <= scoreConfig.comboWindow) {
+      combo += 1
+    } else {
+      combo = 1
+    }
+
+    lastEnemyHitAt = elapsed
+    maxCombo = Math.max(maxCombo, combo)
+    score += scoreConfig.enemyHit * combo
+  }
+
+  const damageEnemy = (
+    enemy: RuntimeEnemy,
+    damage: number,
+    options: { scoreHit?: boolean } = {},
+  ) => {
     enemy.hp -= damage
     enemy.hitFlashFor = enemyFeedbackConfig.hitFlashDuration
+    if (options.scoreHit) {
+      recordTargetHit()
+    }
   }
 
   const damageBoss = (boss: RuntimeBoss, damage: number) => {
@@ -920,7 +955,7 @@ export function createBattleRuntime({
         continue
       }
 
-      damageEnemy(enemy, special.damage)
+      damageEnemy(enemy, special.damage, { scoreHit: true })
       spawnSparkle(enemy.x, enemy.z, 1.45)
       if (enemy.hp <= 0) {
         recordEnemyDefeated(enemy)
@@ -933,6 +968,7 @@ export function createBattleRuntime({
     for (const boss of bosses) {
       if (distanceSquared({ x: boss.x, z: boss.z }, center) <= enemyDamageRadiusSquared) {
         if (damageBoss(boss, special.damage)) {
+          recordTargetHit()
           spawnSparkle(boss.x, boss.z, 1.7)
         }
       }
@@ -1405,7 +1441,7 @@ export function createBattleRuntime({
               { x: enemy.x, z: enemy.z },
             ) < hitDistance * hitDistance
           ) {
-            damageEnemy(enemy, bullet.damage)
+            damageEnemy(enemy, bullet.damage, { scoreHit: true })
             bullets.splice(index, 1)
             consumed = true
             break
@@ -1430,6 +1466,7 @@ export function createBattleRuntime({
         }
 
         if (hitBoss) {
+          recordTargetHit()
           bullets.splice(index, 1)
           continue
         }

@@ -14,6 +14,8 @@ export function ResultScreen({ sessionActorRef }: ResultScreenProps) {
     return null
   }
 
+  const canContinueCampaign = result.outcome === 'victory' && result.stageNumber === 1
+
   return (
     <section className={styles.screen}>
       <p className={styles.eyebrow}>
@@ -36,6 +38,14 @@ export function ResultScreen({ sessionActorRef }: ResultScreenProps) {
           <strong className={styles.value}>{result.difficulty.toUpperCase()}</strong>
         </div>
         <div className={styles.item}>
+          <span className={styles.label}>Score</span>
+          <strong className={styles.value}>{result.score.toLocaleString('en-US')}</strong>
+        </div>
+        <div className={styles.item}>
+          <span className={styles.label}>Max Combo</span>
+          <strong className={styles.value}>{result.maxCombo}</strong>
+        </div>
+        <div className={styles.item}>
           <span className={styles.label}>Remaining Hull</span>
           <strong className={styles.value}>{result.remainingHp}</strong>
         </div>
@@ -49,13 +59,23 @@ export function ResultScreen({ sessionActorRef }: ResultScreenProps) {
         </div>
       </div>
       <div className={styles.actions}>
-        <button
-          type="button"
-          className={styles.primaryButton}
-          onClick={() => sessionActorRef.send({ type: 'RETRY_STAGE' })}
-        >
-          Retry Stage
-        </button>
+        {canContinueCampaign ? (
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => sessionActorRef.send({ type: 'CONTINUE_CAMPAIGN' })}
+          >
+            Confirm
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => sessionActorRef.send({ type: 'RETRY_STAGE' })}
+          >
+            Retry Stage
+          </button>
+        )}
         <button
           type="button"
           className={styles.secondaryButton}

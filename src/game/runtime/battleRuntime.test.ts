@@ -334,6 +334,63 @@ function createEnemyHitFeedbackStage(): StageDefinition {
   ])
 }
 
+function createSingleHitComboStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+  const wave = {
+    ...getFirstWave(stage),
+    id: 'single-hit-combo-target',
+    count: 1,
+    hp: 1,
+    movement: {
+      type: 'enterAndStrafe',
+      entrySpeed: 160,
+      holdZ: -0.35,
+      strafeSpeed: 0,
+      strafeRange: 0,
+    },
+    pattern: {
+      shape: 'fan',
+      count: 0,
+      interval: 999,
+      speed: 0,
+      spread: 0,
+      life: 0,
+    },
+  } satisfies EnemyWave
+
+  return createEventStage(stage, [
+    createWaveEvent('single-hit-combo-event', { type: 'time', at: 0 }, wave),
+  ])
+}
+
+function createBossComboStage(): StageDefinition {
+  const stage = createStageDefinition('normal')
+  const boss = {
+    ...getBossFromStage(stage, 'final'),
+    hp: 999,
+    phases: [
+      {
+        id: 'combo-boss-phase',
+        threshold: 0,
+        label: 'Combo Boss',
+        supportLaser: false,
+        pattern: {
+          shape: 'fan',
+          count: 0,
+          interval: 999,
+          speed: 0,
+          spread: 0,
+          life: 0,
+        },
+      },
+    ],
+  } satisfies BossDefinition
+
+  return createEventStage(stage, [
+    createBossEvent('combo-boss-event', { type: 'time', at: 0 }, boss, 'final'),
+  ])
+}
+
 function createEnemyDestructionFeedbackStage(): StageDefinition {
   const stage = createStageDefinition('normal')
   const wave = {
@@ -757,6 +814,96 @@ describe('createBattleRuntime', () => {
     }
 
     expect(hitFlashRatio).toBeGreaterThan(0)
+  })
+
+  it('adds score and extends combo when enemy hits land inside the combo window', () => {
+    const runtime = createRuntime({
+      stage: createEnemyHitFeedbackStage(),
+      character: {
+        ...testPilot,
+        shot: {
+          interval: 0.12,
+          speed: 24,
+          power: 1,
+        },
+      },
+    })
+
+    let snapshot = runtime.getSnapshot()
+    for (let index = 0; index < 80; index += 1) {
+      runtime.update(0.05)
+      snapshot = runtime.getSnapshot()
+
+      if (snapshot.combo >= 2) {
+        break
+      }
+    }
+
+    expect(snapshot.combo).toBeGreaterThanOrEqual(2)
+    expect(snapshot.maxCombo).toBeGreaterThanOrEqual(2)
+    expect(snapshot.score).toBeGreaterThanOrEqual(300)
+  })
+
+  it('expires the visible combo after 10 seconds without another enemy hit', () => {
+    const runtime = createRuntime({
+      stage: createSingleHitComboStage(),
+      character: {
+        ...testPilot,
+        shot: {
+          interval: 0.12,
+          speed: 24,
+          power: 1,
+        },
+      },
+    })
+
+    let snapshot = runtime.getSnapshot()
+    for (let index = 0; index < 40; index += 1) {
+      runtime.update(0.05)
+      snapshot = runtime.getSnapshot()
+
+      if (snapshot.combo === 1) {
+        break
+      }
+    }
+
+    expect(snapshot.combo).toBe(1)
+    expect(snapshot.score).toBe(100)
+
+    runtime.update(10.1)
+
+    expect(runtime.getSnapshot().combo).toBe(0)
+    expect(runtime.getSnapshot().maxCombo).toBe(1)
+    expect(runtime.getSnapshot().score).toBe(100)
+  })
+
+  it('adds score and combo when player shots hit a boss', () => {
+    const runtime = createRuntime({
+      stage: createBossComboStage(),
+      character: {
+        ...testPilot,
+        shot: {
+          interval: 0.12,
+          speed: 24,
+          power: 1,
+        },
+      },
+    })
+
+    let snapshot = runtime.getSnapshot()
+    for (let index = 0; index < 80; index += 1) {
+      runtime.update(0.05)
+      snapshot = runtime.getSnapshot()
+
+      if (snapshot.combo >= 2) {
+        break
+      }
+    }
+
+    expect(snapshot.boss).not.toBeNull()
+    expect(snapshot.combo).toBeGreaterThanOrEqual(2)
+    expect(snapshot.maxCombo).toBeGreaterThanOrEqual(2)
+    expect(snapshot.score).toBeGreaterThanOrEqual(300)
   })
 
   it('starts wave enemy fire while enemies are entering from the upper edge', () => {

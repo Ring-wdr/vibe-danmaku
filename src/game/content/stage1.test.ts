@@ -47,6 +47,14 @@ function getVictoryEvents(stage: StageDefinition) {
   )
 }
 
+function getAuthoredStartTime(event: StageDefinition['events'][number]) {
+  if (event.trigger.type === 'time' || event.trigger.type === 'timeAfterDefeated') {
+    return event.trigger.at
+  }
+
+  throw new Error(`expected authored time trigger for ${event.id}`)
+}
+
 describe('createStageDefinition', () => {
   it('roughly doubles or triples each regular wave after the density increase', () => {
     const stage = createStageDefinition('normal')
@@ -107,25 +115,31 @@ describe('createStageDefinition', () => {
     expect(firstWaveEvent?.trigger).toEqual({ type: 'time', at: 1.8 })
   })
 
-  it('keeps regular enemy waves close enough together to avoid empty combat stretches', () => {
+  it('keeps waves and boss entry close enough together to preserve combo momentum', () => {
     const stage = createStageDefinition('normal')
     const spawnWaveEvents = getSpawnWaveEvents(stage)
     const finalBossEvent = getSpawnBossEvents(stage).find((event) =>
       event.actions.some((action) => action.type === 'spawnBoss' && action.role === 'final'),
     )
+    const startTimes = [
+      ...spawnWaveEvents.map(getAuthoredStartTime),
+      getAuthoredStartTime(finalBossEvent!),
+    ]
+    const gaps = startTimes.slice(1).map((time, index) => time - startTimes[index]!)
 
     expect(spawnWaveEvents).toHaveLength(8)
     expect(spawnWaveEvents.map((event) => event.trigger)).toEqual([
       { type: 'time', at: 1.8 },
-      { type: 'time', at: 10.5 },
-      { type: 'time', at: 19 },
-      { type: 'time', at: 28 },
-      { type: 'time', at: 38 },
-      { type: 'time', at: 48 },
-      { type: 'time', at: 58 },
-      { type: 'time', at: 68 },
+      { type: 'time', at: 8.5 },
+      { type: 'time', at: 15.2 },
+      { type: 'time', at: 22 },
+      { type: 'time', at: 29 },
+      { type: 'time', at: 36 },
+      { type: 'time', at: 43 },
+      { type: 'time', at: 50 },
     ])
-    expect(finalBossEvent?.trigger).toEqual({ type: 'time', at: 78 })
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(8)
+    expect(finalBossEvent?.trigger).toEqual({ type: 'time', at: 58 })
   })
 
   it('uses every regular enemy archetype in Stage 1', () => {
@@ -144,10 +158,10 @@ describe('createStageDefinition', () => {
 
     expect(spawnWaveEvents).toHaveLength(8)
     expect(spawnWaveEvents[0]?.trigger).toEqual({ type: 'time', at: 1.8 })
-    expect(spawnWaveEvents[1]?.trigger).toEqual({ type: 'time', at: 10.5 })
+    expect(spawnWaveEvents[1]?.trigger).toEqual({ type: 'time', at: 8.5 })
     expect(spawnBossEvents).toHaveLength(1)
     expect(spawnBossEvents[0]?.id).toBe('boss-brass-core-spawn')
-    expect(spawnBossEvents[0]?.trigger).toEqual({ type: 'time', at: 78 })
+    expect(spawnBossEvents[0]?.trigger).toEqual({ type: 'time', at: 58 })
     expect(spawnBossEvents[0]?.actions[0]).toMatchObject({
       type: 'spawnBoss',
       role: 'final',
