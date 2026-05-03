@@ -10,6 +10,15 @@ import { RuntimeEntityLayer } from './battleEntities'
 import { useLoadedTexture } from './battleTexture'
 import type { BattleSnapshot } from '../types'
 
+const defaultBossFsm = {
+  phase: 'CombatPhase',
+  phaseId: 'test-phase',
+  phaseIndex: 0,
+  movement: 'SweepLeftRight',
+  firePattern: 'AimedFan',
+  vulnerability: 'Vulnerable',
+} as const
+
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }))
@@ -146,6 +155,7 @@ describe('RuntimeEntityLayer', () => {
               hpRatio: 1,
               phaseLabel: 'Boss',
               supportLaser: false,
+              fsm: defaultBossFsm,
             },
           ],
         }}
