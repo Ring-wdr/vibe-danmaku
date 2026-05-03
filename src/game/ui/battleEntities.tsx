@@ -9,7 +9,7 @@ import {
 } from '../content/enemyAtlasFrames'
 import { getSidePanelPosition, getSidePanelTilt } from '../content/sidePanelOrbit'
 import { arenaPointToView } from './battleViewMath'
-import { RestoredTextureMaterial, useLoadedTexture } from './battleTexture'
+import { RestoredTextureMaterial, useLoadedTexture, useLoadedTextureMap } from './battleTexture'
 import {
   BulletMesh,
   EnemyDestructionEffectMesh,
@@ -379,12 +379,20 @@ export function RuntimeEntityLayer({
   snapshot: BattleSnapshot
   isPaused: boolean
 }) {
-  const enemyBrassCloudTexture = useLoadedTexture(gameAssets.enemyBrassCloudAtlasUrl)
-  const enemyAbyssalBiomechTexture = useLoadedTexture(gameAssets.enemyAbyssalBiomechAtlasUrl)
-  const enemyTexturesByAtlasId = {
-    'enemy-brass-cloud': enemyBrassCloudTexture,
-    'enemy-abyssal-biomech': enemyAbyssalBiomechTexture,
-  } satisfies Record<EnemyAtlasId, THREE.Texture | null>
+  const activeEnemyAtlasIds = useMemo(
+    () => Array.from(new Set(snapshot.enemies.map((enemy) => enemy.atlasId))).sort(),
+    [snapshot.enemies],
+  )
+  const enemyAtlasTextureUrls = useMemo(() => {
+    const textureUrls: Partial<Record<EnemyAtlasId, string>> = {}
+
+    activeEnemyAtlasIds.forEach((atlasId) => {
+      textureUrls[atlasId] = getEnemyAtlasTextureUrl(atlasId)
+    })
+
+    return textureUrls
+  }, [activeEnemyAtlasIds])
+  const enemyTexturesByAtlasId = useLoadedTextureMap(enemyAtlasTextureUrls)
 
   return (
     <>
@@ -420,7 +428,7 @@ export function RuntimeEntityLayer({
         <EnemySprite
           key={enemy.id}
           atlasId={enemy.atlasId}
-          enemyTexture={enemyTexturesByAtlasId[enemy.atlasId]}
+          enemyTexture={enemyTexturesByAtlasId[enemy.atlasId] ?? null}
           frameId={enemy.frameId}
           hitFlashRatio={enemy.hitFlashRatio}
           position={arenaPointToView(enemy.position, 0.7)}

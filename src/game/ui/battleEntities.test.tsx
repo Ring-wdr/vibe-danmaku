@@ -7,7 +7,7 @@ import { gameAssets } from '../assets'
 import { lyraAerCharacter } from '../content/characters'
 import { createStageDefinition } from '../content/stage1'
 import { RuntimeEntityLayer } from './battleEntities'
-import { useLoadedTexture } from './battleTexture'
+import { useLoadedTexture, useLoadedTextureMap } from './battleTexture'
 import type { BattleSnapshot } from '../types'
 
 const defaultBossFsm = {
@@ -25,6 +25,10 @@ vi.mock('@react-three/fiber', () => ({
 
 vi.mock('./battleTexture', () => ({
   useLoadedTexture: vi.fn(() => new THREE.Texture()),
+  useLoadedTextureMap: vi.fn(() => ({
+    'enemy-brass-cloud': new THREE.Texture(),
+    'enemy-abyssal-biomech': new THREE.Texture(),
+  })),
   RestoredTextureMaterial: ({
     tintColor,
     tintStrength,
@@ -99,6 +103,24 @@ const snapshot = {
 } satisfies BattleSnapshot
 
 describe('RuntimeEntityLayer', () => {
+  it('loads only enemy atlas textures used by the active enemies', () => {
+    render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={snapshot}
+        isPaused={false}
+      />,
+    )
+
+    expect(vi.mocked(useLoadedTextureMap)).toHaveBeenCalledWith({
+      'enemy-brass-cloud': gameAssets.enemyBrassCloudAtlasUrl,
+    })
+    expect(vi.mocked(useLoadedTexture)).not.toHaveBeenCalledWith(
+      gameAssets.enemyAbyssalBiomechAtlasUrl,
+    )
+  })
+
   it('renders enemy hit flash through the sprite texture alpha instead of a solid plane', () => {
     render(
       <RuntimeEntityLayer

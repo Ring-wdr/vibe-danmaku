@@ -33,14 +33,16 @@ export function useLoadedTexture(url: string, configure?: (texture: THREE.Textur
   return texture
 }
 
-export function useLoadedTextureMap(textureUrls: Partial<Record<BackgroundTextureKey, string>>) {
-  const [textures, setTextures] = useState<Partial<Record<BackgroundTextureKey, THREE.Texture>>>({})
+export function useLoadedTextureMap<TextureKey extends string = BackgroundTextureKey>(
+  textureUrls: Partial<Record<TextureKey, string>>,
+) {
+  const [textures, setTextures] = useState<Partial<Record<TextureKey, THREE.Texture>>>({})
 
   useEffect(() => {
     let disposed = false
     const loader = new THREE.TextureLoader()
     const loadedTextures: THREE.Texture[] = []
-    const entries = Object.entries(textureUrls) as [BackgroundTextureKey, string][]
+    const entries = Object.entries(textureUrls) as [TextureKey, string][]
 
     setTextures({})
 
