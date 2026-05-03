@@ -34,6 +34,45 @@
   pointer-events: none;
 }
 
+.scoreRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.scorePill {
+  min-width: 118px;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  display: grid;
+  gap: 2px;
+  background: rgba(5, 9, 17, 0.54);
+  border: 1px solid rgba(105, 240, 227, 0.2);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
+}
+
+.scorePill:last-child {
+  text-align: right;
+}
+
+.scoreLabel {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.scoreValue {
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .status,
 .boss {
   background: rgba(5, 9, 17, 0.46);

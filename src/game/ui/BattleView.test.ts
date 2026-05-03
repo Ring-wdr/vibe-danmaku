@@ -94,6 +94,9 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
     destructionEffects: [],
     playerShots: 0,
     hitsTaken: 0,
+    score: 0,
+    combo: 0,
+    maxCombo: 0,
     bossEnteredCount: 0,
     cuePulse: 0,
     result: null,
@@ -390,6 +393,9 @@ describe('BattleView', () => {
     mockSnapshot.boss = null
     mockSnapshot.bosses = []
     mockSnapshot.result = null
+    mockSnapshot.score = 12500
+    mockSnapshot.combo = 7
+    mockSnapshot.maxCombo = 9
     mockSnapshot.specialSlots = [
       {
         id: 'beam-lance',
@@ -424,6 +430,20 @@ describe('BattleView', () => {
     expect(screen.getByTestId('battle-controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
     expect(container.querySelector('.battle-stage-plane')).not.toBeInTheDocument()
+  })
+
+  it('renders score and combo above the stage status HUD', () => {
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(screen.getByLabelText(/battle score/i)).toHaveTextContent('12,500')
+    expect(screen.getByLabelText(/battle combo/i)).toHaveTextContent('7 COMBO')
   })
 
   it('renders a circular beam-lance special slot with radial charge state', () => {

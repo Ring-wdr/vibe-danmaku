@@ -73,6 +73,20 @@ function expectDelayScaled(
   }
 }
 
+function getSpawnWaveEvents(stage: StageDefinition) {
+  return stage.events.filter((event) =>
+    event.actions.some((action) => action.type === 'spawnWave'),
+  )
+}
+
+function getAuthoredStartTime(event: StageDefinition['events'][number]) {
+  if (event.trigger.type === 'time' || event.trigger.type === 'timeAfterDefeated') {
+    return event.trigger.at
+  }
+
+  throw new Error(`expected authored time trigger for ${event.id}`)
+}
+
 describe('createStage2Definition', () => {
   it('defines Burning Ruin Corridor metadata, waves, and midboss gate', () => {
     const stage = createStage2Definition('normal')
@@ -105,41 +119,49 @@ describe('createStage2Definition', () => {
     expect(stage2Waves.map((wave) => wave.archetype)).toEqual(expectedArchetypes)
   })
 
-  it('preserves old authored wave times while gating waves 7-12 after the midboss', () => {
+  it('tightens authored wave times while gating waves 7-12 after the midboss', () => {
     const stage = createStage2Definition('normal')
-    const waveEvents = stage.events.filter((event) =>
-      event.actions.some((action) => action.type === 'spawnWave'),
-    )
+    const waveEvents = getSpawnWaveEvents(stage)
+    const midbossEvent = stage.events.find((event) => event.id === 'midboss-ember-gate-spawn')
     const wave7Event = stage.events.find((event) => event.id === 'wave-7-event')
     const finalBossEvent = stage.events.find(
       (event) => event.id === 'boss-ash-citadel-core-spawn',
     )
+    const startTimes = [
+      ...waveEvents.slice(0, 6).map(getAuthoredStartTime),
+      getAuthoredStartTime(midbossEvent!),
+      ...waveEvents.slice(6).map(getAuthoredStartTime),
+      getAuthoredStartTime(finalBossEvent!),
+    ]
+    const gaps = startTimes.slice(1).map((time, index) => time - startTimes[index]!)
 
     expect(waveEvents.map((event) => event.trigger)).toEqual([
       { type: 'time', at: 1.8 },
-      { type: 'time', at: 8.5 },
-      { type: 'time', at: 15.6 },
-      { type: 'time', at: 23 },
-      { type: 'time', at: 31 },
-      { type: 'time', at: 39 },
-      { type: 'timeAfterDefeated', at: 54, target: 'midboss-ember-gate', delay: 7 },
-      { type: 'timeAfterDefeated', at: 62, target: 'midboss-ember-gate', delay: 15 },
-      { type: 'timeAfterDefeated', at: 70, target: 'midboss-ember-gate', delay: 23 },
-      { type: 'timeAfterDefeated', at: 78, target: 'midboss-ember-gate', delay: 31 },
-      { type: 'timeAfterDefeated', at: 86, target: 'midboss-ember-gate', delay: 39 },
-      { type: 'timeAfterDefeated', at: 94, target: 'midboss-ember-gate', delay: 47 },
+      { type: 'time', at: 8 },
+      { type: 'time', at: 14.2 },
+      { type: 'time', at: 20.4 },
+      { type: 'time', at: 26.6 },
+      { type: 'time', at: 32.8 },
+      { type: 'timeAfterDefeated', at: 46, target: 'midboss-ember-gate', delay: 7 },
+      { type: 'timeAfterDefeated', at: 52.2, target: 'midboss-ember-gate', delay: 13.2 },
+      { type: 'timeAfterDefeated', at: 58.4, target: 'midboss-ember-gate', delay: 19.4 },
+      { type: 'timeAfterDefeated', at: 64.6, target: 'midboss-ember-gate', delay: 25.6 },
+      { type: 'timeAfterDefeated', at: 70.8, target: 'midboss-ember-gate', delay: 31.8 },
+      { type: 'timeAfterDefeated', at: 77, target: 'midboss-ember-gate', delay: 38 },
     ])
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(8)
+    expect(midbossEvent?.trigger).toEqual({ type: 'time', at: 39 })
     expect(wave7Event?.trigger).toEqual({
       type: 'timeAfterDefeated',
-      at: 54,
+      at: 46,
       target: 'midboss-ember-gate',
       delay: 7,
     })
     expect(finalBossEvent?.trigger).toEqual({
       type: 'timeAfterDefeated',
-      at: 106,
+      at: 84,
       target: 'midboss-ember-gate',
-      delay: 59,
+      delay: 45,
     })
   })
 
@@ -166,7 +188,7 @@ describe('createStage2Definition', () => {
     expectDelayScaled(fastFinalBossEvent?.trigger, regularFinalBossEvent?.trigger)
     expect(fast.events.find((event) => event.id === 'wave-7-event')?.trigger).toEqual({
       type: 'timeAfterDefeated',
-      at: 11.88,
+      at: 10.12,
       target: 'midboss-ember-gate',
       delay: 1.54,
     })
@@ -225,18 +247,18 @@ describe('createStage2Definition', () => {
       (event) => event.id === 'boss-ash-citadel-core-spawn',
     )
 
-    expect(midbossEvent?.trigger).toEqual({ type: 'time', at: 47 })
+    expect(midbossEvent?.trigger).toEqual({ type: 'time', at: 39 })
     expect(wave7Event?.trigger).toEqual({
       type: 'timeAfterDefeated',
-      at: 54,
+      at: 46,
       target: 'midboss-ember-gate',
       delay: 7,
     })
     expect(finalBossEvent?.trigger).toEqual({
       type: 'timeAfterDefeated',
-      at: 106,
+      at: 84,
       target: 'midboss-ember-gate',
-      delay: 59,
+      delay: 45,
     })
   })
 })

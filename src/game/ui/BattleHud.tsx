@@ -7,6 +7,10 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
 }
 
+function formatHudNumber(value: number) {
+  return new Intl.NumberFormat('en-US').format(value)
+}
+
 function SpecialSlotHud({
   slots,
   onActivate,
@@ -96,6 +100,16 @@ export function BattleHud({
         ||
       </button>
       <div className={styles.hud} aria-label="Battle status">
+        <div className={styles.scoreRow}>
+          <div className={styles.scorePill} aria-label="Battle score">
+            <span className={styles.scoreLabel}>Score</span>
+            <strong className={styles.scoreValue}>{formatHudNumber(snapshot.score)}</strong>
+          </div>
+          <div className={styles.scorePill} aria-label="Battle combo">
+            <span className={styles.scoreLabel}>Combo</span>
+            <strong className={styles.scoreValue}>{snapshot.combo} COMBO</strong>
+          </div>
+        </div>
         <div className={styles.status}>
           <div className={styles.statusPhase}>
             <span className={styles.statusLabel}>Stage {stage.stageNumber}</span>

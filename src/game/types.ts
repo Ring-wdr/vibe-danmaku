@@ -270,6 +270,8 @@ export type RunResult = {
   duration: number
   remainingHp: number
   hitsTaken: number
+  score: number
+  maxCombo: number
 }
 
 export type RenderEnemy = {
@@ -385,6 +387,9 @@ export type BattleSnapshot = {
   destructionEffects: RenderDestructionEffect[]
   playerShots: number
   hitsTaken: number
+  score: number
+  combo: number
+  maxCombo: number
   bossEnteredCount: number
   cuePulse: number
   result: RunResult | null

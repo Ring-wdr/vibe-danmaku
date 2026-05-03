@@ -8,7 +8,7 @@ import {
 } from './stageEvents'
 import type { BossDefinition, Difficulty, StageDefinition } from '../types'
 
-const finalBossAt = 78
+const finalBossAt = 58
 
 const baseWavePlacements = [
   {
@@ -21,7 +21,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-2',
-    at: 10.5,
+    at: 8.5,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 7,
@@ -29,7 +29,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-3',
-    at: 19,
+    at: 15.2,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 7,
@@ -37,7 +37,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-4',
-    at: 28,
+    at: 22,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 9,
@@ -45,7 +45,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-5',
-    at: 38,
+    at: 29,
     archetype: 'mine-layer',
     variant: 'brass-cloud-mine-layer',
     count: 9,
@@ -53,7 +53,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-6',
-    at: 48,
+    at: 36,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 9,
@@ -61,7 +61,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-7',
-    at: 58,
+    at: 43,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 12,
@@ -70,7 +70,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-8',
-    at: 68,
+    at: 50,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 12,

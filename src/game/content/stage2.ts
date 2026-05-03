@@ -17,8 +17,8 @@ import type {
 
 type MidbossAuthoringDefinition = BossDefinition & { gateWaveCount: number }
 
-const midbossAt = 47
-const finalBossAt = 106
+const midbossAt = 39
+const finalBossAt = 84
 const rankExpression = { type: 'rank' } satisfies BulletmlExpression
 
 function add(left: BulletmlExpression, right: BulletmlExpression): BulletmlExpression {
@@ -207,7 +207,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-2',
-    at: 8.5,
+    at: 8,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 14,
@@ -215,7 +215,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-3',
-    at: 15.6,
+    at: 14.2,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 14,
@@ -223,7 +223,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-4',
-    at: 23,
+    at: 20.4,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 18,
@@ -231,7 +231,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-5',
-    at: 31,
+    at: 26.6,
     archetype: 'mine-layer',
     variant: 'brass-cloud-mine-layer',
     count: 18,
@@ -239,7 +239,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-6',
-    at: 39,
+    at: 32.8,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 18,
@@ -247,7 +247,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-7',
-    at: 54,
+    at: 46,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 24,
@@ -256,7 +256,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-8',
-    at: 62,
+    at: 52.2,
     archetype: 'weaver',
     variant: 'brass-cloud-weaver',
     count: 24,
@@ -265,7 +265,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-9',
-    at: 70,
+    at: 58.4,
     archetype: 'scout',
     variant: 'brass-cloud-scout',
     count: 14,
@@ -273,7 +273,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-10',
-    at: 78,
+    at: 64.6,
     archetype: 'sentinel',
     variant: 'brass-cloud-sentinel',
     count: 14,
@@ -281,7 +281,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-11',
-    at: 86,
+    at: 70.8,
     archetype: 'lancer',
     variant: 'brass-cloud-lancer',
     count: 14,
@@ -289,7 +289,7 @@ const baseWavePlacements = [
   },
   {
     id: 'wave-12',
-    at: 94,
+    at: 77,
     archetype: 'splitter',
     variant: 'brass-cloud-splitter',
     count: 18,

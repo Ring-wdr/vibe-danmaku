@@ -14,6 +14,8 @@ function createResult(overrides: Partial<RunResult> = {}): RunResult {
     duration: 12.5,
     remainingHp: 2,
     hitsTaken: 1,
+    score: 12400,
+    maxCombo: 8,
     ...overrides,
   }
 }
@@ -107,11 +109,22 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().matches('battle')).toBe(true)
   })
 
-  it('advances directly to stage 2 loading after stage 1 victory', () => {
+  it('stores stage 1 victory and waits for confirmation before stage 2 loading', () => {
     const service = createService()
     deployToBattle(service)
 
     service.send({ type: 'BATTLE_COMPLETED', result: createResult() })
+
+    expect(service.getSnapshot().matches('result')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(1)
+    expect(service.getSnapshot().context.result).toMatchObject({
+      outcome: 'victory',
+      stageNumber: 1,
+      score: 12400,
+      maxCombo: 8,
+    })
+
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
 
     expect(service.getSnapshot().matches('battleLoading')).toBe(true)
     expect(service.getSnapshot().context.currentStageNumber).toBe(2)
@@ -124,6 +137,7 @@ describe('battleSessionMachine', () => {
     deployToBattle(service)
 
     service.send({ type: 'BATTLE_COMPLETED', result: createResult() })
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
     service.send({ type: 'BATTLE_ASSETS_READY' })
     service.send({
       type: 'BATTLE_COMPLETED',
@@ -167,6 +181,7 @@ describe('battleSessionMachine', () => {
     deployToBattle(service)
 
     service.send({ type: 'BATTLE_COMPLETED', result: createResult() })
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
     service.send({ type: 'BATTLE_ASSETS_READY' })
     service.send({
       type: 'BATTLE_COMPLETED',
