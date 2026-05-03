@@ -747,7 +747,7 @@ export function createBattleRuntime({
   }
 
   const getBossSpawnedAt = (event: StageEvent) => {
-    if (event.trigger.type === 'time' || event.trigger.type === 'timeAfterDefeated') {
+    if (event.trigger.type === 'time') {
       return event.trigger.at
     }
 
