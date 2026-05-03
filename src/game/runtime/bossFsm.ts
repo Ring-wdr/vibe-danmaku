@@ -33,6 +33,26 @@ export type BossFsmEvent = {
   next: BossFsmContext
 }
 
+type PhaseFsmEvent = {
+  type: 'SET_PHASE'
+  value: BossPhaseFsmState
+}
+
+type MovementFsmEvent = {
+  type: 'SET_MOVEMENT'
+  value: BossMovementFsmState
+}
+
+type FirePatternFsmEvent = {
+  type: 'SET_FIRE_PATTERN'
+  value: BossFirePatternFsmState
+}
+
+type VulnerabilityFsmEvent = {
+  type: 'SET_VULNERABILITY'
+  value: BossVulnerabilityFsmState
+}
+
 export const bossFsmTiming = {
   introDuration: 0.08,
   armorBreakDuration: 0.42,
@@ -189,157 +209,157 @@ export const bossFsmMachine = setup({
   },
 }).createMachine({
   id: 'bossFsm',
-  type: 'parallel',
+  initial: 'active',
   context: createInitialBossFsmContext,
   states: {
-    phase: {
-      initial: 'Intro',
-      states: {
-        Intro: {},
-        CombatPhase: {},
-        Break: {},
-        Desperation: {},
-        Death: {},
-      },
+    active: {
       on: {
-        TICK: [
-          {
-            target: '.Intro',
-            guard: ({ event }) => event.next.snapshot.phase === 'Intro',
-            actions: 'applyTick',
-          },
-          {
-            target: '.CombatPhase',
-            guard: ({ event }) => event.next.snapshot.phase === 'CombatPhase',
-            actions: 'applyTick',
-          },
-          {
-            target: '.Break',
-            guard: ({ event }) => event.next.snapshot.phase === 'Break',
-            actions: 'applyTick',
-          },
-          {
-            target: '.Desperation',
-            guard: ({ event }) => event.next.snapshot.phase === 'Desperation',
-            actions: 'applyTick',
-          },
-          {
-            target: '.Death',
-            guard: ({ event }) => event.next.snapshot.phase === 'Death',
-            actions: 'applyTick',
-          },
-        ],
-      },
-    },
-    movement: {
-      initial: 'EnterScreen',
-      states: {
-        EnterScreen: {},
-        HoldCenter: {},
-        SweepLeftRight: {},
-        ChasePlayerX: {},
-        Retreat: {},
-      },
-      on: {
-        TICK: [
-          {
-            target: '.EnterScreen',
-            guard: ({ event }) => event.next.snapshot.movement === 'EnterScreen',
-          },
-          {
-            target: '.HoldCenter',
-            guard: ({ event }) => event.next.snapshot.movement === 'HoldCenter',
-          },
-          {
-            target: '.SweepLeftRight',
-            guard: ({ event }) => event.next.snapshot.movement === 'SweepLeftRight',
-          },
-          {
-            target: '.ChasePlayerX',
-            guard: ({ event }) => event.next.snapshot.movement === 'ChasePlayerX',
-          },
-          {
-            target: '.Retreat',
-            guard: ({ event }) => event.next.snapshot.movement === 'Retreat',
-          },
-        ],
-      },
-    },
-    firePattern: {
-      initial: 'Idle',
-      states: {
-        Idle: {},
-        AimedFan: {},
-        SpiralRing: {},
-        WallSweep: {},
-        MixedPattern: {},
-      },
-      on: {
-        TICK: [
-          {
-            target: '.Idle',
-            guard: ({ event }) => event.next.snapshot.firePattern === 'Idle',
-          },
-          {
-            target: '.AimedFan',
-            guard: ({ event }) => event.next.snapshot.firePattern === 'AimedFan',
-          },
-          {
-            target: '.SpiralRing',
-            guard: ({ event }) => event.next.snapshot.firePattern === 'SpiralRing',
-          },
-          {
-            target: '.WallSweep',
-            guard: ({ event }) => event.next.snapshot.firePattern === 'WallSweep',
-          },
-          {
-            target: '.MixedPattern',
-            guard: ({ event }) => event.next.snapshot.firePattern === 'MixedPattern',
-          },
-        ],
-      },
-    },
-    vulnerability: {
-      initial: 'Invulnerable',
-      states: {
-        Invulnerable: {},
-        Vulnerable: {},
-        ArmorBreak: {},
-      },
-      on: {
-        TICK: [
-          {
-            target: '.Invulnerable',
-            guard: ({ event }) => event.next.snapshot.vulnerability === 'Invulnerable',
-          },
-          {
-            target: '.Vulnerable',
-            guard: ({ event }) => event.next.snapshot.vulnerability === 'Vulnerable',
-          },
-          {
-            target: '.ArmorBreak',
-            guard: ({ event }) => event.next.snapshot.vulnerability === 'ArmorBreak',
-          },
-        ],
+        TICK: {
+          actions: 'applyTick',
+        },
       },
     },
   },
 })
 
-export type BossFsmActorRef = Actor<typeof bossFsmMachine>
+export const phaseFsmMachine = setup({
+  types: {} as {
+    events: PhaseFsmEvent
+  },
+}).createMachine({
+  id: 'bossPhaseFsm',
+  initial: 'Intro',
+  states: {
+    Intro: {},
+    CombatPhase: {},
+    Break: {},
+    Desperation: {},
+    Death: {},
+  },
+  on: {
+    SET_PHASE: [
+      { target: '.Intro', guard: ({ event }) => event.value === 'Intro' },
+      { target: '.CombatPhase', guard: ({ event }) => event.value === 'CombatPhase' },
+      { target: '.Break', guard: ({ event }) => event.value === 'Break' },
+      { target: '.Desperation', guard: ({ event }) => event.value === 'Desperation' },
+      { target: '.Death', guard: ({ event }) => event.value === 'Death' },
+    ],
+  },
+})
+
+export const movementFsmMachine = setup({
+  types: {} as {
+    events: MovementFsmEvent
+  },
+}).createMachine({
+  id: 'bossMovementFsm',
+  initial: 'EnterScreen',
+  states: {
+    EnterScreen: {},
+    HoldCenter: {},
+    SweepLeftRight: {},
+    ChasePlayerX: {},
+    Retreat: {},
+  },
+  on: {
+    SET_MOVEMENT: [
+      { target: '.EnterScreen', guard: ({ event }) => event.value === 'EnterScreen' },
+      { target: '.HoldCenter', guard: ({ event }) => event.value === 'HoldCenter' },
+      { target: '.SweepLeftRight', guard: ({ event }) => event.value === 'SweepLeftRight' },
+      { target: '.ChasePlayerX', guard: ({ event }) => event.value === 'ChasePlayerX' },
+      { target: '.Retreat', guard: ({ event }) => event.value === 'Retreat' },
+    ],
+  },
+})
+
+export const firePatternFsmMachine = setup({
+  types: {} as {
+    events: FirePatternFsmEvent
+  },
+}).createMachine({
+  id: 'bossFirePatternFsm',
+  initial: 'Idle',
+  states: {
+    Idle: {},
+    AimedFan: {},
+    SpiralRing: {},
+    WallSweep: {},
+    MixedPattern: {},
+  },
+  on: {
+    SET_FIRE_PATTERN: [
+      { target: '.Idle', guard: ({ event }) => event.value === 'Idle' },
+      { target: '.AimedFan', guard: ({ event }) => event.value === 'AimedFan' },
+      { target: '.SpiralRing', guard: ({ event }) => event.value === 'SpiralRing' },
+      { target: '.WallSweep', guard: ({ event }) => event.value === 'WallSweep' },
+      { target: '.MixedPattern', guard: ({ event }) => event.value === 'MixedPattern' },
+    ],
+  },
+})
+
+export const vulnerabilityFsmMachine = setup({
+  types: {} as {
+    events: VulnerabilityFsmEvent
+  },
+}).createMachine({
+  id: 'bossVulnerabilityFsm',
+  initial: 'Invulnerable',
+  states: {
+    Invulnerable: {},
+    Vulnerable: {},
+    ArmorBreak: {},
+  },
+  on: {
+    SET_VULNERABILITY: [
+      { target: '.Invulnerable', guard: ({ event }) => event.value === 'Invulnerable' },
+      { target: '.Vulnerable', guard: ({ event }) => event.value === 'Vulnerable' },
+      { target: '.ArmorBreak', guard: ({ event }) => event.value === 'ArmorBreak' },
+    ],
+  },
+})
+
+export type BossFsmActorRef = {
+  boss: Actor<typeof bossFsmMachine>
+  phase: Actor<typeof phaseFsmMachine>
+  movement: Actor<typeof movementFsmMachine>
+  firePattern: Actor<typeof firePatternFsmMachine>
+  vulnerability: Actor<typeof vulnerabilityFsmMachine>
+}
 
 export function createBossFsmActor(): BossFsmActorRef {
-  return createActor(bossFsmMachine).start()
+  return {
+    boss: createActor(bossFsmMachine).start(),
+    phase: createActor(phaseFsmMachine).start(),
+    movement: createActor(movementFsmMachine).start(),
+    firePattern: createActor(firePatternFsmMachine).start(),
+    vulnerability: createActor(vulnerabilityFsmMachine).start(),
+  }
 }
 
 export function sendBossFsmTick(actor: BossFsmActorRef, update: BossFsmUpdate) {
-  const next = getNextBossFsmContext(actor.getSnapshot().context, update)
+  const next = getNextBossFsmContext(actor.boss.getSnapshot().context, update)
 
-  actor.send({ type: 'TICK', next })
+  actor.boss.send({ type: 'TICK', next })
+  actor.phase.send({ type: 'SET_PHASE', value: next.snapshot.phase })
+  actor.movement.send({ type: 'SET_MOVEMENT', value: next.snapshot.movement })
+  actor.firePattern.send({ type: 'SET_FIRE_PATTERN', value: next.snapshot.firePattern })
+  actor.vulnerability.send({
+    type: 'SET_VULNERABILITY',
+    value: next.snapshot.vulnerability,
+  })
 }
 
 export function getBossFsmSnapshot(actor: BossFsmActorRef): BossFsmSnapshot {
-  return actor.getSnapshot().context.snapshot
+  return actor.boss.getSnapshot().context.snapshot
+}
+
+export function getBossFsmRegionValues(actor: BossFsmActorRef) {
+  return {
+    phase: actor.phase.getSnapshot().value as BossPhaseFsmState,
+    movement: actor.movement.getSnapshot().value as BossMovementFsmState,
+    firePattern: actor.firePattern.getSnapshot().value as BossFirePatternFsmState,
+    vulnerability: actor.vulnerability.getSnapshot().value as BossVulnerabilityFsmState,
+  }
 }
 
 export function isBossDamageable(actor: BossFsmActorRef) {

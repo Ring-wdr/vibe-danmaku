@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { createBossFsmActor, getBossFsmSnapshot, sendBossFsmTick } from './bossFsm'
+import {
+  bossFsmMachine,
+  createBossFsmActor,
+  firePatternFsmMachine,
+  getBossFsmRegionValues,
+  getBossFsmSnapshot,
+  movementFsmMachine,
+  phaseFsmMachine,
+  sendBossFsmTick,
+  vulnerabilityFsmMachine,
+} from './bossFsm'
 import type { BossPhaseDefinition } from '../types'
 
 const fanPhase = {
@@ -27,7 +37,12 @@ const wallPhase = {
 } satisfies BossPhaseDefinition
 
 describe('boss fsm', () => {
-  it('runs as an XState actor without React bindings', () => {
+  it('composes separate XState actors for each boss behavior region', () => {
+    expect(phaseFsmMachine).not.toBe(bossFsmMachine)
+    expect(movementFsmMachine).not.toBe(bossFsmMachine)
+    expect(firePatternFsmMachine).not.toBe(bossFsmMachine)
+    expect(vulnerabilityFsmMachine).not.toBe(bossFsmMachine)
+
     const actor = createBossFsmActor()
 
     expect(getBossFsmSnapshot(actor)).toEqual({
@@ -38,12 +53,17 @@ describe('boss fsm', () => {
       firePattern: 'Idle',
       vulnerability: 'Invulnerable',
     })
-    expect(actor.getSnapshot().value).toEqual({
+    expect(getBossFsmRegionValues(actor)).toEqual({
       phase: 'Intro',
       movement: 'EnterScreen',
       firePattern: 'Idle',
       vulnerability: 'Invulnerable',
     })
+
+    expect(actor.phase.getSnapshot().value).toBe('Intro')
+    expect(actor.movement.getSnapshot().value).toBe('EnterScreen')
+    expect(actor.firePattern.getSnapshot().value).toBe('Idle')
+    expect(actor.vulnerability.getSnapshot().value).toBe('Invulnerable')
   })
 
   it('maps boss phase, movement, fire pattern, and vulnerability independently', () => {
@@ -65,6 +85,12 @@ describe('boss fsm', () => {
       phase: 'CombatPhase',
       phaseId: 'opening',
       phaseIndex: 0,
+      movement: 'HoldCenter',
+      firePattern: 'AimedFan',
+      vulnerability: 'Vulnerable',
+    })
+    expect(getBossFsmRegionValues(actor)).toEqual({
+      phase: 'CombatPhase',
       movement: 'HoldCenter',
       firePattern: 'AimedFan',
       vulnerability: 'Vulnerable',
@@ -107,6 +133,12 @@ describe('boss fsm', () => {
       phase: 'Break',
       phaseId: 'spiral',
       phaseIndex: 1,
+      movement: 'ChasePlayerX',
+      firePattern: 'SpiralRing',
+      vulnerability: 'ArmorBreak',
+    })
+    expect(getBossFsmRegionValues(actor)).toEqual({
+      phase: 'Break',
       movement: 'ChasePlayerX',
       firePattern: 'SpiralRing',
       vulnerability: 'ArmorBreak',
