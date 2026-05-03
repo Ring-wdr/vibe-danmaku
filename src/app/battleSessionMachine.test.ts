@@ -132,7 +132,7 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().context.result).toBeNull()
   })
 
-  it('stores stage 2 victory and moves to result', () => {
+  it('stores stage 2 victory and waits for confirmation before stage 3 loading', () => {
     const service = createService()
     deployToBattle(service)
 
@@ -149,10 +149,49 @@ describe('battleSessionMachine', () => {
     })
 
     expect(service.getSnapshot().matches('result')).toBe(true)
-    expect(service.getSnapshot().context.result).toMatchObject({
-      outcome: 'victory',
-      stageNumber: 2,
+    expect(service.getSnapshot().context.currentStageNumber).toBe(2)
+
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
+
+    expect(service.getSnapshot().matches('battleLoading')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(3)
+    expect(service.getSnapshot().context.battleSeed).toBe(2)
+    expect(service.getSnapshot().context.result).toBeNull()
+  })
+
+  it('stores stage 3 victory and does not continue past final result', () => {
+    const service = createService()
+    deployToBattle(service)
+
+    service.send({ type: 'BATTLE_COMPLETED', result: createResult() })
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
+    service.send({ type: 'BATTLE_ASSETS_READY' })
+    service.send({
+      type: 'BATTLE_COMPLETED',
+      result: createResult({
+        stageId: 'stage-2',
+        stageName: 'Burning Ruin Corridor',
+        stageNumber: 2,
+      }),
     })
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
+    service.send({ type: 'BATTLE_ASSETS_READY' })
+    service.send({
+      type: 'BATTLE_COMPLETED',
+      result: createResult({
+        stageId: 'stage-3',
+        stageName: 'Abyssal Biomech Trench',
+        stageNumber: 3,
+      }),
+    })
+
+    expect(service.getSnapshot().matches('result')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(3)
+
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
+
+    expect(service.getSnapshot().matches('result')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(3)
   })
 
   it('stores defeat and moves to result', () => {
@@ -197,6 +236,26 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().matches('battleLoading')).toBe(true)
     expect(service.getSnapshot().context.currentStageNumber).toBe(2)
     expect(service.getSnapshot().context.battleSeed).toBe(2)
+    expect(service.getSnapshot().context.result).toBeNull()
+  })
+
+  it('retries stage 3 from a stage 3 result', () => {
+    const service = createService()
+    deployToBattle(service)
+
+    service.send({
+      type: 'BATTLE_COMPLETED',
+      result: createResult({
+        outcome: 'defeat',
+        stageId: 'stage-3',
+        stageName: 'Abyssal Biomech Trench',
+        stageNumber: 3,
+      }),
+    })
+    service.send({ type: 'RETRY_STAGE' })
+
+    expect(service.getSnapshot().matches('battleLoading')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(3)
     expect(service.getSnapshot().context.result).toBeNull()
   })
 
