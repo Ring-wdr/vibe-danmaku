@@ -20,7 +20,10 @@ const atlases = [
   {
     sourceDir: 'src/assets/generated/enemies/abyssal',
     outPath: 'src/assets/generated/enemies/enemy-abyssal-biomech-atlas.webp',
-    removeDarkEdgeBackground: true,
+    removeDarkEdgeBackground: {
+      maxBrightness: 20,
+      maxChannel: 45,
+    },
   },
 ]
 
@@ -35,7 +38,10 @@ async function packAtlas(atlas) {
     frames.map(async (frame, index) => {
       const framePath = path.join(sourcePath, `${frame}.png`)
       const source = atlas.removeDarkEdgeBackground
-        ? await removeDarkEdgeBackground(framePath)
+        ? await removeDarkEdgeBackground(
+            framePath,
+            atlas.removeDarkEdgeBackground === true ? {} : atlas.removeDarkEdgeBackground,
+          )
         : sharp(framePath)
       const input = await source
         .resize({
