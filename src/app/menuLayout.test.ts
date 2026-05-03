@@ -18,6 +18,18 @@ function blockFor(styleSheet: string, selector: string) {
   return match?.groups?.body ?? ''
 }
 
+function mediaBlockFor(styleSheet: string, query: string, selector: string) {
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = styleSheet.match(
+    new RegExp(
+      `@media\\s*${escapedQuery}\\s*\\{[\\s\\S]*?${escapedSelector}\\s*\\{(?<body>[^}]*)\\}`,
+    ),
+  )
+
+  return match?.groups?.body ?? ''
+}
+
 describe('menu layout CSS', () => {
   it('keeps menu chrome viewport-bound while letting each menu screen own its scroll area', () => {
     expect(blockFor(appStyles, '.shell')).toContain('height: 100dvh')
@@ -51,6 +63,21 @@ describe('menu layout CSS', () => {
     )
     expect(blockFor(difficultyStyles, '.grid')).toContain('margin-top: auto')
     expect(blockFor(stageIntroStyles, '.actionZone')).toContain('margin-top: auto')
+  })
+
+  it('compresses title screen vertical rhythm before in-app browser chrome hides the start button', () => {
+    expect(mediaBlockFor(titleStyles, '(max-height: 780px)', '.screen')).toContain(
+      'padding: 24px 18px 18px',
+    )
+    expect(mediaBlockFor(titleStyles, '(max-height: 780px)', '.title')).toContain(
+      'font-size: 2.85rem',
+    )
+    expect(mediaBlockFor(titleStyles, '(max-height: 780px)', '.art')).toContain(
+      'flex-basis: clamp(120px, 24dvh, 210px)',
+    )
+    expect(mediaBlockFor(titleStyles, '(max-height: 780px)', '.actions')).toContain(
+      'grid-template-columns: repeat(3, minmax(0, 1fr))',
+    )
   })
 
   it('simplifies character select into a fixed preview, scrollable roster, and bottom deploy dock', () => {
