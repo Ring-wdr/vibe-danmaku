@@ -193,6 +193,41 @@ export type BossDefinition = {
   phases: BossPhaseDefinition[]
 }
 
+export type BossPhaseFsmState =
+  | 'Intro'
+  | 'CombatPhase'
+  | 'Break'
+  | 'Desperation'
+  | 'Death'
+
+export type BossMovementFsmState =
+  | 'EnterScreen'
+  | 'HoldCenter'
+  | 'SweepLeftRight'
+  | 'ChasePlayerX'
+  | 'Retreat'
+
+export type BossFirePatternFsmState =
+  | 'Idle'
+  | 'AimedFan'
+  | 'SpiralRing'
+  | 'WallSweep'
+  | 'MixedPattern'
+
+export type BossVulnerabilityFsmState =
+  | 'Invulnerable'
+  | 'Vulnerable'
+  | 'ArmorBreak'
+
+export type BossFsmSnapshot = {
+  phase: BossPhaseFsmState
+  phaseId: string | null
+  phaseIndex: number | null
+  movement: BossMovementFsmState
+  firePattern: BossFirePatternFsmState
+  vulnerability: BossVulnerabilityFsmState
+}
+
 export type StageDefinition = {
   id: StageId
   stageNumber: number
@@ -294,6 +329,7 @@ export type RenderBoss = {
   hpRatio: number
   phaseLabel: string
   supportLaser: boolean
+  fsm: BossFsmSnapshot
 }
 
 export type RenderBullet = {

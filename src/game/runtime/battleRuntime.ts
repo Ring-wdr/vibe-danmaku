@@ -29,6 +29,13 @@ import {
   stepBulletmlActor,
 } from './bulletmlPattern'
 import type { BulletmlActor, BulletmlShot } from './bulletmlPattern'
+import {
+  createBossFsmActor,
+  getBossFsmSnapshot,
+  isBossDamageable,
+  sendBossFsmTick,
+} from './bossFsm'
+import type { BossFsmActorRef } from './bossFsm'
 
 type RuntimeBullet = {
   id: string
@@ -92,6 +99,8 @@ type RuntimeBoss = {
   currentPhaseId: string | null
   enteredPhaseIds: Set<string>
   bulletmlActor: BulletmlActor | null
+  spawnedAt: number
+  fsm: BossFsmActorRef
 }
 
 type EventState = {
@@ -351,6 +360,14 @@ export function createBattleRuntime({
     )
   }
 
+  const getBossPhaseIndex = (boss: RuntimeBoss, phaseId: string | null) => {
+    if (!phaseId) {
+      return -1
+    }
+
+    return boss.definition.phases.findIndex((phase) => phase.id === phaseId)
+  }
+
   const getSpecialSlot = (): RenderSpecialSlot => ({
     id: special.id,
     icon: special.icon,
@@ -422,6 +439,7 @@ export function createBattleRuntime({
         hpRatio: clamp(candidate.hp / candidate.maxHp, 0, 1),
         phaseLabel: bossPhase?.label ?? 'Phase',
         supportLaser: bossPhase?.supportLaser ?? false,
+        fsm: getBossFsmSnapshot(candidate.fsm),
       }
     })
     const renderBoss: RenderBoss | null = primaryBoss
@@ -728,7 +746,19 @@ export function createBattleRuntime({
     }
   }
 
-  const spawnBoss = (definition: BossDefinition, role: 'midboss' | 'final') => {
+  const getBossSpawnedAt = (event: StageEvent) => {
+    if (event.trigger.type === 'time') {
+      return event.trigger.at
+    }
+
+    return elapsed
+  }
+
+  const spawnBoss = (
+    definition: BossDefinition,
+    role: 'midboss' | 'final',
+    spawnedAt = elapsed,
+  ) => {
     const bossHp = invincible ? Math.round(definition.hp * 0.28) : definition.hp
     const boss: RuntimeBoss = {
       id: definition.id,
@@ -743,6 +773,8 @@ export function createBattleRuntime({
       currentPhaseId: null,
       enteredPhaseIds: new Set<string>(),
       bulletmlActor: null,
+      spawnedAt,
+      fsm: createBossFsmActor(),
     }
     const phase = getBossPhase(boss)
     if (phase) {
@@ -848,6 +880,15 @@ export function createBattleRuntime({
     }
   }
 
+  const damageBoss = (boss: RuntimeBoss, damage: number) => {
+    if (!isBossDamageable(boss.fsm)) {
+      return false
+    }
+
+    boss.hp -= damage
+    return true
+  }
+
   const damageOrbitingSidePanels = (delta: number) => {
     const attackMultiplier = getAttackMultiplier(powerupLevel)
 
@@ -883,7 +924,7 @@ export function createBattleRuntime({
       for (const boss of bosses) {
         const hitDistance = panel.orbit.hitRadius + 0.44
         if (distanceSquared(panelPosition, { x: boss.x, z: boss.z }) < hitDistance * hitDistance) {
-          boss.hp -= damage
+          damageBoss(boss, damage)
         }
       }
     }
@@ -926,9 +967,10 @@ export function createBattleRuntime({
 
     for (const boss of bosses) {
       if (distanceSquared({ x: boss.x, z: boss.z }, center) <= enemyDamageRadiusSquared) {
-        boss.hp -= special.damage
-        recordTargetHit()
-        spawnSparkle(boss.x, boss.z, 1.7)
+        if (damageBoss(boss, special.damage)) {
+          recordTargetHit()
+          spawnSparkle(boss.x, boss.z, 1.7)
+        }
       }
     }
 
@@ -1071,8 +1113,8 @@ export function createBattleRuntime({
 
     for (const boss of bosses) {
       if (isInsideBeam({ x: boss.x, z: boss.z }, 0.44)) {
-        boss.hp -= damage
-        if (canSpawnSparkle) {
+        const damaged = damageBoss(boss, damage)
+        if (damaged && canSpawnSparkle) {
           spawnSparkle(boss.x, boss.z, 1.25)
           spawnedSparkle = true
         }
@@ -1160,12 +1202,59 @@ export function createBattleRuntime({
     }
   }
 
+  const updateBossMovement = (
+    boss: RuntimeBoss,
+    movement: ReturnType<typeof getBossFsmSnapshot>['movement'],
+    delta: number,
+  ) => {
+    if (movement === 'EnterScreen') {
+      boss.x += (0 - boss.x) * Math.min(1, delta * 5)
+      boss.z += (1.9 - boss.z) * Math.min(1, delta * 3.5)
+      return
+    }
+
+    if (movement === 'HoldCenter') {
+      boss.x += (0 - boss.x) * Math.min(1, delta * 4)
+      boss.z = 1.9
+      return
+    }
+
+    if (movement === 'SweepLeftRight') {
+      boss.x = Math.sin(elapsed * 0.7) * 1.8
+      boss.z = 1.9 + Math.sin(elapsed * 0.9) * 0.18
+      return
+    }
+
+    if (movement === 'ChasePlayerX') {
+      const targetX = clamp(player.x, -1.8, 1.8)
+      boss.x += (targetX - boss.x) * Math.min(1, delta * 2.4)
+      boss.z = 1.84 + Math.sin(elapsed * 1.1) * 0.16
+      return
+    }
+
+    boss.x += (0 - boss.x) * Math.min(1, delta * 4)
+    boss.z += 2.4 * delta
+  }
+
   const updateBosses = (delta: number) => {
     for (let index = bosses.length - 1; index >= 0; index -= 1) {
       const boss = bosses[index]
-      boss.x = Math.sin(elapsed * 0.7) * 1.8
-      boss.z = 1.9 + Math.sin(elapsed * 0.9) * 0.18
       const phase = getBossPhase(boss)
+      const phaseIndex = getBossPhaseIndex(boss, phase?.id ?? null)
+      sendBossFsmTick(boss.fsm, {
+        elapsedInBoss: elapsed - boss.spawnedAt,
+        delta,
+        hpRatio: boss.hp / boss.maxHp,
+        phase,
+        phaseIndex,
+        phaseCount: boss.definition.phases.length,
+        bossX: boss.x,
+        playerX: player.x,
+        defeated: boss.hp <= 0,
+      })
+      const bossFsmSnapshot = getBossFsmSnapshot(boss.fsm)
+      updateBossMovement(boss, bossFsmSnapshot.movement, delta)
+
       if (!phase) {
         continue
       }
@@ -1173,6 +1262,17 @@ export function createBattleRuntime({
       const enteredNewPhase = boss.currentPhaseId !== phase.id
       boss.currentPhaseId = phase.id
       boss.enteredPhaseIds.add(phase.id)
+
+      if (boss.hp <= 0) {
+        defeatedBosses.set(boss.id, elapsed)
+        bosses.splice(index, 1)
+        cuePulse += 1
+        continue
+      }
+
+      if (bossFsmSnapshot.firePattern === 'Idle') {
+        continue
+      }
 
       if (isBulletmlPattern(phase.pattern)) {
         if (enteredNewPhase || !boss.bulletmlActor) {
@@ -1361,8 +1461,7 @@ export function createBattleRuntime({
               { x: boss.x, z: boss.z },
             ) < hitDistance * hitDistance
           ) {
-            boss.hp -= bullet.damage
-            hitBoss = true
+            hitBoss = damageBoss(boss, bullet.damage) || hitBoss
           }
         }
 
@@ -1498,7 +1597,7 @@ export function createBattleRuntime({
       }
 
       if (action.type === 'spawnBoss') {
-        spawnBoss(action.boss, action.role)
+        spawnBoss(action.boss, action.role, getBossSpawnedAt(event))
         continue
       }
 

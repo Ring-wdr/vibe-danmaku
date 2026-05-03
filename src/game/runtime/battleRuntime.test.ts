@@ -1653,6 +1653,113 @@ describe('stage event timeline runtime', () => {
     ])
     expect(snapshot.boss?.id).toBe(firstMidboss.id)
   })
+
+  it('exposes the composed boss FSM and holds boss fire during intro', () => {
+    const baseStage = createStageDefinition('normal')
+    const baseBoss = getBossFromStage(baseStage, 'final')
+    const boss = {
+      ...baseBoss,
+      id: 'fsm-boss',
+      hp: 99999,
+      phases: [
+        {
+          ...baseBoss.phases[0]!,
+          id: 'fsm-opening',
+          threshold: 0,
+          supportLaser: false,
+          pattern: {
+            ...baseBoss.phases[0]!.pattern,
+            interval: 0.05,
+          },
+        },
+      ],
+    } satisfies BossDefinition
+    const runtime = createRuntime({
+      stage: createEventStage(baseStage, [
+        createBossEvent('fsm-boss-event', { type: 'time', at: 0 }, boss, 'final'),
+      ]),
+      invincible: true,
+    })
+
+    runtime.update(0.05)
+
+    let snapshot = runtime.getSnapshot()
+    expect(snapshot.boss?.fsm).toEqual({
+      phase: 'Intro',
+      phaseId: 'fsm-opening',
+      phaseIndex: 0,
+      movement: 'EnterScreen',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
+    })
+    expect(snapshot.bullets.filter((bullet) => bullet.source === 'enemy')).toHaveLength(0)
+
+    runtime.update(0.75)
+    runtime.update(0.05)
+
+    snapshot = runtime.getSnapshot()
+    expect(snapshot.boss?.fsm).toMatchObject({
+      phase: 'CombatPhase',
+      phaseId: 'fsm-opening',
+      phaseIndex: 0,
+      firePattern: 'AimedFan',
+      vulnerability: 'Vulnerable',
+    })
+    expect(snapshot.bullets.some((bullet) => bullet.source === 'enemy')).toBe(true)
+  })
+
+  it('starts the boss FSM intro from the actual late timeAfterDefeated spawn time', () => {
+    const baseStage = createStageDefinition('normal')
+    const baseBoss = getBossFromStage(baseStage, 'final')
+    const lateAnchorWave = {
+      ...getWaveFromStage(baseStage, 0),
+      id: 'late-boss-anchor',
+      count: 0,
+      resolution: { type: 'allDefeated' },
+    } satisfies EnemyWave
+    const boss = {
+      ...baseBoss,
+      id: 'late-gated-fsm-boss',
+      hp: 99999,
+      phases: [
+        {
+          ...baseBoss.phases[0]!,
+          id: 'late-gated-opening',
+          threshold: 0,
+          supportLaser: false,
+          pattern: {
+            ...baseBoss.phases[0]!.pattern,
+            interval: 0.05,
+          },
+        },
+      ],
+    } satisfies BossDefinition
+    const runtime = createRuntime({
+      stage: createEventStage(baseStage, [
+        createWaveEvent('late-boss-anchor-event', { type: 'time', at: 2 }, lateAnchorWave),
+        createBossEvent(
+          'late-gated-fsm-boss-event',
+          { type: 'timeAfterDefeated', at: 0.5, target: lateAnchorWave.id },
+          boss,
+          'final',
+        ),
+      ]),
+      invincible: true,
+    })
+
+    runtime.update(2)
+
+    const snapshot = runtime.getSnapshot()
+    expect(snapshot.boss?.fsm).toEqual({
+      phase: 'Intro',
+      phaseId: 'late-gated-opening',
+      phaseIndex: 0,
+      movement: 'EnterScreen',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
+    })
+    expect(snapshot.bullets.filter((bullet) => bullet.source === 'enemy')).toHaveLength(0)
+  })
 })
 
 describe('midboss gate runtime', () => {

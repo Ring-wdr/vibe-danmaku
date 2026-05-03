@@ -103,6 +103,15 @@ const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted((
   } as BattleSnapshot,
 }))
 
+const defaultBossFsm = {
+  phase: 'CombatPhase',
+  phaseId: 'test-phase',
+  phaseIndex: 0,
+  movement: 'SweepLeftRight',
+  firePattern: 'AimedFan',
+  vulnerability: 'Vulnerable',
+} as const
+
 vi.mock('./useBattleRuntime', () => ({
   useBattleRuntime: mockUseBattleRuntime,
 }))
@@ -301,6 +310,7 @@ describe('getRenderableBosses', () => {
         hpRatio: 0.7,
         phaseLabel: 'Midboss',
         supportLaser: false,
+        fsm: defaultBossFsm,
       },
       {
         id: 'boss-ash-citadel-core',
@@ -308,6 +318,7 @@ describe('getRenderableBosses', () => {
         hpRatio: 0.4,
         phaseLabel: 'Final',
         supportLaser: true,
+        fsm: defaultBossFsm,
       },
     ]
 
