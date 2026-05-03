@@ -2,6 +2,7 @@ import type {
   ArenaPoint,
   BattleSnapshot,
   BossDefinition,
+  BossBulletPatternConfig,
   CharacterDefinition,
   Difficulty,
   EnemyWave,
@@ -19,6 +20,15 @@ import type {
 } from '../types'
 import { battleItems, getAttackMultiplier } from '../content/items'
 import { getSidePanelPosition } from '../content/sidePanelOrbit'
+import {
+  createBulletmlActor,
+  createBulletmlPatternActor,
+  getBulletmlRank,
+  isBulletmlPattern,
+  isBulletmlActorIdle,
+  stepBulletmlActor,
+} from './bulletmlPattern'
+import type { BulletmlActor, BulletmlShot } from './bulletmlPattern'
 
 type RuntimeBullet = {
   id: string
@@ -41,6 +51,9 @@ type RuntimeBullet = {
   waveAmplitude?: number
   waveFrequency?: number
   wavePhase?: number
+  bulletml?: BulletmlActor
+  direction?: number
+  speed?: number
 }
 
 type RuntimeEnemy = {
@@ -78,6 +91,7 @@ type RuntimeBoss = {
   supportLaserTimer: number
   currentPhaseId: string | null
   enteredPhaseIds: Set<string>
+  bulletmlActor: BulletmlActor | null
 }
 
 type EventState = {
@@ -188,6 +202,16 @@ const itemDropConfig = {
 
 const defaultPlayerMaxHp = 3
 
+const bulletmlRankByDifficulty: Record<Difficulty, number> = {
+  easy: 0.28,
+  normal: 0.5,
+  hard: 0.78,
+}
+
+function defaultBulletmlRankForStage(difficulty: Difficulty) {
+  return bulletmlRankByDifficulty[difficulty]
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
@@ -245,6 +269,10 @@ function getFirstFinalBossTriggerTime(events: StageEvent[]) {
   }
 
   return null
+}
+
+function getSupportLaserSpeed(pattern: BossBulletPatternConfig) {
+  return isBulletmlPattern(pattern) ? 1.35 : pattern.speed
 }
 
 export function createBattleRuntime({
@@ -454,6 +482,36 @@ export function createBattleRuntime({
 
   const addBullet = (bullet: Omit<RuntimeBullet, 'id' | 'offViewportFor' | 'age'>) => {
     bullets.push({ id: `bullet-${lastBulletId++}`, offViewportFor: 0, age: 0, ...bullet })
+  }
+
+  const addBulletmlShot = (
+    origin: ArenaPoint,
+    shot: BulletmlShot,
+    defaults: {
+      radius?: number
+      glow?: number
+      life?: number
+      damage?: number
+    } = {},
+  ) => {
+    addBullet({
+      source: 'enemy',
+      x: origin.x,
+      z: origin.z,
+      vx: Math.cos(shot.direction) * shot.speed,
+      vz: Math.sin(shot.direction) * shot.speed,
+      direction: shot.direction,
+      speed: shot.speed,
+      radius: shot.radius ?? defaults.radius ?? 0.1,
+      glow: shot.glow ?? defaults.glow ?? 1.28,
+      life: shot.life ?? defaults.life ?? 8,
+      damage: shot.damage ?? defaults.damage ?? 1,
+      bulletml: createBulletmlActor({
+        action: shot.action,
+        direction: shot.direction,
+        speed: shot.speed,
+      }),
+    })
   }
 
   const addPlayerBullet = ({
@@ -670,6 +728,7 @@ export function createBattleRuntime({
       supportLaserTimer: 1.1,
       currentPhaseId: null,
       enteredPhaseIds: new Set<string>(),
+      bulletmlActor: null,
     }
     const phase = getBossPhase(boss)
     if (phase) {
@@ -1075,23 +1134,46 @@ export function createBattleRuntime({
         continue
       }
 
+      const enteredNewPhase = boss.currentPhaseId !== phase.id
       boss.currentPhaseId = phase.id
       boss.enteredPhaseIds.add(phase.id)
-      boss.shootTimer -= delta
-      if (boss.shootTimer <= 0) {
-        firePattern(boss.x, boss.z, phase.pattern)
-        boss.shootTimer = phase.pattern.interval
+
+      if (isBulletmlPattern(phase.pattern)) {
+        if (enteredNewPhase || !boss.bulletmlActor) {
+          boss.bulletmlActor = createBulletmlPatternActor(phase.pattern)
+        }
+
+        const result = stepBulletmlActor(boss.bulletmlActor, {
+          delta,
+          origin: { x: boss.x, z: boss.z },
+          target: { x: player.x, z: player.z },
+          rank: getBulletmlRank(phase.pattern),
+        })
+        for (const shot of result.shots) {
+          addBulletmlShot({ x: boss.x, z: boss.z }, shot, phase.pattern.bullet)
+        }
+        if (phase.pattern.loop && isBulletmlActorIdle(boss.bulletmlActor)) {
+          boss.bulletmlActor = createBulletmlPatternActor(phase.pattern)
+        }
+      } else {
+        boss.bulletmlActor = null
+        boss.shootTimer -= delta
+        if (boss.shootTimer <= 0) {
+          firePattern(boss.x, boss.z, phase.pattern)
+          boss.shootTimer = phase.pattern.interval
+        }
       }
 
       if (phase.supportLaser) {
         boss.supportLaserTimer -= delta
         if (boss.supportLaserTimer <= 0) {
+          const supportSpeed = getSupportLaserSpeed(phase.pattern)
           addBullet({
             source: 'enemy',
             x: boss.x,
             z: boss.z - 0.2,
             vx: 0,
-            vz: -phase.pattern.speed * 1.5,
+            vz: -supportSpeed * 1.5,
             radius: 0.18,
             glow: 1.7,
             life: 3.6,
@@ -1116,6 +1198,30 @@ export function createBattleRuntime({
         continue
       }
       bullet.age += delta
+      if (bullet.bulletml) {
+        const result = stepBulletmlActor(bullet.bulletml, {
+          delta,
+          origin: { x: bullet.x, z: bullet.z },
+          target: { x: player.x, z: player.z },
+          rank: defaultBulletmlRankForStage(difficulty),
+        })
+        bullet.direction = result.direction
+        bullet.speed = result.speed
+        bullet.vx = Math.cos(result.direction) * result.speed
+        bullet.vz = Math.sin(result.direction) * result.speed
+        for (const shot of result.shots) {
+          addBulletmlShot({ x: bullet.x, z: bullet.z }, shot, {
+            radius: bullet.radius,
+            glow: bullet.glow,
+            life: Math.max(1.2, bullet.life),
+            damage: bullet.damage,
+          })
+        }
+        if (result.vanished) {
+          bullets.splice(index, 1)
+          continue
+        }
+      }
 
       if (
         bullet.source === 'enemy' &&

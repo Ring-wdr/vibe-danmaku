@@ -1,19 +1,38 @@
-import type { BossDefinition, BulletPatternConfig, Difficulty } from '../types'
+import type {
+  BossBulletPatternConfig,
+  BossDefinition,
+  BulletmlPatternConfig,
+  Difficulty,
+} from '../types'
 
 const bossTuningByDifficulty: Record<
   Difficulty,
-  { bulletCount: number; bulletSpeed: number; interval: number }
+  { bulletCount: number; bulletSpeed: number; interval: number; rank: number }
 > = {
-  easy: { bulletCount: 1, bulletSpeed: 1, interval: 1 },
-  normal: { bulletCount: 1.08, bulletSpeed: 1.08, interval: 0.92 },
-  hard: { bulletCount: 1.2, bulletSpeed: 1.18, interval: 0.82 },
+  easy: { bulletCount: 1, bulletSpeed: 1, interval: 1, rank: 0.28 },
+  normal: { bulletCount: 1.08, bulletSpeed: 1.08, interval: 0.92, rank: 0.5 },
+  hard: { bulletCount: 1.2, bulletSpeed: 1.18, interval: 0.82, rank: 0.78 },
+}
+
+function isScriptedPattern(
+  pattern: BossBulletPatternConfig,
+): pattern is BulletmlPatternConfig {
+  return 'engine' in pattern && pattern.engine === 'bulletml'
 }
 
 export function scaleBossPattern(
-  pattern: BulletPatternConfig,
+  pattern: BossBulletPatternConfig,
   difficulty: Difficulty,
-): BulletPatternConfig {
+): BossBulletPatternConfig {
   const tuning = bossTuningByDifficulty[difficulty]
+
+  if (isScriptedPattern(pattern)) {
+    return {
+      ...pattern,
+      interval: Number((pattern.interval * tuning.interval).toFixed(2)),
+      rank: tuning.rank,
+    }
+  }
 
   return {
     ...pattern,

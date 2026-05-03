@@ -1797,6 +1797,109 @@ describe('regular enemy bullet patterns', () => {
   })
 })
 
+describe('scripted boss bullet patterns', () => {
+  it('runs BulletML-style waits and sequence shots from a boss phase', () => {
+    const stage = createStageDefinition('normal', { fastStage: true })
+    const boss = {
+      ...getBossFromStage(stage, 'final'),
+      hp: 99999,
+      phases: [
+        {
+          id: 'scripted-opening',
+          threshold: 0,
+          label: 'Scripted Opening',
+          supportLaser: false,
+          pattern: {
+            engine: 'bulletml',
+            interval: 999,
+            rank: 0.5,
+            bullet: { radius: 0.1, glow: 1.35, life: 5 },
+            action: [
+              {
+                type: 'repeat',
+                times: 4,
+                actions: [
+                  {
+                    type: 'fire',
+                    direction: { type: 'sequence', degrees: 18 },
+                    speed: { type: 'absolute', value: 1.1 },
+                  },
+                  { type: 'wait', seconds: 0.1 },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    } satisfies BossDefinition
+    const runtime = createRuntime({
+      stage: createEventStage(stage, [
+        createBossEvent('scripted-boss', { type: 'time', at: 0 }, boss, 'final'),
+      ]),
+      invincible: true,
+    })
+
+    runtime.update(0.1)
+    runtime.update(0.1)
+    runtime.update(0.1)
+    runtime.update(0.1)
+
+    const enemyBullets = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy')
+
+    expect(enemyBullets.length).toBeGreaterThanOrEqual(4)
+    expect(enemyBullets[0]?.position.x).toBeGreaterThan(0)
+    expect(enemyBullets[1]?.position.x).toBeGreaterThan(enemyBullets[0]!.position.x)
+  })
+
+  it('loops a scripted boss phase after the root action finishes', () => {
+    const stage = createStageDefinition('normal', { fastStage: true })
+    const boss = {
+      ...getBossFromStage(stage, 'final'),
+      hp: 99999,
+      phases: [
+        {
+          id: 'scripted-loop',
+          threshold: 0,
+          label: 'Scripted Loop',
+          supportLaser: false,
+          pattern: {
+            engine: 'bulletml',
+            interval: 0.1,
+            loop: true,
+            bullet: { radius: 0.1, glow: 1.35, life: 5 },
+            action: [
+              {
+                type: 'fire',
+                direction: { type: 'aim' },
+                speed: { type: 'absolute', value: 1 },
+              },
+              { type: 'wait', seconds: 0.1 },
+            ],
+          },
+        },
+      ],
+    } satisfies BossDefinition
+    const runtime = createRuntime({
+      stage: createEventStage(stage, [
+        createBossEvent('scripted-loop-boss', { type: 'time', at: 0 }, boss, 'final'),
+      ]),
+      invincible: true,
+    })
+
+    for (let index = 0; index < 8; index += 1) {
+      runtime.update(0.1)
+    }
+
+    const enemyBullets = runtime
+      .getSnapshot()
+      .bullets.filter((bullet) => bullet.source === 'enemy')
+
+    expect(enemyBullets.length).toBeGreaterThan(2)
+  })
+})
+
 describe('special attack runtime', () => {
   it('charges most of the beam-lance gauge by boss arrival', () => {
     const stage = createStageDefinition('normal')

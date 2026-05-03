@@ -60,6 +60,67 @@ export type BulletPatternConfig = {
   }
 }
 
+export type BulletmlExpression =
+  | number
+  | { type: 'rank' }
+  | { type: 'rand' }
+  | {
+      type: 'add' | 'sub' | 'mul' | 'div' | 'mod'
+      left: BulletmlExpression
+      right: BulletmlExpression
+    }
+
+export type BulletmlDirection =
+  | { type: 'absolute'; degrees: BulletmlExpression }
+  | { type: 'relative'; degrees: BulletmlExpression }
+  | { type: 'sequence'; degrees: BulletmlExpression }
+  | { type: 'aim'; degrees?: BulletmlExpression }
+
+export type BulletmlSpeed =
+  | { type: 'absolute'; value: BulletmlExpression }
+  | { type: 'relative'; value: BulletmlExpression }
+  | { type: 'sequence'; value: BulletmlExpression }
+
+export type BulletmlAction = BulletmlCommand[]
+
+export type BulletmlCommand =
+  | { type: 'wait'; seconds: BulletmlExpression }
+  | { type: 'repeat'; times: BulletmlExpression; actions: BulletmlAction }
+  | {
+      type: 'fire'
+      direction?: BulletmlDirection
+      speed?: BulletmlSpeed
+      actions?: BulletmlAction
+      radius?: number
+      glow?: number
+      life?: number
+      damage?: number
+    }
+  | { type: 'changeSpeed'; speed: BulletmlSpeed; term: BulletmlExpression }
+  | {
+      type: 'changeDirection'
+      direction: BulletmlDirection
+      term: BulletmlExpression
+    }
+  | { type: 'vanish' }
+  | { type: 'action'; actions: BulletmlAction }
+
+export type BulletmlPatternConfig = {
+  engine: 'bulletml'
+  interval: number
+  rank?: number
+  loop?: boolean
+  bullet?: {
+    radius?: number
+    glow?: number
+    life?: number
+    damage?: number
+  }
+  action: BulletmlAction
+}
+
+export type BossBulletPatternConfig = BulletPatternConfig | BulletmlPatternConfig
+
 export type StageCondition =
   | { type: 'bossActive'; bossId: string }
   | { type: 'bossPhase'; bossId: string; phaseId: string }
@@ -123,7 +184,7 @@ export type BossPhaseDefinition = {
   threshold: number
   label: string
   supportLaser: boolean
-  pattern: BulletPatternConfig
+  pattern: BossBulletPatternConfig
 }
 
 export type BossDefinition = {

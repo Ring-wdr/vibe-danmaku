@@ -8,6 +8,8 @@ import {
 } from './stageEvents'
 import type {
   BossDefinition,
+  BulletmlExpression,
+  BulletmlPatternConfig,
   Difficulty,
   StageEvent,
   StageDefinition,
@@ -17,6 +19,182 @@ type MidbossAuthoringDefinition = BossDefinition & { gateWaveCount: number }
 
 const midbossAt = 47
 const finalBossAt = 106
+const rankExpression = { type: 'rank' } satisfies BulletmlExpression
+
+function add(left: BulletmlExpression, right: BulletmlExpression): BulletmlExpression {
+  return { type: 'add', left, right }
+}
+
+function sub(left: BulletmlExpression, right: BulletmlExpression): BulletmlExpression {
+  return { type: 'sub', left, right }
+}
+
+function mul(left: BulletmlExpression, right: BulletmlExpression): BulletmlExpression {
+  return { type: 'mul', left, right }
+}
+
+function rankScale(base: number, factor: number) {
+  return add(base, mul(rankExpression, factor))
+}
+
+function rankWait(base: number, reduction: number) {
+  return sub(base, mul(rankExpression, reduction))
+}
+
+const scriptedBulletDefaults = {
+  radius: 0.095,
+  glow: 1.42,
+  life: 8.6,
+} as const
+
+const emberCagePattern = {
+  engine: 'bulletml',
+  interval: 0.75,
+  loop: true,
+  bullet: scriptedBulletDefaults,
+  action: [
+    {
+      type: 'repeat',
+      times: rankScale(64, 42),
+      actions: [
+        {
+          type: 'fire',
+          direction: { type: 'sequence', degrees: rankScale(18, 4) },
+          speed: { type: 'absolute', value: rankScale(0.82, 0.46) },
+          actions: [
+            { type: 'wait', seconds: 0.42 },
+            {
+              type: 'changeSpeed',
+              speed: { type: 'absolute', value: rankScale(1.24, 0.52) },
+              term: 0.52,
+            },
+          ],
+        },
+        { type: 'wait', seconds: rankWait(0.09, 0.025) },
+      ],
+    },
+  ],
+} satisfies BulletmlPatternConfig
+
+const ashFanPattern = {
+  engine: 'bulletml',
+  interval: 0.68,
+  loop: true,
+  bullet: { ...scriptedBulletDefaults, radius: 0.09, glow: 1.34 },
+  action: [
+    {
+      type: 'repeat',
+      times: rankScale(54, 32),
+      actions: [
+        {
+          type: 'fire',
+          direction: { type: 'aim', degrees: -34 },
+          speed: { type: 'absolute', value: rankScale(1.05, 0.5) },
+        },
+        {
+          type: 'fire',
+          direction: { type: 'aim', degrees: 34 },
+          speed: { type: 'absolute', value: rankScale(1.05, 0.5) },
+        },
+        {
+          type: 'fire',
+          direction: { type: 'sequence', degrees: 28 },
+          speed: { type: 'absolute', value: rankScale(0.78, 0.36) },
+          actions: [
+            { type: 'wait', seconds: 0.34 },
+            {
+              type: 'changeDirection',
+              direction: { type: 'relative', degrees: 18 },
+              term: 0.44,
+            },
+          ],
+        },
+        { type: 'wait', seconds: rankWait(0.13, 0.04) },
+      ],
+    },
+  ],
+} satisfies BulletmlPatternConfig
+
+const ruinSpiralPattern = {
+  engine: 'bulletml',
+  interval: 0.6,
+  loop: true,
+  bullet: { ...scriptedBulletDefaults, glow: 1.48, life: 9 },
+  action: [
+    {
+      type: 'repeat',
+      times: rankScale(96, 54),
+      actions: [
+        {
+          type: 'fire',
+          direction: { type: 'sequence', degrees: rankScale(23, 5) },
+          speed: { type: 'absolute', value: rankScale(0.76, 0.42) },
+          actions: [
+            { type: 'wait', seconds: 0.5 },
+            {
+              type: 'changeDirection',
+              direction: { type: 'relative', degrees: -42 },
+              term: 0.62,
+            },
+            {
+              type: 'changeSpeed',
+              speed: { type: 'relative', value: rankScale(0.38, 0.24) },
+              term: 0.5,
+            },
+          ],
+        },
+        { type: 'wait', seconds: rankWait(0.075, 0.02) },
+      ],
+    },
+  ],
+} satisfies BulletmlPatternConfig
+
+const citadelCollapsePattern = {
+  engine: 'bulletml',
+  interval: 0.54,
+  loop: true,
+  bullet: { ...scriptedBulletDefaults, radius: 0.105, glow: 1.62, life: 9.4 },
+  action: [
+    {
+      type: 'repeat',
+      times: rankScale(72, 48),
+      actions: [
+        {
+          type: 'fire',
+          direction: { type: 'aim', degrees: -18 },
+          speed: { type: 'absolute', value: rankScale(0.88, 0.46) },
+          actions: [
+            { type: 'wait', seconds: 0.38 },
+            {
+              type: 'changeDirection',
+              direction: { type: 'relative', degrees: 32 },
+              term: 0.5,
+            },
+          ],
+        },
+        {
+          type: 'fire',
+          direction: { type: 'aim', degrees: 18 },
+          speed: { type: 'absolute', value: rankScale(0.88, 0.46) },
+          actions: [
+            { type: 'wait', seconds: 0.38 },
+            {
+              type: 'changeDirection',
+              direction: { type: 'relative', degrees: -32 },
+              term: 0.5,
+            },
+          ],
+        },
+        {
+          type: 'fire',
+          direction: { type: 'sequence', degrees: rankScale(36, 5) },
+          speed: { type: 'absolute', value: rankScale(1.0, 0.52) },
+        },
+        { type: 'wait', seconds: rankWait(0.105, 0.035) },
+      ],
+    },
+  ],
+} satisfies BulletmlPatternConfig
 
 const baseWavePlacements = [
   {
@@ -136,7 +314,7 @@ const baseMidboss: MidbossAuthoringDefinition = {
       threshold: 0,
       label: 'Midboss · Cinder Sweep',
       supportLaser: true,
-      pattern: { shape: 'wave', count: 11, interval: 0.78, speed: 1.2, spread: 1.1, life: 8.4 },
+      pattern: emberCagePattern,
     },
   ],
 }
@@ -150,21 +328,21 @@ const baseBoss: BossDefinition = {
       threshold: 0.68,
       label: 'Phase 1 · Ash Fan',
       supportLaser: false,
-      pattern: { shape: 'fan', count: 10, interval: 0.88, speed: 1.18, spread: 1.7, life: 8 },
+      pattern: ashFanPattern,
     },
     {
       id: 'phase-2',
       threshold: 0.34,
       label: 'Phase 2 · Ruin Spiral',
       supportLaser: false,
-      pattern: { shape: 'spiral', count: 12, interval: 0.76, speed: 1.24, spread: 0.44, life: 8.4 },
+      pattern: ruinSpiralPattern,
     },
     {
       id: 'phase-3',
       threshold: 0,
       label: 'Phase 3 · Citadel Collapse',
       supportLaser: true,
-      pattern: { shape: 'laser-bloom', count: 14, interval: 0.62, speed: 1.38, spread: 0.52, life: 9 },
+      pattern: citadelCollapsePattern,
     },
   ],
 }

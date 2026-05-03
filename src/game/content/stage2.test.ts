@@ -2,7 +2,24 @@ import { describe, expect, it } from 'vitest'
 
 import { createStageDefinition as createStage1Definition } from './stage1'
 import { createStage2Definition } from './stage2'
-import type { StageDefinition } from '../types'
+import type {
+  BossBulletPatternConfig,
+  BulletPatternConfig,
+  BulletmlPatternConfig,
+  StageDefinition,
+} from '../types'
+
+function isScriptedPattern(
+  pattern: BossBulletPatternConfig,
+): pattern is BulletmlPatternConfig {
+  return 'engine' in pattern && pattern.engine === 'bulletml'
+}
+
+function isClassicPattern(
+  pattern: BossBulletPatternConfig,
+): pattern is BulletPatternConfig {
+  return !isScriptedPattern(pattern)
+}
 
 function getSpawnedWaves(stage: StageDefinition) {
   return stage.events.flatMap((event) =>
@@ -155,7 +172,7 @@ describe('createStage2Definition', () => {
     })
   })
 
-  it('increases midboss and final boss pattern counts on hard difficulty', () => {
+  it('raises classic counts and scripted ranks on hard difficulty', () => {
     const easy = createStage2Definition('easy')
     const hard = createStage2Definition('hard')
     const easyMidboss = getBossFromStage(easy, 'midboss')
@@ -165,15 +182,39 @@ describe('createStage2Definition', () => {
 
     expect(hardMidboss.phases).toHaveLength(easyMidboss.phases.length)
     hardMidboss.phases.forEach((phase, index) => {
-      expect(phase.pattern.count).toBeGreaterThan(
-        easyMidboss.phases[index]?.pattern.count ?? 0,
+      const easyPattern = easyMidboss.phases[index]!.pattern
+      if (isClassicPattern(phase.pattern) && isClassicPattern(easyPattern)) {
+        expect(phase.pattern.count).toBeGreaterThan(easyPattern.count)
+        return
+      }
+
+      expect(isScriptedPattern(phase.pattern)).toBe(true)
+      expect(isScriptedPattern(easyPattern)).toBe(true)
+      expect((phase.pattern as BulletmlPatternConfig).rank).toBeGreaterThan(
+        (easyPattern as BulletmlPatternConfig).rank ?? 0,
       )
     })
 
     expect(hardBoss.phases).toHaveLength(easyBoss.phases.length)
     hardBoss.phases.forEach((phase, index) => {
-      expect(phase.pattern.count).toBeGreaterThan(easyBoss.phases[index]!.pattern.count)
+      const easyPattern = easyBoss.phases[index]!.pattern
+      expect(isScriptedPattern(phase.pattern)).toBe(true)
+      expect(isScriptedPattern(easyPattern)).toBe(true)
+      expect((phase.pattern as BulletmlPatternConfig).rank).toBeGreaterThan(
+        (easyPattern as BulletmlPatternConfig).rank ?? 0,
+      )
     })
+  })
+
+  it('uses BulletML-style scripted patterns for the Stage 2 final boss phases', () => {
+    const boss = getBossFromStage(createStage2Definition('normal'), 'final')
+
+    expect(boss.phases.map((phase) => phase.pattern)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ engine: 'bulletml', rank: 0.5 }),
+      ]),
+    )
+    expect(boss.phases.every((phase) => isScriptedPattern(phase.pattern))).toBe(true)
   })
 
   it('expresses the midboss and second-half waves through explicit triggers', () => {

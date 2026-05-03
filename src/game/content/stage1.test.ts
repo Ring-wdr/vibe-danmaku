@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import { createStageDefinition } from './stage1'
-import type { StageDefinition } from '../types'
+import type { BossBulletPatternConfig, BulletPatternConfig, StageDefinition } from '../types'
+
+function expectClassicPattern(pattern: BossBulletPatternConfig): BulletPatternConfig {
+  if ('engine' in pattern) {
+    throw new Error('expected Stage 1 boss to use a classic pattern')
+  }
+
+  return pattern
+}
 
 function getSpawnedWaves(stage: StageDefinition) {
   return stage.events.flatMap((event) =>
@@ -77,11 +85,19 @@ describe('createStageDefinition', () => {
     expect(hardWaves[0]?.pattern.count).toBeGreaterThan(
       easyWaves[0]?.pattern.count ?? 0,
     )
-    expect(hardBoss.phases[1]?.pattern.count).toBeGreaterThan(
-      easyBoss.phases[1]?.pattern.count ?? 0,
+    expect(expectClassicPattern(hardBoss.phases[1]!.pattern).count).toBeGreaterThan(
+      expectClassicPattern(easyBoss.phases[1]!.pattern).count,
     )
-    expect(easyBoss.phases.map((phase) => phase.pattern.count)).toEqual([8, 10, 12])
-    expect(hardBoss.phases.map((phase) => phase.pattern.count)).toEqual([10, 12, 14])
+    expect(easyBoss.phases.map((phase) => expectClassicPattern(phase.pattern).count)).toEqual([
+      8,
+      10,
+      12,
+    ])
+    expect(hardBoss.phases.map((phase) => expectClassicPattern(phase.pattern).count)).toEqual([
+      10,
+      12,
+      14,
+    ])
   })
 
   it('starts the first combat wave quickly after deploy so the battle does not feel empty', () => {
