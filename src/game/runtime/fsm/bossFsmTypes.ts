@@ -20,6 +20,7 @@ export type BossFsmUpdate = {
   phase: BossPhaseDefinition | null
   phaseIndex: number
   phaseCount: number
+  phaseBreakDuration?: number
   bossX: number
   playerX: number
   defeated: boolean

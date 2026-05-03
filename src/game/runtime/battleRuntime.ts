@@ -1248,6 +1248,7 @@ export function createBattleRuntime({
         phase,
         phaseIndex,
         phaseCount: boss.definition.phases.length,
+        phaseBreakDuration: boss.definition.phaseBreakDuration,
         bossX: boss.x,
         playerX: player.x,
         defeated: boss.hp <= 0,

@@ -16,5 +16,9 @@ export function createBattleStageDefinition(
     return createStage2Definition(difficulty, options)
   }
 
-  return createStage3Definition(difficulty, options)
+  if (stageNumber === 3) {
+    return createStage3Definition(difficulty, options)
+  }
+
+  return createStage1Definition(difficulty, options)
 }

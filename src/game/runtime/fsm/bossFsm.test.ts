@@ -134,14 +134,14 @@ describe('boss fsm', () => {
       phaseId: 'spiral',
       phaseIndex: 1,
       movement: 'ChasePlayerX',
-      firePattern: 'SpiralRing',
-      vulnerability: 'ArmorBreak',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
     })
     expect(getBossFsmRegionValues(actor)).toEqual({
       phase: 'Break',
       movement: 'ChasePlayerX',
-      firePattern: 'SpiralRing',
-      vulnerability: 'ArmorBreak',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
     })
 
     sendBossFsmTick(actor, {
@@ -178,12 +178,12 @@ describe('boss fsm', () => {
     })
 
     expect(getBossFsmSnapshot(actor)).toEqual({
-      phase: 'Desperation',
+      phase: 'Break',
       phaseId: 'wall',
       phaseIndex: 2,
       movement: 'ChasePlayerX',
-      firePattern: 'WallSweep',
-      vulnerability: 'ArmorBreak',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
     })
 
     sendBossFsmTick(actor, {
@@ -205,6 +205,133 @@ describe('boss fsm', () => {
       movement: 'Retreat',
       firePattern: 'Idle',
       vulnerability: 'Invulnerable',
+    })
+  })
+
+  it('uses a per-boss phase break duration before returning to vulnerable firing', () => {
+    const actor = createBossFsmActor()
+
+    sendBossFsmTick(actor, {
+      elapsedInBoss: 1,
+      delta: 1,
+      hpRatio: 1,
+      phase: fanPhase,
+      phaseIndex: 0,
+      phaseCount: 3,
+      phaseBreakDuration: 3,
+      bossX: 0,
+      playerX: 0,
+      defeated: false,
+    })
+    sendBossFsmTick(actor, {
+      elapsedInBoss: 1.1,
+      delta: 0.1,
+      hpRatio: 0.5,
+      phase: spiralPhase,
+      phaseIndex: 1,
+      phaseCount: 3,
+      phaseBreakDuration: 3,
+      bossX: 0,
+      playerX: 0,
+      defeated: false,
+    })
+
+    expect(getBossFsmSnapshot(actor)).toMatchObject({
+      phase: 'Break',
+      phaseId: 'spiral',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
+    })
+
+    sendBossFsmTick(actor, {
+      elapsedInBoss: 4,
+      delta: 2.9,
+      hpRatio: 0.5,
+      phase: spiralPhase,
+      phaseIndex: 1,
+      phaseCount: 3,
+      phaseBreakDuration: 3,
+      bossX: 0,
+      playerX: 0,
+      defeated: false,
+    })
+
+    expect(getBossFsmSnapshot(actor)).toMatchObject({
+      phase: 'Break',
+      phaseId: 'spiral',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
+    })
+
+    sendBossFsmTick(actor, {
+      elapsedInBoss: 4.11,
+      delta: 0.11,
+      hpRatio: 0.5,
+      phase: spiralPhase,
+      phaseIndex: 1,
+      phaseCount: 3,
+      phaseBreakDuration: 3,
+      bossX: 0,
+      playerX: 0,
+      defeated: false,
+    })
+
+    expect(getBossFsmSnapshot(actor)).toMatchObject({
+      phase: 'CombatPhase',
+      phaseId: 'spiral',
+      firePattern: 'SpiralRing',
+      vulnerability: 'Vulnerable',
+    })
+  })
+
+  it('uses the default short phase break when no boss override is supplied', () => {
+    const actor = createBossFsmActor()
+
+    sendBossFsmTick(actor, {
+      elapsedInBoss: 1,
+      delta: 1,
+      hpRatio: 1,
+      phase: fanPhase,
+      phaseIndex: 0,
+      phaseCount: 3,
+      bossX: 0,
+      playerX: 0,
+      defeated: false,
+    })
+    sendBossFsmTick(actor, {
+      elapsedInBoss: 1.1,
+      delta: 0.1,
+      hpRatio: 0.5,
+      phase: spiralPhase,
+      phaseIndex: 1,
+      phaseCount: 3,
+      bossX: 0,
+      playerX: 0,
+      defeated: false,
+    })
+
+    expect(getBossFsmSnapshot(actor)).toMatchObject({
+      phase: 'Break',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
+    })
+
+    sendBossFsmTick(actor, {
+      elapsedInBoss: 1.6,
+      delta: 0.5,
+      hpRatio: 0.5,
+      phase: spiralPhase,
+      phaseIndex: 1,
+      phaseCount: 3,
+      bossX: 0,
+      playerX: 0,
+      defeated: false,
+    })
+
+    expect(getBossFsmSnapshot(actor)).toMatchObject({
+      phase: 'CombatPhase',
+      firePattern: 'SpiralRing',
+      vulnerability: 'Vulnerable',
     })
   })
 })

@@ -48,8 +48,9 @@ function getNextBossFsmContext(
   const phaseId = update.phase?.id ?? null
   const phaseIndex = phaseId === null ? null : update.phaseIndex
   const phaseChanged = current.phaseId !== null && phaseId !== null && current.phaseId !== phaseId
+  const armorBreakDuration = update.phaseBreakDuration ?? bossFsmTiming.armorBreakDuration
   const armorBreakFor = phaseChanged
-    ? bossFsmTiming.armorBreakDuration
+    ? armorBreakDuration
     : Math.max(0, current.armorBreakFor - update.delta)
   const phaseState = getPhaseState(update, armorBreakFor)
   const vulnerability = getVulnerabilityState(phaseState, armorBreakFor)
