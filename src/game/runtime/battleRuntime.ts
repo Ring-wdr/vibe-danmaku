@@ -171,8 +171,8 @@ const bulletViewportBounds = {
 const enemySpawnEntry = {
   startZ: bulletViewportBounds.maxZ + 1.85,
   rowOffset: 0.16,
-  attackLead: 0.85,
-  firstShotBuffer: 0.15,
+  attackLead: 1.2,
+  firstShotBuffer: 0,
 } as const
 
 const beamLanceConfig = {

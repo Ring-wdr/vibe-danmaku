@@ -853,8 +853,9 @@ describe('createBattleRuntime', () => {
   it('keeps wave enemies from firing immediately while they are far offscreen', () => {
     const runtime = createRuntime({ stage: createImmediateWaveStage() })
 
-    runtime.update(0.6)
+    runtime.update(0.25)
 
+    expect(runtime.getSnapshot().enemies[0]?.position.z).toBeGreaterThan(4.4)
     expect(
       runtime.getSnapshot().bullets.some((bullet) => bullet.source === 'enemy'),
     ).toBe(false)
@@ -975,10 +976,10 @@ describe('createBattleRuntime', () => {
     expect(snapshot.score).toBeGreaterThanOrEqual(300)
   })
 
-  it('starts wave enemy fire while enemies are entering from the upper edge', () => {
+  it('starts wave enemy fire as soon as enemies reach the upper screen edge', () => {
     const runtime = createRuntime({ stage: createImmediateWaveStage() })
 
-    runtime.update(1)
+    runtime.update(0.45)
 
     const snapshot = runtime.getSnapshot()
     expect(snapshot.enemies[0]?.position.z).toBeGreaterThan(3.2)
