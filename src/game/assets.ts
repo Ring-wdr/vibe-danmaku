@@ -9,6 +9,7 @@ import stage2BossCoreUrl from '../assets/generated/bosses/stage2-boss-core.webp'
 import stage2MidbossCoreUrl from '../assets/generated/bosses/stage2-midboss-core.webp'
 import stage3BossAppendagesUrl from '../assets/generated/bosses/stage3-boss-appendages.webp'
 import stage3BossArmorTextureUrl from '../assets/generated/bosses/stage3-boss-armor-texture.webp'
+import stage3BossBodyUrl from '../assets/generated/bosses/stage3-boss-body.webp'
 import stage3BossCoreUrl from '../assets/generated/bosses/stage3-boss-core.webp'
 import stage3MidbossCoreUrl from '../assets/generated/bosses/stage3-midboss-core.webp'
 import enemyAbyssalBiomechAtlasUrl from '../assets/generated/enemies/enemy-abyssal-biomech-atlas.webp'
@@ -48,6 +49,7 @@ export const gameAssets = {
   stage2SmokeLayerUrl,
   stage3BossAppendagesUrl,
   stage3BossArmorTextureUrl,
+  stage3BossBodyUrl,
   stage3BossCoreUrl,
   stage3MidbossCoreUrl,
   stage3PressureLayerUrl,

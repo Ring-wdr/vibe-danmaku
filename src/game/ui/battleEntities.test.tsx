@@ -305,7 +305,7 @@ describe('RuntimeEntityLayer', () => {
     expect(bossPlane).toBeInTheDocument()
   })
 
-  it('renders the Stage 3 final boss as a low-poly 3D model with generated appendage sprites', () => {
+  it('renders the Stage 3 final boss as a high-detail biomech model with generated appendage sprites', () => {
     const stage = createStage3Definition('normal')
     const finalBoss = getFinalBossFromStage(stage)
 
@@ -331,14 +331,48 @@ describe('RuntimeEntityLayer', () => {
       />,
     )
 
-    expect(screen.getByTestId(`stage3-boss-low-poly-${finalBoss.id}`)).toBeInTheDocument()
-    expect(screen.getByTestId(`stage3-boss-white-core-${finalBoss.id}`)).toBeInTheDocument()
+    expect(screen.getByTestId(`stage3-boss-high-detail-${finalBoss.id}`)).toBeInTheDocument()
+    expect(screen.getByTestId(`stage3-boss-core-glow-${finalBoss.id}`)).toHaveAttribute(
+      'position',
+      '0,0.25,0.38',
+    )
+    expect(
+      screen
+        .getByTestId(`stage3-boss-core-glow-${finalBoss.id}`)
+        .querySelector('meshbasicmaterial'),
+    ).toHaveAttribute('opacity', '0.68')
+    expect(screen.getByTestId(`stage3-boss-white-core-${finalBoss.id}`)).toHaveAttribute(
+      'position',
+      '0,0.25,0.48',
+    )
+    expect(
+      screen
+        .getByTestId(`stage3-boss-white-core-${finalBoss.id}`)
+        .querySelector('meshbasicmaterial'),
+    ).toHaveAttribute('opacity', '0.72')
+    expect(screen.getByTestId(`stage3-boss-core-ring-${finalBoss.id}`)).toHaveAttribute(
+      'position',
+      '0,0.25,0.36',
+    )
+    expect(
+      screen
+        .getByTestId(`stage3-boss-core-ring-${finalBoss.id}`)
+        .querySelector('meshbasicmaterial'),
+    ).toHaveAttribute('opacity', '0.34')
     expect(screen.getByTestId('stage3-boss-claw-left')).toBeInTheDocument()
     expect(screen.getByTestId('stage3-boss-claw-right')).toBeInTheDocument()
-    expect(container.querySelector('icosahedrongeometry')).toBeInTheDocument()
-    expect(container.querySelector('spheregeometry')).toBeInTheDocument()
+    expect(container.querySelector('icosahedrongeometry')).not.toBeInTheDocument()
+    expect(container.querySelector('meshphysicalmaterial')).not.toBeInTheDocument()
+    expect(container.querySelector('circlegeometry')).not.toBeInTheDocument()
+    expect(
+      Array.from(container.querySelectorAll('planegeometry')).some(
+        (geometry) => geometry.getAttribute('args') === '1.46,2.08',
+      ),
+    ).toBe(true)
+    expect(container.querySelector('ringgeometry')).toBeInTheDocument()
     expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(gameAssets.stage3BossAppendagesUrl)
-    expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(
+    expect(vi.mocked(useLoadedTexture)).toHaveBeenCalledWith(gameAssets.stage3BossBodyUrl)
+    expect(vi.mocked(useLoadedTexture)).not.toHaveBeenCalledWith(
       gameAssets.stage3BossArmorTextureUrl,
       expect.any(Function),
     )

@@ -136,6 +136,13 @@ const runtimeAssets = [
     alphaQuality: 86,
   },
   {
+    source: 'bosses/stage3-boss-body.png',
+    output: 'bosses/stage3-boss-body.webp',
+    width: 512,
+    quality: 78,
+    alphaQuality: 92,
+  },
+  {
     source: 'ui/ui-player-portrait.png',
     output: 'ui/ui-player-portrait.webp',
     width: 480,

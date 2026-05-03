@@ -25,6 +25,8 @@ const stage3BossCutoutPaths = [
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-midboss-core.webp'),
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-core.png'),
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-core.webp'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-body.png'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-body.webp'),
 ]
 const stage3BossAppendagePaths = [
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-appendages.png'),
@@ -209,6 +211,7 @@ describe('gameAssets', () => {
     expect(gameAssets.enemyAbyssalBiomechAtlasUrl).toMatch(/enemies\/enemy-abyssal-biomech-atlas/)
     expect(gameAssets.stage3MidbossCoreUrl).toMatch(/bosses\/stage3-midboss-core/)
     expect(gameAssets.stage3BossCoreUrl).toMatch(/bosses\/stage3-boss-core/)
+    expect(gameAssets.stage3BossBodyUrl).toMatch(/bosses\/stage3-boss-body/)
     expect(gameAssets.stage3BossAppendagesUrl).toMatch(/bosses\/stage3-boss-appendages/)
     expect(gameAssets.stage3BossArmorTextureUrl).toMatch(/bosses\/stage3-boss-armor-texture/)
   })

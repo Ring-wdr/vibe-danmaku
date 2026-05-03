@@ -32,21 +32,9 @@ const bossFallbackRadius = 0.9
 const bossPhaseBreakInnerRadius = bossSpriteSize * 0.55
 const bossPhaseBreakOuterRadius = bossSpriteSize * 0.73
 const stage3BossModelScale = 1.08
+const stage3BossBodyPlaneSize = [1.46, 2.08] as const
+const stage3BossCoreY = 0.25
 
-const stage3BossArmorPlateY = [-0.48, -0.18, 0.1, 0.38, 0.66]
-const stage3BossArmorPatchConfigs = [
-  { y: -0.5, width: 0.5, height: 0.24, uvOffset: new THREE.Vector2(0.08, 0.7) },
-  { y: -0.2, width: 0.58, height: 0.26, uvOffset: new THREE.Vector2(0.36, 0.58) },
-  { y: 0.1, width: 0.62, height: 0.28, uvOffset: new THREE.Vector2(0.12, 0.34) },
-  { y: 0.4, width: 0.54, height: 0.25, uvOffset: new THREE.Vector2(0.54, 0.18) },
-  { y: 0.68, width: 0.4, height: 0.22, uvOffset: new THREE.Vector2(0.68, 0.62) },
-] as const
-const stage3BossSidePodConfigs = [
-  { side: -1, x: -0.48, y: 0.24, radius: 0.19 },
-  { side: 1, x: 0.48, y: 0.24, radius: 0.19 },
-  { side: -1, x: -0.36, y: -0.26, radius: 0.15 },
-  { side: 1, x: 0.36, y: -0.26, radius: 0.15 },
-] as const
 const stage3BossAppendageConfigs = [
   {
     frameIndex: 0,
@@ -97,14 +85,6 @@ const stage3BossAppendageConfigs = [
     height: 0.78,
   },
 ] as const
-
-function configureStage3BossArmorTexture(texture: THREE.Texture) {
-  texture.wrapS = THREE.RepeatWrapping
-  texture.wrapT = THREE.RepeatWrapping
-  texture.repeat.set(1.45, 1.45)
-  texture.colorSpace = THREE.SRGBColorSpace
-  texture.needsUpdate = true
-}
 
 export function getAtlasFrameUv(frame: AtlasFrame) {
   return getAtlasFrameUvForAtlas(frame, 'enemy-brass-cloud')
@@ -546,38 +526,7 @@ function Stage3BossAppendageSprite({
   )
 }
 
-function Stage3BossArmorPatch({
-  config,
-  texture,
-}: {
-  config: (typeof stage3BossArmorPatchConfigs)[number]
-  texture: THREE.Texture | null
-}) {
-  if (!texture) {
-    return (
-      <mesh position={[0, config.y, 0.47]}>
-        <planeGeometry args={[config.width, config.height]} />
-        <meshBasicMaterial color="#2e4d59" transparent opacity={0.92} toneMapped={false} />
-      </mesh>
-    )
-  }
-
-  return (
-    <mesh position={[0, config.y, 0.47]}>
-      <planeGeometry args={[config.width, config.height]} />
-      <RestoredTextureMaterial
-        texture={texture}
-        exposure={1.85}
-        saturation={1.25}
-        contrast={1.08}
-        uvScale={new THREE.Vector2(0.26, 0.18)}
-        uvOffset={config.uvOffset}
-      />
-    </mesh>
-  )
-}
-
-function Stage3BossLowPolyModel({
+function Stage3BossHighDetailModel({
   battleElapsed,
   boss,
   bossTexture,
@@ -587,19 +536,17 @@ function Stage3BossLowPolyModel({
   bossTexture: THREE.Texture
 }) {
   const appendageTexture = useLoadedTexture(gameAssets.stage3BossAppendagesUrl)
-  const armorTexture = useLoadedTexture(
-    gameAssets.stage3BossArmorTextureUrl,
-    configureStage3BossArmorTexture,
-  )
+  const bodyTexture = useLoadedTexture(gameAssets.stage3BossBodyUrl)
   const coreYaw = Math.sin(battleElapsed * 1.15) * 0.14
   const pulse = 1 + Math.sin(battleElapsed * 2.4) * 0.025
 
   return (
     <group
-      data-testid={`stage3-boss-low-poly-${boss.id}`}
+      data-testid={`stage3-boss-high-detail-${boss.id}`}
       scale={[stage3BossModelScale, stage3BossModelScale * pulse, stage3BossModelScale]}
     >
-      <pointLight color="#8ffcff" intensity={16} distance={3.2} position={[0, 0.25, 1.15]} />
+      <ambientLight color="#9cf8ff" intensity={0.52} />
+      <pointLight color="#8ffcff" intensity={28} distance={3.4} position={[0, 0.25, 1.15]} />
       {stage3BossAppendageConfigs.map((config, index) => (
         <Stage3BossAppendageSprite
           key={`${config.frameIndex}-${index}`}
@@ -609,92 +556,65 @@ function Stage3BossLowPolyModel({
         />
       ))}
       <group rotation={[0.18, coreYaw, 0]}>
-        <mesh scale={[0.62, 1.04, 0.32]}>
-          <icosahedronGeometry args={[0.78, 1]} />
-          <meshStandardMaterial
-            map={armorTexture ?? undefined}
-            color="#c5dce2"
-            emissive="#062b35"
-            emissiveMap={armorTexture ?? bossTexture}
-            emissiveIntensity={0.18}
-            metalness={0.7}
-            roughness={0.42}
-            flatShading
+        <mesh scale={[0.86, 1.18, 0.3]} position={[0, 0.04, -0.03]}>
+          <sphereGeometry args={[0.86, 48, 32]} />
+          <meshBasicMaterial
+            color="#44f7ff"
+            transparent
+            opacity={0.13}
+            depthWrite={false}
+            toneMapped={false}
+            blending={THREE.AdditiveBlending}
           />
         </mesh>
-        <mesh position={[0, -0.69, 0.02]} rotation={[0, 0, Math.PI]} scale={[0.74, 1.1, 0.34]}>
-          <coneGeometry args={[0.3, 0.72, 5]} />
-          <meshStandardMaterial
-            map={armorTexture ?? undefined}
-            color="#9fb8c0"
-            emissive="#041e26"
-            emissiveMap={armorTexture ?? undefined}
-            emissiveIntensity={0.22}
-            metalness={0.72}
-            roughness={0.48}
-            flatShading
-          />
+        <mesh position={[0, -0.02, 0.46]}>
+          <planeGeometry args={stage3BossBodyPlaneSize} />
+          {bodyTexture ? (
+            <RestoredTextureMaterial
+              texture={bodyTexture}
+              exposure={1.06}
+              saturation={1.08}
+              contrast={1.04}
+            />
+          ) : (
+            <RestoredTextureMaterial texture={bossTexture} opacity={0.72} />
+          )}
         </mesh>
-        {stage3BossArmorPlateY.map((y, index) => (
-          <mesh
-            key={y}
-            position={[0, y, 0.4]}
-            rotation={[0, 0, Math.PI / 4]}
-            scale={[0.26 - index * 0.018, 0.18, 1]}
-          >
-            <circleGeometry args={[1, 4]} />
-            <meshBasicMaterial
-              color={index % 2 === 0 ? '#1f3742' : '#172b35'}
-              transparent
-              opacity={0.88}
-              toneMapped={false}
-            />
-          </mesh>
-        ))}
-        {stage3BossArmorPatchConfigs.map((config) => (
-          <Stage3BossArmorPatch key={config.y} config={config} texture={armorTexture} />
-        ))}
-        {stage3BossSidePodConfigs.map((pod) => (
-          <mesh key={`${pod.side}-${pod.y}`} position={[pod.x, pod.y, 0.16]}>
-            <sphereGeometry args={[pod.radius, 8, 6]} />
-            <meshStandardMaterial
-              map={armorTexture ?? undefined}
-              color="#9bb7bf"
-              emissive="#06313b"
-              emissiveMap={armorTexture ?? undefined}
-              emissiveIntensity={0.25}
-              metalness={0.68}
-              roughness={0.38}
-              flatShading
-            />
-          </mesh>
-        ))}
-        <mesh position={[0, -0.02, 0.38]}>
-          <sphereGeometry args={[0.18, 12, 8]} />
+        <mesh
+          data-testid={`stage3-boss-core-glow-${boss.id}`}
+          position={[0, stage3BossCoreY, 0.38]}
+        >
+          <sphereGeometry args={[0.18, 32, 20]} />
           <meshBasicMaterial
             color="#68fff6"
             transparent
-            opacity={0.88}
+            opacity={0.68}
             toneMapped={false}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
-        <mesh data-testid={`stage3-boss-white-core-${boss.id}`} position={[0, -0.02, 0.48]}>
-          <sphereGeometry args={[0.105, 16, 12]} />
+        <mesh
+          data-testid={`stage3-boss-white-core-${boss.id}`}
+          position={[0, stage3BossCoreY, 0.48]}
+        >
+          <sphereGeometry args={[0.105, 32, 20]} />
           <meshBasicMaterial
             color="#ffffff"
             transparent
-            opacity={0.96}
+            opacity={0.72}
             toneMapped={false}
             blending={THREE.AdditiveBlending}
           />
         </mesh>
-        <mesh position={[0, -0.02, 0.36]}>
-          <ringGeometry args={[0.21, 0.29, 24]} />
+        <mesh
+          data-testid={`stage3-boss-core-ring-${boss.id}`}
+          position={[0, stage3BossCoreY, 0.36]}
+        >
+          <ringGeometry args={[0.21, 0.29, 64]} />
           <meshBasicMaterial
             color="#bdfdff"
             transparent
-            opacity={0.42}
+            opacity={0.34}
             depthWrite={false}
             toneMapped={false}
             blending={THREE.AdditiveBlending}
@@ -736,7 +656,7 @@ function BossSprite({
   return (
     <group position={position}>
       {shouldRenderStage3FinalBossModel(stage, boss) ? (
-        <Stage3BossLowPolyModel
+        <Stage3BossHighDetailModel
           battleElapsed={battleElapsed}
           boss={boss}
           bossTexture={bossTexture}

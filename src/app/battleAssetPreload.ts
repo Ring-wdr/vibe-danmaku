@@ -102,14 +102,14 @@ export function getBattleAssetPreloadItems({
           url: gameAssets.stage3BossCoreUrl,
         },
         {
+          id: 'stage3-boss-body',
+          label: 'Abyssal Leviathan body',
+          url: gameAssets.stage3BossBodyUrl,
+        },
+        {
           id: 'stage3-boss-appendages',
           label: 'Abyssal Leviathan appendages',
           url: gameAssets.stage3BossAppendagesUrl,
-        },
-        {
-          id: 'stage3-boss-armor-texture',
-          label: 'Abyssal Leviathan armor texture',
-          url: gameAssets.stage3BossArmorTextureUrl,
         },
       ]
     }

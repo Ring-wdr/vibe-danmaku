@@ -71,8 +71,9 @@ describe('getBattleAssetPreloadItems', () => {
     ).toBe(true)
     expect(urls.some((url) => url.includes('/bosses/stage3-midboss-core'))).toBe(true)
     expect(urls.some((url) => url.includes('/bosses/stage3-boss-core'))).toBe(true)
+    expect(urls.some((url) => url.includes('/bosses/stage3-boss-body'))).toBe(true)
     expect(urls.some((url) => url.includes('/bosses/stage3-boss-appendages'))).toBe(true)
-    expect(urls.some((url) => url.includes('/bosses/stage3-boss-armor-texture'))).toBe(true)
+    expect(urls.some((url) => url.includes('/bosses/stage3-boss-armor-texture'))).toBe(false)
   })
 
   it('preloads the selected character sprite sheet instead of only Lyra assets', () => {
