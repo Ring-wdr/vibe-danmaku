@@ -2152,6 +2152,102 @@ describe('scripted boss bullet patterns', () => {
 
     expect(enemyBullets.length).toBeGreaterThan(2)
   })
+
+  it('starts the next BulletML phase program after a phase break', () => {
+    const stage = createStageDefinition('normal', { fastStage: true })
+    const boss = {
+      ...getBossFromStage(stage, 'final'),
+      id: 'scripted-phase-break-boss',
+      hp: 100,
+      phaseBreakDuration: 0.4,
+      phases: [
+        {
+          id: 'scripted-waiting-phase',
+          threshold: 0.5,
+          label: 'Waiting Script',
+          supportLaser: false,
+          pattern: {
+            engine: 'bulletml',
+            interval: 999,
+            loop: true,
+            bullet: { radius: 0.1, glow: 1.35, life: 5 },
+            action: [{ type: 'wait', seconds: 99 }],
+          },
+        },
+        {
+          id: 'scripted-break-burst-phase',
+          threshold: 0,
+          label: 'Break Burst',
+          supportLaser: false,
+          pattern: {
+            engine: 'bulletml',
+            interval: 999,
+            bullet: { radius: 0.123, glow: 1.91, life: 5 },
+            action: [
+              {
+                type: 'fire',
+                direction: { type: 'absolute', degrees: 180 },
+                speed: { type: 'absolute', value: 0.6 },
+              },
+              { type: 'wait', seconds: 99 },
+            ],
+          },
+        },
+      ],
+    } satisfies BossDefinition
+    const runtime = createRuntime({
+      stage: createEventStage(stage, [
+        createBossEvent('scripted-phase-break-boss-event', { type: 'time', at: 0 }, boss, 'final'),
+      ]),
+      character: {
+        ...testPilot,
+        shot: {
+          interval: 999,
+          speed: 24,
+          power: 60,
+        },
+      },
+    })
+
+    for (let index = 0; index < 20; index += 1) {
+      runtime.update(0.05)
+      if (runtime.getSnapshot().boss?.fsm.phaseId === 'scripted-break-burst-phase') {
+        break
+      }
+    }
+
+    let snapshot = runtime.getSnapshot()
+    expect(snapshot.boss?.fsm).toMatchObject({
+      phase: 'Break',
+      phaseId: 'scripted-break-burst-phase',
+      firePattern: 'Idle',
+      vulnerability: 'Invulnerable',
+    })
+    expect(snapshot.bullets.some((bullet) => bullet.source === 'enemy')).toBe(false)
+
+    runtime.update(0.39)
+    snapshot = runtime.getSnapshot()
+    expect(snapshot.boss?.fsm.firePattern).toBe('Idle')
+    expect(snapshot.bullets.some((bullet) => bullet.source === 'enemy')).toBe(false)
+
+    runtime.update(0.02)
+    snapshot = runtime.getSnapshot()
+
+    expect(snapshot.boss?.fsm).toMatchObject({
+      phase: 'CombatPhase',
+      phaseId: 'scripted-break-burst-phase',
+      firePattern: 'SpiralRing',
+      vulnerability: 'Vulnerable',
+    })
+    expect(
+      snapshot.bullets.some(
+        (bullet) =>
+          bullet.source === 'enemy' &&
+          bullet.radius === 0.123 &&
+          bullet.glow === 1.91,
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('special attack runtime', () => {

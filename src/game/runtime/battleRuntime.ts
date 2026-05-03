@@ -1263,6 +1263,11 @@ export function createBattleRuntime({
       const enteredNewPhase = boss.currentPhaseId !== phase.id
       boss.currentPhaseId = phase.id
       boss.enteredPhaseIds.add(phase.id)
+      if (enteredNewPhase) {
+        boss.bulletmlActor = null
+        boss.shootTimer = 0
+        boss.supportLaserTimer = 0.9
+      }
 
       if (boss.hp <= 0) {
         defeatedBosses.set(boss.id, elapsed)
