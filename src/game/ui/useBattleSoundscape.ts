@@ -40,7 +40,7 @@ export function useBattleSoundscape(snapshot: BattleSnapshot, active: boolean) {
     if (!contextRef.current) {
       const context = new window.AudioContext()
       const master = context.createGain()
-      master.gain.value = 0.08
+      master.gain.value = 1
       master.connect(context.destination)
       contextRef.current = context
       masterRef.current = master
