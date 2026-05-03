@@ -13,11 +13,13 @@ export type BattleSessionContext = {
   selectedCharacterId: string
   currentStageNumber: BattleStageNumber
   battleSeed: number
+  campaignScore: number
   result: RunResult | null
 }
 
 export type BattleSessionEvent =
   | { type: 'START_SORTIE' }
+  | { type: 'OPEN_LEADERBOARD' }
   | { type: 'OPEN_SETTINGS' }
   | { type: 'BACK' }
   | { type: 'SELECT_DIFFICULTY'; difficulty: Difficulty }
@@ -42,6 +44,7 @@ export const battleSessionMachine = setup({
   actions: {
     resetForNewSortie: assign({
       currentStageNumber: 1,
+      campaignScore: 0,
       result: null,
     }),
     selectDifficulty: assign(({ event }) => {
@@ -68,6 +71,7 @@ export const battleSessionMachine = setup({
     advanceToNextStage: assign(({ context }) => ({
       currentStageNumber: context.result?.stageNumber === 2 ? 3 : 2,
       battleSeed: context.battleSeed + 1,
+      campaignScore: context.campaignScore + (context.result?.score ?? 0),
       result: null,
     })),
     storeBattleResult: assign(({ event }) => {
@@ -92,6 +96,7 @@ export const battleSessionMachine = setup({
     }),
     returnToTitle: assign({
       currentStageNumber: 1,
+      campaignScore: 0,
       result: null,
     }),
   },
@@ -103,11 +108,15 @@ export const battleSessionMachine = setup({
     selectedCharacterId: input.selectedCharacterId,
     currentStageNumber: 1,
     battleSeed: 0,
+    campaignScore: 0,
     result: null,
   }),
   states: {
     title: {
       on: {
+        OPEN_LEADERBOARD: {
+          target: 'leaderboard',
+        },
         OPEN_SETTINGS: {
           target: 'settings',
         },
@@ -118,6 +127,13 @@ export const battleSessionMachine = setup({
       },
     },
     settings: {
+      on: {
+        BACK: {
+          target: 'title',
+        },
+      },
+    },
+    leaderboard: {
       on: {
         BACK: {
           target: 'title',

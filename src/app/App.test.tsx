@@ -8,6 +8,8 @@ import { lastCharacterStorageKey } from './characterSelectionStorage'
 import { battleSettingsStorageKey } from '../game/ui/battleSettingsStorage'
 import type { Difficulty, RunResult, StageDefinition } from '../game/types'
 
+const leaderboardStorageKey = 'vibe-danmaku.leaderboard.v1'
+
 const {
   mockBattleView,
   mockGetBattleAssetPreloadItems,
@@ -205,6 +207,19 @@ describe('App', () => {
       controlMode: 'drag',
       dragSensitivity: 2,
     })
+
+    fireEvent.click(screen.getByRole('button', { name: /back/i }))
+
+    expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
+  })
+
+  it('opens the leaderboard from the title screen', () => {
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /leaderboard/i }))
+
+    expect(screen.getByRole('heading', { name: /leaderboard/i })).toBeInTheDocument()
+    expect(screen.getByText(/no recorded sorties/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
 
@@ -497,6 +512,42 @@ describe('App', () => {
     expect(screen.getByText('52,800')).toBeInTheDocument()
     expect(screen.getByText('21')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /confirm/i })).not.toBeInTheDocument()
+
+    const entries = JSON.parse(window.localStorage.getItem(leaderboardStorageKey) ?? '[]')
+    expect(entries).toEqual([
+      expect.objectContaining({
+        outcome: 'victory',
+        difficulty: 'hard',
+        stageNumber: 3,
+        stageName: 'Abyssal Biomech Trench',
+        score: 97000,
+      }),
+    ])
+  })
+
+  it('records accumulated score when the player reaches game over', async () => {
+    await deployToBattle('normal')
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /confirm/i }))
+    await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 })
+
+    fireEvent.click(screen.getByRole('button', { name: /complete defeat/i }))
+
+    expect(
+      await screen.findByRole('heading', { name: /burning ruin corridor failed/i }),
+    ).toBeInTheDocument()
+
+    const entries = JSON.parse(window.localStorage.getItem(leaderboardStorageKey) ?? '[]')
+    expect(entries).toEqual([
+      expect.objectContaining({
+        outcome: 'defeat',
+        difficulty: 'normal',
+        stageNumber: 2,
+        stageName: 'Burning Ruin Corridor',
+        score: 44200,
+      }),
+    ])
   })
 
   it('retries the current failed stage', async () => {

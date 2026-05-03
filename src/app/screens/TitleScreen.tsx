@@ -24,6 +24,13 @@ export function TitleScreen({ sessionActorRef }: TitleScreenProps) {
         <button
           type="button"
           className={styles.secondaryButton}
+          onClick={() => sessionActorRef.send({ type: 'OPEN_LEADERBOARD' })}
+        >
+          Leaderboard
+        </button>
+        <button
+          type="button"
+          className={styles.secondaryButton}
           onClick={() => sessionActorRef.send({ type: 'OPEN_SETTINGS' })}
         >
           Settings

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMachine } from '@xstate/react'
 import { parseAsBoolean, useQueryStates } from 'nuqs'
 
@@ -8,11 +8,13 @@ import { readLastCharacterId } from './characterSelectionStorage'
 import { OrientationLock } from './OrientationLock'
 import { CharacterSelectScreen } from './screens/CharacterSelectScreen'
 import { DifficultySelectScreen } from './screens/DifficultySelectScreen'
+import { LeaderboardScreen } from './screens/LeaderboardScreen'
 import { ResultScreen } from './screens/ResultScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { StageIntroScreen } from './screens/StageIntroScreen'
 import { TitleScreen } from './screens/TitleScreen'
 import { cx } from './classNames'
+import { saveLeaderboardEntry } from './leaderboardStorage'
 import styles from './App.module.css'
 import { resolveCharacterId } from '../game/content/characters'
 
@@ -47,6 +49,7 @@ export function App({ initialViewport }: AppProps) {
       selectedCharacterId: initialSelectedCharacterId,
     },
   })
+  const lastRecordedLeaderboardKeyRef = useRef<string | null>(null)
   const [viewport, setViewport] = useState(() => readViewport(initialViewport))
   const [debugFlags] = useQueryStates({
     fastStage: parseAsBoolean.withDefault(false),
@@ -66,6 +69,41 @@ export function App({ initialViewport }: AppProps) {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [initialViewport])
+
+  useEffect(() => {
+    const { campaignScore, result, selectedCharacterId } = sessionSnapshot.context
+
+    if (!result) {
+      return
+    }
+
+    const shouldRecord = result.outcome === 'defeat' || result.stageNumber >= 3
+
+    if (!shouldRecord) {
+      return
+    }
+
+    const totalScore = campaignScore + result.score
+    const leaderboardKey = [
+      result.outcome,
+      result.stageId,
+      result.stageNumber,
+      result.score,
+      totalScore,
+      selectedCharacterId,
+    ].join(':')
+
+    if (lastRecordedLeaderboardKeyRef.current === leaderboardKey) {
+      return
+    }
+
+    saveLeaderboardEntry({
+      result,
+      selectedCharacterId,
+      score: totalScore,
+    })
+    lastRecordedLeaderboardKeyRef.current = leaderboardKey
+  }, [sessionSnapshot.context])
 
   if (sessionSnapshot.matches('battleLoading') || sessionSnapshot.matches('battle')) {
     return (
@@ -90,6 +128,10 @@ export function App({ initialViewport }: AppProps) {
 
           {sessionSnapshot.matches('settings') ? (
             <SettingsScreen sessionActorRef={sessionActorRef} />
+          ) : null}
+
+          {sessionSnapshot.matches('leaderboard') ? (
+            <LeaderboardScreen sessionActorRef={sessionActorRef} />
           ) : null}
 
           {sessionSnapshot.matches('difficultySelect') ? (

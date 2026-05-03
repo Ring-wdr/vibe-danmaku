@@ -47,6 +47,7 @@ describe('battleSessionMachine', () => {
       selectedCharacterId: 'fallback-pilot',
       currentStageNumber: 1,
       battleSeed: 0,
+      campaignScore: 0,
       result: null,
     })
   })
@@ -166,6 +167,7 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().matches('battleLoading')).toBe(true)
     expect(service.getSnapshot().context.currentStageNumber).toBe(2)
     expect(service.getSnapshot().context.battleSeed).toBe(1)
+    expect(service.getSnapshot().context.campaignScore).toBe(12400)
     expect(service.getSnapshot().context.result).toBeNull()
   })
 
@@ -193,7 +195,31 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().matches('battleLoading')).toBe(true)
     expect(service.getSnapshot().context.currentStageNumber).toBe(3)
     expect(service.getSnapshot().context.battleSeed).toBe(2)
+    expect(service.getSnapshot().context.campaignScore).toBe(24800)
     expect(service.getSnapshot().context.result).toBeNull()
+  })
+
+  it('resets accumulated campaign score when starting a new sortie from the title', () => {
+    const service = createService()
+    deployToBattle(service)
+
+    service.send({ type: 'BATTLE_COMPLETED', result: createResult() })
+    service.send({ type: 'CONTINUE_CAMPAIGN' })
+    service.send({ type: 'BATTLE_ASSETS_READY' })
+    service.send({
+      type: 'BATTLE_COMPLETED',
+      result: createResult({
+        outcome: 'defeat',
+        stageId: 'stage-2',
+        stageName: 'Burning Ruin Corridor',
+        stageNumber: 2,
+        score: 8000,
+      }),
+    })
+    service.send({ type: 'RETURN_TO_TITLE' })
+    service.send({ type: 'START_SORTIE' })
+
+    expect(service.getSnapshot().context.campaignScore).toBe(0)
   })
 
   it('stores stage 3 victory and does not continue past final result', () => {

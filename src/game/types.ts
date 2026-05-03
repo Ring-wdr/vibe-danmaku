@@ -5,6 +5,8 @@ export type StageBackgroundTheme = 'brass-cloud' | 'burning-ruins' | 'abyssal-bi
 
 export type AppScreen =
   | 'title'
+  | 'settings'
+  | 'leaderboard'
   | 'difficulty-select'
   | 'character-select'
   | 'stage-intro'
