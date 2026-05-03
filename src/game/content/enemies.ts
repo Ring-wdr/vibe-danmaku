@@ -3,6 +3,8 @@ import type {
   BulletPatternConfig,
   Difficulty,
   EnemyArchetypeId,
+  EnemyAtlasId,
+  EnemyThemeId,
   EnemyMovementConfig,
   EnemyVariantId,
   EnemyWave,
@@ -22,8 +24,8 @@ type EnemyArchetypeDefinition = {
 type EnemyThemeVariant = {
   id: EnemyVariantId
   archetype: EnemyArchetypeId
-  theme: 'brass-cloud'
-  atlasId: 'enemy-brass-cloud'
+  theme: EnemyThemeId
+  atlasId: EnemyAtlasId
   frameId: EnemyArchetypeId
   displayName: string
   patternOverride?: Partial<BulletPatternConfig>
@@ -186,7 +188,9 @@ export const enemyArchetypes: Record<EnemyArchetypeId, EnemyArchetypeDefinition>
   },
 }
 
-export const brassCloudEnemyVariants: Record<EnemyVariantId, EnemyThemeVariant> = {
+export const enemyArchetypeIds = Object.keys(enemyArchetypes) as EnemyArchetypeId[]
+
+export const brassCloudEnemyVariants = {
   'brass-cloud-scout': {
     id: 'brass-cloud-scout',
     archetype: 'scout',
@@ -235,6 +239,68 @@ export const brassCloudEnemyVariants: Record<EnemyVariantId, EnemyThemeVariant> 
     frameId: 'weaver',
     displayName: 'Brass Weaver',
   },
+} satisfies Record<`brass-cloud-${EnemyArchetypeId}`, EnemyThemeVariant>
+
+export const abyssalEnemyVariants = {
+  'abyssal-biomech-scout': {
+    id: 'abyssal-biomech-scout',
+    archetype: 'scout',
+    theme: 'abyssal-biomech',
+    atlasId: 'enemy-abyssal-biomech',
+    frameId: 'scout',
+    displayName: 'Abyssal Scout',
+    patternOverride: { interval: 1.08, speed: 1.22, spread: 1.32 },
+  },
+  'abyssal-biomech-sentinel': {
+    id: 'abyssal-biomech-sentinel',
+    archetype: 'sentinel',
+    theme: 'abyssal-biomech',
+    atlasId: 'enemy-abyssal-biomech',
+    frameId: 'sentinel',
+    displayName: 'Abyssal Sentinel',
+    patternOverride: { count: 8, speed: 0.9, life: 8.8 },
+  },
+  'abyssal-biomech-lancer': {
+    id: 'abyssal-biomech-lancer',
+    archetype: 'lancer',
+    theme: 'abyssal-biomech',
+    atlasId: 'enemy-abyssal-biomech',
+    frameId: 'lancer',
+    displayName: 'Abyssal Lancer',
+    patternOverride: { speed: 1.72, spread: 0.34 },
+  },
+  'abyssal-biomech-splitter': {
+    id: 'abyssal-biomech-splitter',
+    archetype: 'splitter',
+    theme: 'abyssal-biomech',
+    atlasId: 'enemy-abyssal-biomech',
+    frameId: 'splitter',
+    displayName: 'Abyssal Splitter',
+    patternOverride: { split: { delay: 0.68, count: 3, speedMultiplier: 0.72 } },
+  },
+  'abyssal-biomech-mine-layer': {
+    id: 'abyssal-biomech-mine-layer',
+    archetype: 'mine-layer',
+    theme: 'abyssal-biomech',
+    atlasId: 'enemy-abyssal-biomech',
+    frameId: 'mine-layer',
+    displayName: 'Abyssal Mine Layer',
+    patternOverride: { count: 4, interval: 1.65, life: 8.4 },
+  },
+  'abyssal-biomech-weaver': {
+    id: 'abyssal-biomech-weaver',
+    archetype: 'weaver',
+    theme: 'abyssal-biomech',
+    atlasId: 'enemy-abyssal-biomech',
+    frameId: 'weaver',
+    displayName: 'Abyssal Weaver',
+    patternOverride: { wave: { amplitude: 0.72, frequency: 2.8 } },
+  },
+} satisfies Record<`abyssal-biomech-${EnemyArchetypeId}`, EnemyThemeVariant>
+
+export const enemyVariants: Record<EnemyVariantId, EnemyThemeVariant> = {
+  ...brassCloudEnemyVariants,
+  ...abyssalEnemyVariants,
 }
 
 export { brassCloudEnemyFrames }
@@ -274,7 +340,7 @@ export function resolveEnemyWave(
   placement: StageEnemyPlacement,
 ): EnemyWave {
   const archetype = enemyArchetypes[placement.archetype]
-  const variant = brassCloudEnemyVariants[placement.variant]
+  const variant = enemyVariants[placement.variant]
 
   if (variant.archetype !== archetype.id) {
     throw new Error(
