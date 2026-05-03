@@ -127,7 +127,6 @@ const runtimeAssets = [
     width: 512,
     quality: 74,
     alphaQuality: 86,
-    removeDarkEdgeBackground: true,
   },
   {
     source: 'bosses/stage3-boss-core.png',
@@ -135,7 +134,6 @@ const runtimeAssets = [
     width: 768,
     quality: 74,
     alphaQuality: 86,
-    removeDarkEdgeBackground: true,
   },
   {
     source: 'ui/ui-player-portrait.png',

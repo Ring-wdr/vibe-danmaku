@@ -20,6 +20,12 @@ const astraVoltPortraitPaths = [
   path.join(process.cwd(), 'src/assets/generated/ui/ui-astra-volt-portrait.png'),
   path.join(process.cwd(), 'src/assets/generated/ui/ui-astra-volt-portrait.webp'),
 ]
+const stage3BossCutoutPaths = [
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-midboss-core.png'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-midboss-core.webp'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-core.png'),
+  path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-core.webp'),
+]
 
 async function getFrameAlphaBounds(filePath: string) {
   const image = sharp(filePath)
@@ -88,6 +94,50 @@ async function getBottomAlphaPadding(filePath: string) {
   return metadata.height - 1 - maxY
 }
 
+async function getCutoutStats(filePath: string) {
+  const image = sharp(filePath).ensureAlpha()
+  const metadata = await image.metadata()
+
+  if (!metadata.width || !metadata.height) {
+    throw new Error(`Missing cutout dimensions for ${filePath}`)
+  }
+
+  const raw = await image.raw().toBuffer()
+  let transparent = 0
+  let darkOpaque = 0
+  let greenOpaque = 0
+
+  for (let y = 0; y < metadata.height; y += 1) {
+    for (let x = 0; x < metadata.width; x += 1) {
+      const offset = (y * metadata.width + x) * 4
+      const r = raw[offset]
+      const g = raw[offset + 1]
+      const b = raw[offset + 2]
+      const alpha = raw[offset + 3]
+
+      if (alpha <= 8) {
+        transparent += 1
+      }
+
+      if (alpha > 220 && Math.max(r, g, b) < 70) {
+        darkOpaque += 1
+      }
+
+      if (alpha > 220 && g > 160 && r < 80 && b < 80) {
+        greenOpaque += 1
+      }
+    }
+  }
+
+  const area = metadata.width * metadata.height
+
+  return {
+    transparentRatio: transparent / area,
+    darkOpaqueRatio: darkOpaque / area,
+    greenOpaque,
+  }
+}
+
 describe('gameAssets', () => {
   it('serves runtime raster assets from web-optimized files', () => {
     expect(Object.values(gameAssets).every((assetUrl) => assetUrl.endsWith('.webp'))).toBe(
@@ -153,6 +203,16 @@ describe('gameAssets', () => {
   it('keeps Astra Volt portrait bottom alpha padding trimmed', async () => {
     for (const portraitPath of astraVoltPortraitPaths) {
       await expect(getBottomAlphaPadding(portraitPath)).resolves.toBeLessThanOrEqual(2)
+    }
+  })
+
+  it('keeps stage 3 boss cutouts transparent without deleting dark design details', async () => {
+    for (const cutoutPath of stage3BossCutoutPaths) {
+      const stats = await getCutoutStats(cutoutPath)
+
+      expect(stats.transparentRatio).toBeGreaterThan(0.25)
+      expect(stats.darkOpaqueRatio).toBeGreaterThan(0.08)
+      expect(stats.greenOpaque).toBe(0)
     }
   })
 })
