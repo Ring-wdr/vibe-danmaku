@@ -9,6 +9,7 @@ const characterStyles = readFileSync('src/app/screens/CharacterSelectScreen.modu
 const stageIntroStyles = readFileSync('src/app/screens/StageIntroScreen.module.css', 'utf8')
 const settingsFormStyles = readFileSync('src/game/ui/BattleView.module.css', 'utf8')
 const resultStyles = readFileSync('src/app/screens/ResultScreen.module.css', 'utf8')
+const leaderboardStyles = readFileSync('src/app/screens/LeaderboardScreen.module.css', 'utf8')
 
 function blockFor(styleSheet: string, selector: string) {
   const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -115,5 +116,12 @@ describe('menu layout CSS', () => {
     )
     expect(blockFor(resultStyles, '.actions')).toContain('position: sticky')
     expect(blockFor(resultStyles, '.actions')).toContain('bottom: 0')
+  })
+
+  it('keeps leaderboard chrome fixed while only the record list scrolls', () => {
+    expect(blockFor(leaderboardStyles, '.screen')).toContain('overflow: hidden')
+    expect(blockFor(leaderboardStyles, '.list')).toContain('min-height: 0')
+    expect(blockFor(leaderboardStyles, '.list')).toContain('overflow-y: auto')
+    expect(blockFor(leaderboardStyles, '.list')).toContain('align-content: start')
   })
 })
