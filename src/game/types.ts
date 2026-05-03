@@ -190,6 +190,7 @@ export type BossPhaseDefinition = {
 export type BossDefinition = {
   id: string
   hp: number
+  phaseBreakDuration?: number
   phases: BossPhaseDefinition[]
 }
 

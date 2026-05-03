@@ -36,17 +36,39 @@ vi.mock('../game/ui/BattleView', () => ({
       return <section aria-label="Mock battle missing stage" />
     }
 
+    const resultByStage = {
+      1: {
+        stageId: 'brass-cloud-gate',
+        stageName: 'Brass Cloud Gate',
+        score: 12400,
+        maxCombo: 8,
+      },
+      2: {
+        stageId: 'burning-ruin-corridor',
+        stageName: 'Burning Ruin Corridor',
+        score: 31800,
+        maxCombo: 14,
+      },
+      3: {
+        stageId: 'abyssal-biomech-trench',
+        stageName: 'Abyssal Biomech Trench',
+        score: 52800,
+        maxCombo: 21,
+      },
+    } as const
+    const stageResult = resultByStage[stageNumber as keyof typeof resultByStage]
+
     const createResult = (outcome: RunResult['outcome']): RunResult => ({
       outcome,
-      stageId: stageNumber === 1 ? 'brass-cloud-gate' : 'burning-ruin-corridor',
-      stageName: stageNumber === 1 ? 'Brass Cloud Gate' : 'Burning Ruin Corridor',
+      stageId: stageResult.stageId,
+      stageName: stageResult.stageName,
       stageNumber,
       difficulty,
       duration: 12.5,
       remainingHp: outcome === 'victory' ? 2 : 0,
       hitsTaken: outcome === 'victory' ? 1 : 3,
-      score: stageNumber === 1 ? 12400 : 31800,
-      maxCombo: stageNumber === 1 ? 8 : 14,
+      score: stageResult.score,
+      maxCombo: stageResult.maxCombo,
     })
 
     return (
@@ -346,7 +368,7 @@ describe('App', () => {
     expect(performance.now() - preloadResolvedAt).toBeGreaterThanOrEqual(1700)
   })
 
-  it('shows the final stage result after stage 2 victory', async () => {
+  it('continues from stage 2 victory into stage 3 and shows the final stage result after stage 3 victory', async () => {
     await deployToBattle('hard')
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
@@ -360,9 +382,36 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(/stage 2/i)).toBeInTheDocument()
     expect(screen.getAllByText(/burning ruin corridor/i)).toHaveLength(2)
-    expect(screen.getByText('HARD')).toBeInTheDocument()
     expect(screen.getByText('31,800')).toBeInTheDocument()
     expect(screen.getByText('14')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/mock stage 3 battle/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+
+    await screen.findByLabelText(/mock stage 3 battle/i, undefined, { timeout: 2500 })
+    expect(mockGetBattleAssetPreloadItems).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stage: expect.objectContaining({ stageNumber: 3 }),
+      }),
+    )
+    expect(mockBattleView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        difficulty: 'hard',
+        stage: expect.objectContaining({ stageNumber: 3 }),
+      }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+
+    expect(
+      await screen.findByRole('heading', { name: /abyssal biomech trench cleared/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/stage 3/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/abyssal biomech trench/i)).toHaveLength(2)
+    expect(screen.getByText('HARD')).toBeInTheDocument()
+    expect(screen.getByText('52,800')).toBeInTheDocument()
+    expect(screen.getByText('21')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /confirm/i })).not.toBeInTheDocument()
   })
 
   it('retries the current failed stage', async () => {
@@ -372,10 +421,14 @@ describe('App', () => {
     fireEvent.click(await screen.findByRole('button', { name: /confirm/i }))
     await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 })
 
+    fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /confirm/i }))
+    await screen.findByLabelText(/mock stage 3 battle/i, undefined, { timeout: 2500 })
+
     fireEvent.click(screen.getByRole('button', { name: /complete defeat/i }))
 
     expect(
-      await screen.findByRole('heading', { name: /burning ruin corridor failed/i }),
+      await screen.findByRole('heading', { name: /abyssal biomech trench failed/i }),
     ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /retry stage/i }))
@@ -384,12 +437,12 @@ describe('App', () => {
       expect(mockBattleView).toHaveBeenLastCalledWith(
         expect.objectContaining({
           difficulty: 'normal',
-          stage: expect.objectContaining({ stageNumber: 2 }),
+          stage: expect.objectContaining({ stageNumber: 3 }),
         }),
       )
     })
     expect(
-      await screen.findByLabelText(/mock stage 2 battle/i, undefined, { timeout: 2500 }),
+      await screen.findByLabelText(/mock stage 3 battle/i, undefined, { timeout: 2500 }),
     ).toBeInTheDocument()
-  })
+  }, 10000)
 })
