@@ -24,6 +24,14 @@ type BattleAssetLoader = (
   onProgress: (progress: AssetByteProgress) => void,
 ) => Promise<void>
 
+export async function preloadBattleTextures(items: readonly BattleAssetPreloadItem[]) {
+  const { preloadBattleTextures: preloadTextures } = await import(
+    '../game/ui/battleTextureCache'
+  )
+
+  await preloadTextures(items)
+}
+
 function uniqueItems(items: BattleAssetPreloadItem[]) {
   const seen = new Set<string>()
 

@@ -143,8 +143,6 @@ function PlayerSprite({
       <planeGeometry args={[1.1, 1.78]} />
       <RestoredTextureMaterial
         texture={texture}
-        exposure={1.95}
-        saturation={1.48}
         frameColumns={frameCount}
         frameIndex={pose.frameIndex}
         flipX={pose.flipX}
@@ -250,9 +248,6 @@ function ItemDropSprite({ drop }: { drop: RenderItemDrop }) {
           texture={texture}
           frameColumns={2}
           frameIndex={0}
-          exposure={1.72}
-          saturation={1.32}
-          contrast={1.08}
         />
       </mesh>
       <mesh position={[0, -0.03, -0.02]}>
@@ -303,12 +298,7 @@ function PlayerSidePanel({
     <group position={position} rotation={[0, 0, tilt]}>
       <mesh>
         <planeGeometry args={[scale * 0.38, scale]} />
-        <RestoredTextureMaterial
-          texture={texture}
-          exposure={1.6}
-          saturation={1.34}
-          contrast={1.06}
-        />
+        <RestoredTextureMaterial texture={texture} />
       </mesh>
     </group>
   )
@@ -443,7 +433,7 @@ function BossSprite({
     <group position={position}>
       <mesh>
         <planeGeometry args={[bossSpriteSize, bossSpriteSize]} />
-        <RestoredTextureMaterial texture={bossTexture} exposure={1.72} saturation={1.32} />
+        <RestoredTextureMaterial texture={bossTexture} />
       </mesh>
       {phaseBreakEffect}
     </group>

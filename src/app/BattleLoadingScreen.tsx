@@ -4,6 +4,7 @@ import type { BattleSessionActorRef } from './battleSessionMachine'
 import {
   getBattleAssetPreloadItems,
   preloadBattleAssets,
+  preloadBattleTextures,
   type BattleAssetProgress,
 } from './battleAssetPreload'
 import styles from './BattleLoadingScreen.module.css'
@@ -73,6 +74,7 @@ export function BattleLoadingScreen({
         })
 
         await battleModule
+        await preloadBattleTextures(items)
 
         const minimumDuration = stage.stageNumber > 1 ? nextStageTitleMinimumDurationMs : 0
         const remainingDuration = minimumDuration - (performance.now() - startedAt)

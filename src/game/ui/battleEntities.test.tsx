@@ -30,14 +30,23 @@ vi.mock('./battleTexture', () => ({
     'enemy-abyssal-biomech': new THREE.Texture(),
   })),
   RestoredTextureMaterial: ({
+    exposure,
+    saturation,
+    contrast,
     tintColor,
     tintStrength,
   }: {
+    exposure?: number
+    saturation?: number
+    contrast?: number
     tintColor?: string
     tintStrength?: number
   }) =>
     createElement('div', {
       'data-testid': 'restored-texture-material',
+      'data-exposure': exposure ?? 1,
+      'data-saturation': saturation ?? 1,
+      'data-contrast': contrast ?? 1,
       'data-tint-color': tintColor ?? '',
       'data-tint-strength': tintStrength ?? 0,
     }),
@@ -189,6 +198,45 @@ describe('RuntimeEntityLayer', () => {
           Number(material.dataset.tintStrength) > 0,
       ),
     ).toBe(true)
+  })
+
+  it('renders battle asset textures without boosting source brightness or saturation', () => {
+    render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={{
+          ...snapshot,
+          bosses: [
+            {
+              id: 'test-boss',
+              position: { x: 0, z: 1.9 },
+              hpRatio: 1,
+              phaseLabel: 'Boss',
+              supportLaser: false,
+              fsm: defaultBossFsm,
+            },
+          ],
+          itemDrops: [
+            {
+              id: 'item-drop-1',
+              itemId: 'powerup',
+              position: { x: 0, z: 2.2 },
+              collected: false,
+            },
+          ],
+        }}
+        isPaused={false}
+      />,
+    )
+
+    const materials = screen
+      .getAllByTestId('restored-texture-material')
+      .filter((material) => material.dataset.tintStrength === '0')
+
+    expect(materials.every((material) => material.dataset.exposure === '1')).toBe(true)
+    expect(materials.every((material) => material.dataset.saturation === '1')).toBe(true)
+    expect(materials.every((material) => material.dataset.contrast === '1')).toBe(true)
   })
 
   it('renders falling item boxes with the shared item atlas texture', () => {

@@ -8,10 +8,16 @@ import { lastCharacterStorageKey } from './characterSelectionStorage'
 import { battleSettingsStorageKey } from '../game/ui/battleSettingsStorage'
 import type { Difficulty, RunResult, StageDefinition } from '../game/types'
 
-const { mockBattleView, mockGetBattleAssetPreloadItems, mockPreloadBattleAssets } = vi.hoisted(() => ({
+const {
+  mockBattleView,
+  mockGetBattleAssetPreloadItems,
+  mockPreloadBattleAssets,
+  mockPreloadBattleTextures,
+} = vi.hoisted(() => ({
   mockBattleView: vi.fn(),
   mockGetBattleAssetPreloadItems: vi.fn(),
   mockPreloadBattleAssets: vi.fn(),
+  mockPreloadBattleTextures: vi.fn(),
 }))
 
 vi.mock('../game/ui/BattleView', () => ({
@@ -103,6 +109,7 @@ vi.mock('../game/ui/BattleView', () => ({
 vi.mock('./battleAssetPreload', () => ({
   getBattleAssetPreloadItems: mockGetBattleAssetPreloadItems,
   preloadBattleAssets: mockPreloadBattleAssets,
+  preloadBattleTextures: mockPreloadBattleTextures,
 }))
 
 function renderApp(ui: ReactElement) {
@@ -117,6 +124,7 @@ describe('App', () => {
     mockBattleView.mockClear()
     mockGetBattleAssetPreloadItems.mockReset()
     mockPreloadBattleAssets.mockReset()
+    mockPreloadBattleTextures.mockReset()
     mockGetBattleAssetPreloadItems.mockImplementation(
       ({ stage }: { stage: StageDefinition }) => [
         {
@@ -144,6 +152,7 @@ describe('App', () => {
         })
       },
     )
+    mockPreloadBattleTextures.mockResolvedValue(undefined)
   })
 
   it('moves from title to difficulty select to character select before stage intro', () => {
@@ -324,6 +333,35 @@ describe('App', () => {
     expect(screen.queryByLabelText(/mock stage 1 battle/i)).not.toBeInTheDocument()
 
     resolvePreload()
+
+    expect(await screen.findByLabelText(/mock stage 1 battle/i)).toBeInTheDocument()
+  })
+
+  it('waits for canvas texture readiness before rendering the battle screen', async () => {
+    let resolveTextures!: () => void
+    const texturesReady = new Promise<void>((resolve) => {
+      resolveTextures = resolve
+    })
+    mockPreloadBattleTextures.mockImplementationOnce(async () => {
+      await texturesReady
+    })
+
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    fireEvent.click(screen.getByRole('button', { name: /normal/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }))
+
+    await waitFor(() => {
+      expect(mockPreloadBattleTextures).toHaveBeenCalledWith([
+        expect.objectContaining({ label: 'Stage 1 assets', url: '/stage-1.webp' }),
+      ])
+    })
+    expect(screen.getByText(/battle renderer/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/mock stage 1 battle/i)).not.toBeInTheDocument()
+
+    resolveTextures()
 
     expect(await screen.findByLabelText(/mock stage 1 battle/i)).toBeInTheDocument()
   })
