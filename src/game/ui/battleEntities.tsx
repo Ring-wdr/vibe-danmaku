@@ -54,6 +54,10 @@ export function getEnemyAtlasTextureUrl(atlasId: EnemyAtlasId) {
     : gameAssets.enemyBrassCloudAtlasUrl
 }
 
+function getActiveEnemyAtlasKey(enemies: readonly Pick<RenderEnemy, 'atlasId'>[]) {
+  return Array.from(new Set(enemies.map((enemy) => enemy.atlasId))).sort().join('|')
+}
+
 export function getPlayerBattleSpritePose({
   currentX,
   previousX,
@@ -379,19 +383,22 @@ export function RuntimeEntityLayer({
   snapshot: BattleSnapshot
   isPaused: boolean
 }) {
-  const activeEnemyAtlasIds = useMemo(
-    () => Array.from(new Set(snapshot.enemies.map((enemy) => enemy.atlasId))).sort(),
-    [snapshot.enemies],
+  const activeEnemyAtlasKey = getActiveEnemyAtlasKey(snapshot.enemies)
+  const enemyAtlasTextureUrls = useMemo(
+    () =>
+      activeEnemyAtlasKey.split('|').reduce<Partial<Record<EnemyAtlasId, string>>>(
+        (textureUrls, atlasId) => {
+          if (atlasId) {
+            const enemyAtlasId = atlasId as EnemyAtlasId
+            textureUrls[enemyAtlasId] = getEnemyAtlasTextureUrl(enemyAtlasId)
+          }
+
+          return textureUrls
+        },
+        {},
+      ),
+    [activeEnemyAtlasKey],
   )
-  const enemyAtlasTextureUrls = useMemo(() => {
-    const textureUrls: Partial<Record<EnemyAtlasId, string>> = {}
-
-    activeEnemyAtlasIds.forEach((atlasId) => {
-      textureUrls[atlasId] = getEnemyAtlasTextureUrl(atlasId)
-    })
-
-    return textureUrls
-  }, [activeEnemyAtlasIds])
   const enemyTexturesByAtlasId = useLoadedTextureMap(enemyAtlasTextureUrls)
 
   return (
