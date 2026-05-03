@@ -238,6 +238,7 @@ describe('App', () => {
 
     expect(screen.getByRole('heading', { name: /vesper noire/i })).toBeInTheDocument()
     expect(screen.getByText(/arcane phantom/i)).toBeInTheDocument()
+    expect(screen.queryByText(/masked phantom thief/i)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /selected vesper noire/i })).toHaveAttribute(
       'aria-pressed',
       'true',

@@ -16,6 +16,10 @@ const astraVoltSpriteSheetPath = path.join(
   process.cwd(),
   'src/assets/generated/players/astra-volt-sprite-sheet.png',
 )
+const astraVoltPortraitPaths = [
+  path.join(process.cwd(), 'src/assets/generated/ui/ui-astra-volt-portrait.png'),
+  path.join(process.cwd(), 'src/assets/generated/ui/ui-astra-volt-portrait.webp'),
+]
 
 async function getFrameAlphaBounds(filePath: string) {
   const image = sharp(filePath)
@@ -58,6 +62,30 @@ async function getFrameAlphaBounds(filePath: string) {
       height: maxY - minY + 1,
     }
   })
+}
+
+async function getBottomAlphaPadding(filePath: string) {
+  const image = sharp(filePath).ensureAlpha()
+  const metadata = await image.metadata()
+
+  if (!metadata.width || !metadata.height) {
+    throw new Error(`Missing portrait dimensions for ${filePath}`)
+  }
+
+  const raw = await image.raw().toBuffer()
+  let maxY = -1
+
+  for (let y = 0; y < metadata.height; y += 1) {
+    for (let x = 0; x < metadata.width; x += 1) {
+      const alpha = raw[(y * metadata.width + x) * 4 + 3]
+
+      if (alpha > 8) {
+        maxY = Math.max(maxY, y)
+      }
+    }
+  }
+
+  return metadata.height - 1 - maxY
 }
 
 describe('gameAssets', () => {
@@ -120,5 +148,11 @@ describe('gameAssets', () => {
     )
 
     expect(verticalSignatures.size).toBeGreaterThanOrEqual(3)
+  })
+
+  it('keeps Astra Volt portrait bottom alpha padding trimmed', async () => {
+    for (const portraitPath of astraVoltPortraitPaths) {
+      await expect(getBottomAlphaPadding(portraitPath)).resolves.toBeLessThanOrEqual(2)
+    }
   })
 })

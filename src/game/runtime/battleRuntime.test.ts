@@ -781,6 +781,75 @@ describe('createBattleRuntime', () => {
     expect(enemy?.hitRadius).toBe(getFirstWave(stage).hitRadius)
   })
 
+  it('moves fly-through enemies at twice their authored movement speed', () => {
+    const stage = createStageDefinition('normal')
+    const wave = {
+      ...getFirstWave(stage),
+      id: 'double-speed-fly-through',
+      count: 1,
+      hp: 999,
+      movement: { type: 'flyThrough', path: 'helix', speed: 1 },
+      pattern: {
+        shape: 'fan',
+        count: 0,
+        interval: 999,
+        speed: 0,
+        spread: 0,
+        life: 0,
+      },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: createEventStage(stage, [
+        createWaveEvent('double-speed-fly-through-event', { type: 'time', at: 0 }, wave),
+      ]),
+    })
+
+    runtime.update(0.01)
+    const initialZ = runtime.getSnapshot().enemies[0]?.position.z
+    runtime.update(0.5)
+    const nextZ = runtime.getSnapshot().enemies[0]?.position.z
+
+    expect(initialZ).toBeDefined()
+    expect(nextZ).toBeDefined()
+    expect(initialZ! - nextZ!).toBeCloseTo(1, 5)
+  })
+
+  it('moves enter-and-strafe enemies at twice their authored movement speed', () => {
+    const stage = createStageDefinition('normal')
+    const wave = {
+      ...getFirstWave(stage),
+      id: 'double-speed-strafe',
+      count: 1,
+      hp: 999,
+      movement: {
+        type: 'enterAndStrafe',
+        entrySpeed: 999,
+        holdZ: 1,
+        strafeSpeed: 1,
+        strafeRange: 1,
+      },
+      pattern: {
+        shape: 'fan',
+        count: 0,
+        interval: 999,
+        speed: 0,
+        spread: 0,
+        life: 0,
+      },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: createEventStage(stage, [
+        createWaveEvent('double-speed-strafe-event', { type: 'time', at: 0 }, wave),
+      ]),
+    })
+
+    runtime.update(0.25)
+    const enemy = runtime.getSnapshot().enemies[0]
+
+    expect(enemy?.position.z).toBeCloseTo(1, 5)
+    expect(enemy?.position.x).toBeCloseTo(Math.sin(0.5), 5)
+  })
+
   it('keeps wave enemies from firing immediately while they are far offscreen', () => {
     const runtime = createRuntime({ stage: createImmediateWaveStage() })
 
@@ -909,7 +978,7 @@ describe('createBattleRuntime', () => {
   it('starts wave enemy fire while enemies are entering from the upper edge', () => {
     const runtime = createRuntime({ stage: createImmediateWaveStage() })
 
-    runtime.update(2)
+    runtime.update(1)
 
     const snapshot = runtime.getSnapshot()
     expect(snapshot.enemies[0]?.position.z).toBeGreaterThan(3.2)
@@ -1013,7 +1082,7 @@ describe('createBattleRuntime', () => {
     const runtime = createRuntime({ stage: createEnemyBulletCleanupStage() })
 
     runtime.update(0.5)
-    runtime.update(0.7)
+    runtime.update(0.3)
 
     expect(
       runtime.getSnapshot().bullets.some(
@@ -1963,7 +2032,7 @@ describe('regular enemy bullet patterns', () => {
     })
 
     runtime.beginDrag({ x: 2.5, z: -1.85 })
-    runtime.update(2)
+    runtime.update(1)
 
     const enemyBullets = runtime
       .getSnapshot()
@@ -1986,7 +2055,7 @@ describe('regular enemy bullet patterns', () => {
       }),
     })
 
-    for (let index = 0; index < 15; index += 1) {
+    for (let index = 0; index < 8; index += 1) {
       runtime.update(0.1)
     }
     const beforeSplit = runtime
@@ -2048,6 +2117,35 @@ describe('regular enemy bullet patterns', () => {
     expect(firstX).toBeDefined()
     expect(secondX).toBeDefined()
     expect(Math.abs(secondX! - firstX!)).toBeGreaterThan(0.02)
+  })
+
+  it('moves enemy bullets at twice their authored pattern speed', () => {
+    const runtime = createRuntime({
+      stage: createPatternStage({
+        shape: 'fan',
+        count: 1,
+        interval: 999,
+        speed: 1,
+        spread: 0,
+        life: 6,
+      }),
+      invincible: true,
+    })
+
+    runtime.update(1)
+    const bulletId = runtime.getSnapshot().bullets.find((bullet) => bullet.source === 'enemy')?.id
+    const initialZ = runtime
+      .getSnapshot()
+      .bullets.find((bullet) => bullet.id === bulletId)?.position.z
+    runtime.update(0.25)
+    const nextZ = runtime
+      .getSnapshot()
+      .bullets.find((bullet) => bullet.id === bulletId)?.position.z
+
+    expect(bulletId).toBeDefined()
+    expect(initialZ).toBeDefined()
+    expect(nextZ).toBeDefined()
+    expect(initialZ! - nextZ!).toBeCloseTo(0.5, 5)
   })
 })
 

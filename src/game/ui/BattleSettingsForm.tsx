@@ -6,9 +6,10 @@ import type { BattleSettings, DragSensitivity } from './battleSettingsStorage'
 type BattleSettingsFormProps = {
   initialSettings: BattleSettings
   onApply: (settings: BattleSettings) => void
+  onCancel?: () => void
 }
 
-export function BattleSettingsForm({ initialSettings, onApply }: BattleSettingsFormProps) {
+export function BattleSettingsForm({ initialSettings, onApply, onCancel }: BattleSettingsFormProps) {
   const [draftSettings, setDraftSettings] = useState<BattleSettings>(initialSettings)
 
   return (
@@ -90,9 +91,16 @@ export function BattleSettingsForm({ initialSettings, onApply }: BattleSettingsF
           ))}
         </div>
       </fieldset>
-      <button type="submit" className={styles.applyButton} aria-label="Apply settings">
-        Apply
-      </button>
+      <div className={styles.settingsActions}>
+        {onCancel ? (
+          <button type="button" className={styles.backButton} onClick={onCancel}>
+            Back
+          </button>
+        ) : null}
+        <button type="submit" className={styles.applyButton} aria-label="Apply settings">
+          Apply
+        </button>
+      </div>
     </form>
   )
 }

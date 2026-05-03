@@ -243,4 +243,56 @@ describe('RuntimeEntityLayer', () => {
 
     expect(bossPlane).toBeInTheDocument()
   })
+
+  it('renders a phase-break shield effect while a boss is invulnerable during phase changes', () => {
+    const { rerender } = render(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={{
+          ...snapshot,
+          bosses: [
+            {
+              id: 'phase-break-boss',
+              position: { x: 0, z: 1.9 },
+              hpRatio: 0.64,
+              phaseLabel: 'Phase Break',
+              supportLaser: false,
+              fsm: {
+                ...defaultBossFsm,
+                phase: 'Break',
+                vulnerability: 'Invulnerable',
+              },
+            },
+          ],
+        }}
+        isPaused={false}
+      />,
+    )
+
+    expect(screen.getByTestId('boss-phase-break-effect-phase-break-boss')).toBeInTheDocument()
+
+    rerender(
+      <RuntimeEntityLayer
+        character={lyraAerCharacter}
+        stage={createStageDefinition('normal')}
+        snapshot={{
+          ...snapshot,
+          bosses: [
+            {
+              id: 'phase-break-boss',
+              position: { x: 0, z: 1.9 },
+              hpRatio: 0.64,
+              phaseLabel: 'Phase Break',
+              supportLaser: false,
+              fsm: defaultBossFsm,
+            },
+          ],
+        }}
+        isPaused={false}
+      />,
+    )
+
+    expect(screen.queryByTestId('boss-phase-break-effect-phase-break-boss')).not.toBeInTheDocument()
+  })
 })

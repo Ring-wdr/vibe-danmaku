@@ -23,14 +23,14 @@ export function CharacterSelectScreen({ sessionActorRef }: CharacterSelectScreen
 
   return (
     <section className={styles.screen}>
-      <button
-        type="button"
-        className={styles.backButton}
-        onClick={() => sessionActorRef.send({ type: 'BACK' })}
-      >
-        Back
-      </button>
-      <div className={styles.heading}>
+      <div className={styles.topBar}>
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={() => sessionActorRef.send({ type: 'BACK' })}
+        >
+          Back
+        </button>
         <h2 className={styles.title}>Select Pilot</h2>
       </div>
 
@@ -39,29 +39,26 @@ export function CharacterSelectScreen({ sessionActorRef }: CharacterSelectScreen
         role="group"
         aria-label={`${selectedCharacter.name} pilot summary`}
       >
+        <img
+          className={styles.heroPortrait}
+          src={selectedCharacter.portraitUrl}
+          alt=""
+          aria-hidden="true"
+        />
         <div className={styles.summary}>
-          <div>
-            <p className={styles.eyebrow}>
-              {selectedCharacter.isFallback ? 'Reserve' : 'Playable'}
-            </p>
-            <h3 className={styles.name}>{selectedCharacter.name}</h3>
-            <strong className={styles.pilotTitle}>{selectedCharacter.title}</strong>
-          </div>
-          <img
-            className={styles.portrait}
-            src={selectedCharacter.portraitUrl}
-            alt={`${selectedCharacter.name} portrait`}
-          />
+          <h3 className={styles.name}>{selectedCharacter.name}</h3>
+          <strong className={styles.pilotTitle}>{selectedCharacter.title}</strong>
         </div>
 
-        <p className={styles.description}>{selectedCharacter.description}</p>
+        {selectedCharacter.isFallback ? (
+          <p className={styles.statusNote}>{selectedCharacter.description}</p>
+        ) : null}
 
         <div className={styles.statList} aria-label={`${selectedCharacter.name} stats`}>
           {selectedCharacter.stats.map((stat) => (
-            <div key={stat.label} className={styles.stat}>
+            <div key={stat.label} className={styles.stat} aria-label={`${stat.label}: ${stat.value}`}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>{stat.label}</span>
-                <strong className={styles.statValue}>{stat.value}</strong>
               </div>
               <i className={styles.statBar} style={{ width: `${Math.round(stat.ratio * 100)}%` }} />
             </div>
@@ -69,26 +66,28 @@ export function CharacterSelectScreen({ sessionActorRef }: CharacterSelectScreen
         </div>
       </div>
 
-      <div className={styles.roster} role="group" aria-label="Playable characters">
-        {characterRoster.map((character) => {
-          const selected = character.id === selectedCharacter.id
+      <div className={styles.rosterPane}>
+        <div className={styles.roster} role="group" aria-label="Playable characters">
+          {characterRoster.map((character) => {
+            const selected = character.id === selectedCharacter.id
 
-          return (
-            <button
-              key={character.id}
-              type="button"
-              className={cx(styles.slot, selected && styles.slotSelected)}
-              aria-label={`${selected ? 'Selected' : 'Select'} ${character.name}`}
-              aria-pressed={selected}
-              onClick={() =>
-                sessionActorRef.send({ type: 'SELECT_CHARACTER', characterId: character.id })
-              }
-            >
-              <img className={styles.slotPortrait} src={character.portraitUrl} alt="" />
-              <span className={styles.slotName}>{character.name}</span>
-            </button>
-          )
-        })}
+            return (
+              <button
+                key={character.id}
+                type="button"
+                className={cx(styles.slot, selected && styles.slotSelected)}
+                aria-label={`${selected ? 'Selected' : 'Select'} ${character.name}`}
+                aria-pressed={selected}
+                onClick={() =>
+                  sessionActorRef.send({ type: 'SELECT_CHARACTER', characterId: character.id })
+                }
+              >
+                <img className={styles.slotPortrait} src={character.portraitUrl} alt="" />
+                <span className={styles.slotName}>{character.name}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <button

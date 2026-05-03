@@ -7,28 +7,16 @@
   flex-direction: column;
   justify-content: flex-start;
   gap: 22px;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-}
-
-.backButton {
-  align-self: flex-start;
-  border: 1px solid rgba(213, 168, 105, 0.28);
-  cursor: pointer;
-  font: inherit;
-  border-radius: 8px;
-  min-height: 40px;
-  padding: 9px 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--ink);
-  font-weight: 800;
 }
 
 .heading {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 0 0 auto;
 }
 
 .eyebrow {
@@ -49,12 +37,17 @@
 }
 
 .panel {
-  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
   gap: 16px;
   padding: 18px;
   border-radius: 16px;
   background: rgba(8, 14, 24, 0.68);
   border: 1px solid rgba(213, 168, 105, 0.24);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 @media (max-height: 620px) {

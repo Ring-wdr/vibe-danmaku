@@ -29,6 +29,8 @@ import type {
 
 const bossSpriteSize = 2.05
 const bossFallbackRadius = 0.9
+const bossPhaseBreakInnerRadius = bossSpriteSize * 0.55
+const bossPhaseBreakOuterRadius = bossSpriteSize * 0.73
 
 export function getAtlasFrameUv(frame: AtlasFrame) {
   return getAtlasFrameUvForAtlas(frame, 'enemy-brass-cloud')
@@ -350,25 +352,101 @@ export function getRenderableBosses(snapshot: BattleSnapshot) {
   return snapshot.bosses
 }
 
-function BossSprite({ boss, stage }: { boss: RenderBoss; stage: StageDefinition }) {
+function BossPhaseBreakEffect({
+  battleElapsed,
+  bossId,
+}: {
+  battleElapsed: number
+  bossId: string
+}) {
+  const pulse = (Math.sin(battleElapsed * 18) + 1) / 2
+  const ringOpacity = 0.32 + pulse * 0.18
+  const glowOpacity = 0.1 + pulse * 0.08
+  const rotation = battleElapsed * 2.2
+
+  return (
+    <group
+      data-testid={`boss-phase-break-effect-${bossId}`}
+      position={[0, 0, 0.045]}
+      rotation={[0, 0, rotation]}
+    >
+      <mesh>
+        <circleGeometry args={[bossPhaseBreakOuterRadius, 64]} />
+        <meshBasicMaterial
+          color="#69f0e3"
+          transparent
+          opacity={glowOpacity}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <mesh>
+        <ringGeometry args={[bossPhaseBreakInnerRadius, bossPhaseBreakInnerRadius + 0.055, 72]} />
+        <meshBasicMaterial
+          color="#fff2b8"
+          transparent
+          opacity={ringOpacity}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+      <mesh rotation={[0, 0, -rotation * 1.7]}>
+        <ringGeometry args={[bossPhaseBreakOuterRadius - 0.06, bossPhaseBreakOuterRadius, 72]} />
+        <meshBasicMaterial
+          color="#69f0e3"
+          transparent
+          opacity={ringOpacity * 0.82}
+          depthWrite={false}
+          toneMapped={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+function shouldShowBossPhaseBreakEffect(boss: RenderBoss) {
+  return boss.fsm.phase === 'Break' && boss.fsm.vulnerability === 'Invulnerable'
+}
+
+function BossSprite({
+  battleElapsed,
+  boss,
+  stage,
+}: {
+  battleElapsed: number
+  boss: RenderBoss
+  stage: StageDefinition
+}) {
   const bossTexture = useLoadedTexture(getBossCoreTextureUrl(stage, boss))
 
   const position = arenaPointToView(boss.position, 0.78)
+  const phaseBreakEffect = shouldShowBossPhaseBreakEffect(boss) ? (
+    <BossPhaseBreakEffect battleElapsed={battleElapsed} bossId={boss.id} />
+  ) : null
 
   if (!bossTexture) {
     return (
-      <mesh position={position}>
-        <circleGeometry args={[bossFallbackRadius, 48]} />
-        <meshBasicMaterial color="#7af0ff" toneMapped={false} />
-      </mesh>
+      <group position={position}>
+        <mesh>
+          <circleGeometry args={[bossFallbackRadius, 48]} />
+          <meshBasicMaterial color="#7af0ff" toneMapped={false} />
+        </mesh>
+        {phaseBreakEffect}
+      </group>
     )
   }
 
   return (
-    <mesh position={position}>
-      <planeGeometry args={[bossSpriteSize, bossSpriteSize]} />
-      <RestoredTextureMaterial texture={bossTexture} exposure={1.72} saturation={1.32} />
-    </mesh>
+    <group position={position}>
+      <mesh>
+        <planeGeometry args={[bossSpriteSize, bossSpriteSize]} />
+        <RestoredTextureMaterial texture={bossTexture} exposure={1.72} saturation={1.32} />
+      </mesh>
+      {phaseBreakEffect}
+    </group>
   )
 }
 
@@ -446,7 +524,7 @@ export function RuntimeEntityLayer({
         <ItemDropSprite key={drop.id} drop={drop} />
       ))}
       {getRenderableBosses(snapshot).map((boss) => (
-        <BossSprite key={boss.id} boss={boss} stage={stage} />
+        <BossSprite key={boss.id} battleElapsed={snapshot.elapsed} boss={boss} stage={stage} />
       ))}
       {snapshot.bullets.map((bullet) => (
         <BulletMesh key={bullet.id} bullet={bullet} isPaused={isPaused} />

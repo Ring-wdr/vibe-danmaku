@@ -64,6 +64,8 @@
   display: grid;
   gap: 12px;
   text-align: left;
+  width: 100%;
+  min-height: 100%;
 }
 
 .settingGroup {
@@ -116,6 +118,18 @@
 
 .option span {
   overflow-wrap: anywhere;
+}
+
+.settingsActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 10px;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(8, 14, 24, 0), rgba(8, 14, 24, 0.96) 26%);
 }
 
 .applyButton,

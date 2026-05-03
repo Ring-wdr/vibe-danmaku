@@ -18,13 +18,6 @@ export function SettingsScreen({ sessionActorRef }: SettingsScreenProps) {
 
   return (
     <section className={styles.screen}>
-      <button
-        type="button"
-        className={styles.backButton}
-        onClick={() => sessionActorRef.send({ type: 'BACK' })}
-      >
-        Back
-      </button>
       <div className={styles.heading}>
         <p className={styles.eyebrow}>Hangar</p>
         <h2 className={styles.title}>Settings</h2>
@@ -36,6 +29,7 @@ export function SettingsScreen({ sessionActorRef }: SettingsScreenProps) {
             setSettings(nextSettings)
             writeBattleSettings(nextSettings)
           }}
+          onCancel={() => sessionActorRef.send({ type: 'BACK' })}
         />
       </div>
     </section>

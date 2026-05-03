@@ -215,6 +215,8 @@ const itemDropConfig = {
 } as const
 
 const defaultPlayerMaxHp = 3
+const enemyMovementSpeedMultiplier = 2
+const enemyBulletSpeedMultiplier = 2
 
 const bulletmlRankByDifficulty: Record<Difficulty, number> = {
   easy: 0.28,
@@ -257,6 +259,14 @@ function normalizeVelocity(dx: number, dz: number, speed: number) {
     vx: (dx / length) * speed,
     vz: (dz / length) * speed,
   }
+}
+
+function getEffectiveEnemyMovementSpeed(speed: number) {
+  return speed * enemyMovementSpeedMultiplier
+}
+
+function getEffectiveEnemyBulletSpeed(speed: number) {
+  return speed * enemyBulletSpeedMultiplier
 }
 
 function getEnemyEntryShootDelay(spawnZ: number, speed: number) {
@@ -513,7 +523,18 @@ export function createBattleRuntime({
   }
 
   const addBullet = (bullet: Omit<RuntimeBullet, 'id' | 'offViewportFor' | 'age'>) => {
-    bullets.push({ id: `bullet-${lastBulletId++}`, offViewportFor: 0, age: 0, ...bullet })
+    bullets.push({
+      id: `bullet-${lastBulletId++}`,
+      offViewportFor: 0,
+      age: 0,
+      ...bullet,
+      vx: bullet.source === 'enemy' ? getEffectiveEnemyBulletSpeed(bullet.vx) : bullet.vx,
+      vz: bullet.source === 'enemy' ? getEffectiveEnemyBulletSpeed(bullet.vz) : bullet.vz,
+      speed:
+        bullet.source === 'enemy' && bullet.speed !== undefined
+          ? getEffectiveEnemyBulletSpeed(bullet.speed)
+          : bullet.speed,
+    })
   }
 
   const addBulletmlShot = (
@@ -720,7 +741,9 @@ export function createBattleRuntime({
     const halfSpread = ((wave.count - 1) * wave.spacing) / 2
     for (let index = 0; index < wave.count; index += 1) {
       const spawnZ = enemySpawnEntry.startZ + index * enemySpawnEntry.rowOffset
-      const entrySpeed = movement.type === 'flyThrough' ? movement.speed : movement.entrySpeed
+      const entrySpeed = getEffectiveEnemyMovementSpeed(
+        movement.type === 'flyThrough' ? movement.speed : movement.entrySpeed,
+      )
       enemies.push({
         id: `enemy-${lastEnemyId++}`,
         waveId: wave.id,
@@ -1163,15 +1186,21 @@ export function createBattleRuntime({
 
       if (enemy.movement.type === 'enterAndStrafe') {
         if (enemy.z > enemy.movement.holdZ) {
-          enemy.z = Math.max(enemy.movement.holdZ, enemy.z - enemy.movement.entrySpeed * delta)
+          enemy.z = Math.max(
+            enemy.movement.holdZ,
+            enemy.z - getEffectiveEnemyMovementSpeed(enemy.movement.entrySpeed) * delta,
+          )
         }
         enemy.x =
           enemy.strafeOriginX +
-          Math.sin(elapsed * enemy.movement.strafeSpeed + enemy.drift) *
+          Math.sin(
+            elapsed * getEffectiveEnemyMovementSpeed(enemy.movement.strafeSpeed) +
+              enemy.drift,
+          ) *
             enemy.movement.strafeRange
       } else {
-        enemy.z -= enemy.movement.speed * delta
-        const waveShift = elapsed * 1.8 + enemy.drift
+        enemy.z -= getEffectiveEnemyMovementSpeed(enemy.movement.speed) * delta
+        const waveShift = elapsed * 1.8 * enemyMovementSpeedMultiplier + enemy.drift
         if (enemy.movement.path === 'swoop-left') {
           enemy.x += Math.sin(waveShift) * 0.012
         } else if (enemy.movement.path === 'swoop-right') {
@@ -1347,10 +1376,11 @@ export function createBattleRuntime({
           target: { x: player.x, z: player.z },
           rank: defaultBulletmlRankForStage(difficulty),
         })
+        const effectiveSpeed = getEffectiveEnemyBulletSpeed(result.speed)
         bullet.direction = result.direction
-        bullet.speed = result.speed
-        bullet.vx = Math.cos(result.direction) * result.speed
-        bullet.vz = Math.sin(result.direction) * result.speed
+        bullet.speed = effectiveSpeed
+        bullet.vx = Math.cos(result.direction) * effectiveSpeed
+        bullet.vz = Math.sin(result.direction) * effectiveSpeed
         for (const shot of result.shots) {
           addBulletmlShot({ x: bullet.x, z: bullet.z }, shot, {
             radius: bullet.radius,
