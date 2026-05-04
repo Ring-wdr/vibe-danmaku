@@ -2,6 +2,15 @@ import type { ArenaPoint, CharacterDefinition } from '../types'
 
 type MoveRadius = CharacterDefinition['moveRadius']
 
+export const battleInputProjectionConfig = {
+  cameraPositionZ: 8,
+  cameraFov: 48,
+  playerRenderZ: 0.65,
+  arenaXScale: 0.55,
+  arenaZScale: 0.9,
+  arenaYOffset: -0.45,
+} as const
+
 export const battleDragInputConfig = {
   horizontalWorldSpan: 9.2,
   verticalWorldSpan: 5.2,
@@ -87,7 +96,11 @@ export function getFlightAirflowDynamics({
 }
 
 export function arenaPointToView(point: ArenaPoint, z = 0.5): [number, number, number] {
-  return [point.x * 0.55, point.z * 0.9 - 0.45, z]
+  return [
+    point.x * battleInputProjectionConfig.arenaXScale,
+    point.z * battleInputProjectionConfig.arenaZScale + battleInputProjectionConfig.arenaYOffset,
+    z,
+  ]
 }
 
 export function createArenaPoint(
@@ -108,6 +121,12 @@ function clampRatio(value: number) {
   return Math.min(1, Math.max(0, value))
 }
 
+function getVisibleHalfHeightAtRenderZ(renderZ: number) {
+  const cameraDistance = battleInputProjectionConfig.cameraPositionZ - renderZ
+
+  return Math.tan((battleInputProjectionConfig.cameraFov * Math.PI) / 360) * cameraDistance
+}
+
 export function createMoveRadiusArenaPoint(
   clientX: number,
   clientY: number,
@@ -116,9 +135,25 @@ export function createMoveRadiusArenaPoint(
 ): ArenaPoint {
   const xRatio = clampRatio((clientX - rect.left) / rect.width)
   const yRatio = clampRatio((clientY - rect.top) / rect.height)
+  const visibleHalfHeight = getVisibleHalfHeightAtRenderZ(
+    battleInputProjectionConfig.playerRenderZ,
+  )
+  const visibleHalfWidth = visibleHalfHeight * (rect.width / rect.height)
+  const viewX = (xRatio - 0.5) * visibleHalfWidth * 2
+  const viewY = (1 - yRatio * 2) * visibleHalfHeight
 
   return {
-    x: -moveRadius.x + xRatio * moveRadius.x * 2,
-    z: moveRadius.maxZ - yRatio * (moveRadius.maxZ - moveRadius.minZ),
+    x: Math.min(
+      moveRadius.x,
+      Math.max(-moveRadius.x, viewX / battleInputProjectionConfig.arenaXScale),
+    ),
+    z: Math.min(
+      moveRadius.maxZ,
+      Math.max(
+        moveRadius.minZ,
+        (viewY - battleInputProjectionConfig.arenaYOffset) /
+          battleInputProjectionConfig.arenaZScale,
+      ),
+    ),
   }
 }

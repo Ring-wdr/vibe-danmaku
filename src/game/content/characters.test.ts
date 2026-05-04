@@ -103,11 +103,11 @@ describe('character catalog', () => {
     ])
   })
 
-  it('gives every playable pilot the screen-minus-ten-percent movement range', () => {
+  it('gives every playable pilot the projected screen-minus-ten-percent movement range', () => {
     const screenMinusTenPercentMoveRadius = {
       x: 4.14,
-      minZ: -3.14,
-      maxZ: 1.54,
+      minZ: -2.41,
+      maxZ: 3.41,
     }
 
     for (const character of playableCharacters) {

@@ -16,8 +16,8 @@ export type PlayableCharacter = CharacterDefinition & {
 
 export const screenMinusTenPercentMoveRadius = {
   x: 4.14,
-  minZ: -3.14,
-  maxZ: 1.54,
+  minZ: -2.41,
+  maxZ: 3.41,
 } as const
 
 export const lyraAerCharacter: PlayableCharacter = {
