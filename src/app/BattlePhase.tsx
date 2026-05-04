@@ -56,6 +56,7 @@ export function BattlePhase({ sessionActorRef, fastStage, invincible }: BattlePh
             fastStage={fastStage}
             invincible={invincible}
             onComplete={(result) => sessionActorRef.send({ type: 'BATTLE_COMPLETED', result })}
+            onExitBattle={() => sessionActorRef.send({ type: 'RETURN_TO_TITLE' })}
           />
         </Suspense>
       ) : null}

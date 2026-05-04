@@ -147,6 +147,19 @@ describe('battleSessionMachine', () => {
     expect(service.getSnapshot().matches('battle')).toBe(true)
   })
 
+  it('returns to title from an active battle', () => {
+    const service = createService()
+    deployToBattle(service, 'hard')
+
+    service.send({ type: 'RETURN_TO_TITLE' })
+
+    expect(service.getSnapshot().matches('title')).toBe(true)
+    expect(service.getSnapshot().context.currentStageNumber).toBe(1)
+    expect(service.getSnapshot().context.campaignScore).toBe(0)
+    expect(service.getSnapshot().context.result).toBeNull()
+    expect(service.getSnapshot().context.difficulty).toBe('hard')
+  })
+
   it('stores stage 1 victory and waits for confirmation before stage 2 loading', () => {
     const service = createService()
     deployToBattle(service)
