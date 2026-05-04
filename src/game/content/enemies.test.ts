@@ -118,7 +118,8 @@ describe('enemy content resolver', () => {
     expect(wave).not.toHaveProperty('path')
     expect(wave.hp).toBeGreaterThan(enemyArchetypes.lancer.hp)
     expect(wave.pattern.shape).toBe('needle')
-    expect(wave.pattern.count).toBeGreaterThan(enemyArchetypes.lancer.pattern.count)
+    expect(wave.pattern.speed).toBeGreaterThan(enemyArchetypes.lancer.pattern.speed)
+    expect(wave.pattern.interval).toBeLessThan(enemyArchetypes.lancer.pattern.interval)
   })
 
   it('resolves regular enemy waves as fly-through spawn groups', () => {
@@ -195,39 +196,63 @@ describe('enemy content resolver', () => {
     })
   })
 
-  it('scales pattern count, speed, and interval by difficulty without changing shape', () => {
-    const easy = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'easy')
-    const hard = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'hard')
-
-    expect(hard.shape).toBe(easy.shape)
-    expect(hard.count).toBeGreaterThan(easy.count)
-    expect(hard.speed).toBeGreaterThan(easy.speed)
-    expect(hard.interval).toBeLessThan(easy.interval)
-  })
-
-  it('reduces easy regular enemy bullet pressure below normal', () => {
+  it('scales regular enemy bullet pressure in easy normal hard order', () => {
     const easy = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'easy')
     const normal = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'normal')
+    const hard = resolvePatternForDifficulty(enemyArchetypes.weaver.pattern, 'hard')
+    const easyRing = resolvePatternForDifficulty(enemyArchetypes.sentinel.pattern, 'easy')
+    const normalRing = resolvePatternForDifficulty(enemyArchetypes.sentinel.pattern, 'normal')
+    const hardRing = resolvePatternForDifficulty(enemyArchetypes.sentinel.pattern, 'hard')
 
-    expect(easy.count).toBeLessThan(normal.count)
-    expect(easy.speed).toBeLessThan(normal.speed)
-    expect(easy.spread).toBeLessThan(normal.spread)
-    expect(easy.wave?.amplitude).toBeLessThan(normal.wave?.amplitude ?? 0)
-    expect(easy.interval).toBeGreaterThan(normal.interval)
+    expect(easy.shape).toBe(enemyArchetypes.weaver.pattern.shape)
+    expect(normal.shape).toBe(enemyArchetypes.weaver.pattern.shape)
+    expect(hard.shape).toBe(enemyArchetypes.weaver.pattern.shape)
+
+    expect([easy.count, normal.count, hard.count]).toEqual([3, 5, 7])
+    expect([easy.speed, normal.speed, hard.speed]).toEqual([0.82, 1.03, 1.18])
+    expect([easy.interval, normal.interval, hard.interval]).toEqual([1.83, 1.27, 1.09])
+    expect([easy.spread, normal.spread, hard.spread]).toEqual([1.08, 1.18, 1.27])
+    expect([easy.wave?.amplitude, normal.wave?.amplitude, hard.wave?.amplitude]).toEqual([
+      0.33,
+      0.5,
+      0.58,
+    ])
+
+    expect([easyRing.count, normalRing.count, hardRing.count]).toEqual([4, 6, 8])
+    expect([easyRing.interval, normalRing.interval, hardRing.interval]).toEqual([
+      2.63,
+      1.84,
+      1.56,
+    ])
   })
 
-  it('reduces easy split-pattern secondary bullets', () => {
-    const easy = resolvePatternForDifficulty(enemyArchetypes.splitter.pattern, 'easy')
-    const normal = resolvePatternForDifficulty(enemyArchetypes.splitter.pattern, 'normal')
+  it('keeps easy spread wide enough to avoid narrow concentrated streams', () => {
+    const easyFan = resolvePatternForDifficulty(enemyArchetypes.scout.pattern, 'easy')
+    const normalFan = resolvePatternForDifficulty(enemyArchetypes.scout.pattern, 'normal')
 
-    expect(easy.split?.count).toBeLessThan(normal.split?.count ?? 0)
+    expect(easyFan.spread).toBeGreaterThanOrEqual(1)
+    expect(easyFan.spread).toBeLessThan(normalFan.spread)
   })
 
-  it('keeps difficulty bullet-count tuning restrained after enemy density increases', () => {
-    const pattern = enemyArchetypes.weaver.pattern
+  it('scales split-pattern secondary bullets in easy normal hard order', () => {
+    const placement = {
+      id: 'abyssal-splitter-pressure',
+      archetype: 'splitter',
+      variant: 'abyssal-biomech-splitter',
+      count: 1,
+      spacing: 1,
+    } as const
+    const easy = resolveEnemyWave('easy', placement)
+    const normal = resolveEnemyWave('normal', placement)
+    const hard = resolveEnemyWave('hard', placement)
 
-    expect(resolvePatternForDifficulty(pattern, 'normal').count).toBe(6)
-    expect(resolvePatternForDifficulty(pattern, 'hard').count).toBe(7)
+    expect([easy.pattern.split?.count, normal.pattern.split?.count, hard.pattern.split?.count]).toEqual([
+      1,
+      3,
+      4,
+    ])
+    expect(easy.pattern.interval).toBeGreaterThan(normal.pattern.interval)
+    expect(normal.pattern.interval).toBeGreaterThan(hard.pattern.interval)
   })
 
   it('rejects placements whose variant belongs to a different archetype', () => {
