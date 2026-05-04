@@ -11,12 +11,17 @@ import {
   type BattleSettings,
   type DragSensitivity,
 } from './battleSettingsStorage'
-import { battleDragInputConfig, createArenaPoint } from './battleViewMath'
+import { battleDragInputConfig, createMoveRadiusArenaPoint } from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
 import styles from './BattleView.module.css'
 import type { ArenaPoint, CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
 
-export { battleDragInputConfig, createArenaPoint, getFlightAirflowDynamics } from './battleViewMath'
+export {
+  battleDragInputConfig,
+  createArenaPoint,
+  createMoveRadiusArenaPoint,
+  getFlightAirflowDynamics,
+} from './battleViewMath'
 export { getBackgroundTextureUrls } from './battleBackground'
 export {
   getAtlasFrameUv,
@@ -287,7 +292,9 @@ function BattleViewRuntime({
           }
 
           relativeDragRef.current = null
-          runtime.beginDrag(createArenaPoint(event.clientX, event.clientY, rect))
+          runtime.beginDrag(
+            createMoveRadiusArenaPoint(event.clientX, event.clientY, rect, character.moveRadius),
+          )
         }}
         onPointerMove={(event) => {
           if (isPausedRef.current) {
@@ -323,7 +330,9 @@ function BattleViewRuntime({
             return
           }
 
-          runtime.moveDrag(createArenaPoint(event.clientX, event.clientY, rect))
+          runtime.moveDrag(
+            createMoveRadiusArenaPoint(event.clientX, event.clientY, rect, character.moveRadius),
+          )
         }}
         onPointerUp={(event) => {
           if (event.currentTarget.hasPointerCapture(event.pointerId)) {

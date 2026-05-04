@@ -103,6 +103,19 @@ describe('character catalog', () => {
     ])
   })
 
+  it('gives every playable pilot the screen-minus-ten-percent movement range', () => {
+    const screenMinusTenPercentMoveRadius = {
+      x: 4.14,
+      minZ: -3.14,
+      maxZ: 1.54,
+    }
+
+    for (const character of playableCharacters) {
+      expect(character.moveRadius).toEqual(screenMinusTenPercentMoveRadius)
+    }
+    expect(fallbackCharacter.moveRadius).toEqual(screenMinusTenPercentMoveRadius)
+  })
+
   it('resolves empty selection to the default character and invalid saved ids to fallback', () => {
     expect(resolveCharacterId(null)).toBe(defaultCharacterId)
     expect(resolveCharacterId(undefined)).toBe(defaultCharacterId)

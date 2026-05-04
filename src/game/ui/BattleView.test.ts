@@ -127,6 +127,21 @@ const controlRect = {
 } as DOMRect
 const defaultStage = createStageDefinition('normal')
 
+function createExpectedPositionControlPoint(
+  clientX: number,
+  clientY: number,
+  rect: DOMRect,
+  moveRadius = lyraAerCharacter.moveRadius,
+) {
+  const xRatio = (clientX - rect.left) / rect.width
+  const yRatio = (clientY - rect.top) / rect.height
+
+  return {
+    x: -moveRadius.x + xRatio * moveRadius.x * 2,
+    z: moveRadius.maxZ - yRatio * (moveRadius.maxZ - moveRadius.minZ),
+  }
+}
+
 function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
   const action = stage.events
     .flatMap((event) => event.actions)
@@ -656,8 +671,49 @@ describe('BattleView', () => {
     fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: 466 })
     fireEvent.pointerMove(controls, { pointerId: 1, clientX: 258, clientY: 466 })
 
-    expect(runtime.beginDrag).toHaveBeenCalledWith(createArenaPoint(215, 466, controlRect))
-    expect(runtime.moveDrag).toHaveBeenLastCalledWith(createArenaPoint(258, 466, controlRect))
+    expect(runtime.beginDrag).toHaveBeenCalledWith(
+      createExpectedPositionControlPoint(215, 466, controlRect),
+    )
+    expect(runtime.moveDrag).toHaveBeenLastCalledWith(
+      createExpectedPositionControlPoint(258, 466, controlRect),
+    )
+  })
+
+  it('maps default position control touches to the same point in the character movement range', () => {
+    const runtime = createMockRuntime()
+    mockUseBattleRuntime.mockReturnValue({
+      runtime,
+      snapshot: mockSnapshot,
+    })
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    const controls = screen.getByTestId('battle-controls')
+    Object.defineProperty(controls, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => controlRect,
+    })
+    controls.setPointerCapture = vi.fn()
+    controls.hasPointerCapture = vi.fn(() => true)
+    controls.releasePointerCapture = vi.fn()
+
+    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 430, clientY: 0 })
+    fireEvent.pointerMove(controls, { pointerId: 1, clientX: 0, clientY: 932 })
+
+    expect(runtime.beginDrag).toHaveBeenCalledWith({
+      x: lyraAerCharacter.moveRadius.x,
+      z: lyraAerCharacter.moveRadius.maxZ,
+    })
+    const [lastMovePoint] = runtime.moveDrag.mock.lastCall ?? []
+    expect(lastMovePoint?.x).toBeCloseTo(-lyraAerCharacter.moveRadius.x)
+    expect(lastMovePoint?.z).toBeCloseTo(lyraAerCharacter.moveRadius.minZ)
   })
 
   it('applies relative drag control from the current player position', async () => {
@@ -917,7 +973,9 @@ describe('BattleView', () => {
 
     fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: 466 })
 
-    expect(runtime.beginDrag).toHaveBeenCalledWith(createArenaPoint(215, 466, controlRect))
+    expect(runtime.beginDrag).toHaveBeenCalledWith(
+      createExpectedPositionControlPoint(215, 466, controlRect),
+    )
   })
 
   it('activates beam-lance from the ready circular slot', () => {
