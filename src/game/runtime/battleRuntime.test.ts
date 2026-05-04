@@ -735,26 +735,26 @@ describe('createBattleRuntime', () => {
     const snapshot = runtime.getSnapshot()
 
     expect(snapshot.player.position.x).toBe(-4.14)
-    expect(snapshot.player.position.z).toBeLessThanOrEqual(1.54)
-    expect(snapshot.player.position.z).toBeGreaterThanOrEqual(-3.14)
+    expect(snapshot.player.position.z).toBeLessThanOrEqual(3.41)
+    expect(snapshot.player.position.z).toBeGreaterThanOrEqual(-2.41)
   })
 
-  it('allows drag movement into the former bottom instruction area', () => {
+  it('allows drag movement into the lower screen-minus-margin band', () => {
     const runtime = createRuntime()
 
-    runtime.beginDrag({ x: 0, z: -3.14 })
+    runtime.beginDrag({ x: 0, z: -2.41 })
     runtime.update(0.016)
 
-    expect(runtime.getSnapshot().player.position.z).toBe(-3.14)
+    expect(runtime.getSnapshot().player.position.z).toBe(-2.41)
   })
 
   it('allows drag movement into the upper screen-minus-margin band', () => {
     const runtime = createRuntime()
 
-    runtime.beginDrag({ x: 0, z: 1.54 })
+    runtime.beginDrag({ x: 0, z: 3.41 })
     runtime.update(0.016)
 
-    expect(runtime.getSnapshot().player.position.z).toBe(1.54)
+    expect(runtime.getSnapshot().player.position.z).toBe(3.41)
   })
 
   it('applies invulnerability frames after taking a hit', () => {

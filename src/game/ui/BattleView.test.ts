@@ -23,6 +23,12 @@ import {
 import { getEnemyAtlasTextureUrl } from './battleEntities'
 import type { BattleSnapshot, StageDefinition } from '../types'
 
+const battleCameraForInput = {
+  positionZ: 8,
+  fov: 48,
+  playerRenderZ: 0.65,
+} as const
+
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ style }: { children: ReactNode; style?: CSSProperties }) =>
     createElement('canvas', { 'data-testid': 'battle-canvas', style }),
@@ -132,13 +138,29 @@ function createExpectedPositionControlPoint(
   rect: DOMRect,
   moveRadius = lyraAerCharacter.moveRadius,
 ) {
-  const xRatio = (clientX - rect.left) / rect.width
-  const yRatio = (clientY - rect.top) / rect.height
+  const xRatio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+  const yRatio = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height))
+  const cameraDistance = battleCameraForInput.positionZ - battleCameraForInput.playerRenderZ
+  const visibleHalfHeight =
+    Math.tan((battleCameraForInput.fov * Math.PI) / 360) * cameraDistance
+  const visibleHalfWidth = visibleHalfHeight * (rect.width / rect.height)
+  const viewX = (xRatio - 0.5) * visibleHalfWidth * 2
+  const viewY = (1 - yRatio * 2) * visibleHalfHeight
 
   return {
-    x: -moveRadius.x + xRatio * moveRadius.x * 2,
-    z: moveRadius.maxZ - yRatio * (moveRadius.maxZ - moveRadius.minZ),
+    x: Math.min(moveRadius.x, Math.max(-moveRadius.x, viewX / 0.55)),
+    z: Math.min(moveRadius.maxZ, Math.max(moveRadius.minZ, (viewY + 0.45) / 0.9)),
   }
+}
+
+function projectArenaPointToClientY(pointZ: number, rect: DOMRect) {
+  const viewY = pointZ * 0.9 - 0.45
+  const cameraDistance = battleCameraForInput.positionZ - battleCameraForInput.playerRenderZ
+  const visibleHalfHeight =
+    Math.tan((battleCameraForInput.fov * Math.PI) / 360) * cameraDistance
+  const normalizedDeviceY = viewY / visibleHalfHeight
+
+  return rect.top + ((1 - normalizedDeviceY) / 2) * rect.height
 }
 
 function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
@@ -649,7 +671,7 @@ describe('BattleView', () => {
     )
   })
 
-  it('maps default position control touches to the same point in the character movement range', () => {
+  it('maps default position control touches through the player camera projection', () => {
     const runtime = createMockRuntime()
     mockUseBattleRuntime.mockReturnValue({
       runtime,
@@ -674,16 +696,22 @@ describe('BattleView', () => {
     controls.hasPointerCapture = vi.fn(() => true)
     controls.releasePointerCapture = vi.fn()
 
-    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 430, clientY: 0 })
-    fireEvent.pointerMove(controls, { pointerId: 1, clientX: 0, clientY: 932 })
+    const upperTouchY = controlRect.height * 0.2
+    const lowerTouchY = controlRect.height * 0.8
 
-    expect(runtime.beginDrag).toHaveBeenCalledWith({
-      x: lyraAerCharacter.moveRadius.x,
-      z: lyraAerCharacter.moveRadius.maxZ,
-    })
+    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: upperTouchY })
+    fireEvent.pointerMove(controls, { pointerId: 1, clientX: 215, clientY: lowerTouchY })
+
+    const [beginPoint] = runtime.beginDrag.mock.lastCall ?? []
+    expect(beginPoint).toEqual(
+      createExpectedPositionControlPoint(215, upperTouchY, controlRect),
+    )
+    expect(projectArenaPointToClientY(beginPoint?.z ?? 0, controlRect)).toBeCloseTo(upperTouchY)
     const [lastMovePoint] = runtime.moveDrag.mock.lastCall ?? []
-    expect(lastMovePoint?.x).toBeCloseTo(-lyraAerCharacter.moveRadius.x)
-    expect(lastMovePoint?.z).toBeCloseTo(lyraAerCharacter.moveRadius.minZ)
+    expect(lastMovePoint).toEqual(
+      createExpectedPositionControlPoint(215, lowerTouchY, controlRect),
+    )
+    expect(projectArenaPointToClientY(lastMovePoint?.z ?? 0, controlRect)).toBeCloseTo(lowerTouchY)
   })
 
   it('applies relative drag control from the current player position', async () => {

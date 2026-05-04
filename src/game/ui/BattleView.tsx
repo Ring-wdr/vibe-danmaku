@@ -11,13 +11,18 @@ import {
   type BattleSettings,
   type DragSensitivity,
 } from './battleSettingsStorage'
-import { battleDragInputConfig, createMoveRadiusArenaPoint } from './battleViewMath'
+import {
+  battleDragInputConfig,
+  battleInputProjectionConfig,
+  createMoveRadiusArenaPoint,
+} from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
 import styles from './BattleView.module.css'
 import type { ArenaPoint, CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
 
 export {
   battleDragInputConfig,
+  battleInputProjectionConfig,
   createArenaPoint,
   createMoveRadiusArenaPoint,
   getFlightAirflowDynamics,
@@ -252,7 +257,10 @@ function BattleViewRuntime({
   return (
     <section className={styles.shell} aria-label={`Stage ${stage.stageNumber} battle`}>
       <Canvas
-        camera={{ position: [0, 0, 8], fov: 48 }}
+        camera={{
+          position: [0, 0, battleInputProjectionConfig.cameraPositionZ],
+          fov: battleInputProjectionConfig.cameraFov,
+        }}
         gl={{ alpha: false, antialias: true }}
         onCreated={({ gl }) => {
           gl.setClearColor('#123640', 1)
