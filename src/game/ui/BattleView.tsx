@@ -42,6 +42,7 @@ type BattleViewProps = {
   fastStage?: boolean
   invincible?: boolean
   onComplete: (result: RunResult) => void
+  onExitBattle?: () => void
 }
 
 type BattleViewRuntimeProps = {
@@ -51,6 +52,7 @@ type BattleViewRuntimeProps = {
   fastStage?: boolean
   invincible?: boolean
   onComplete: (result: RunResult) => void
+  onExitBattle?: () => void
 }
 
 function createRelativeArenaPoint({
@@ -89,10 +91,12 @@ function PauseSettingsOverlay({
   initialSettings,
   close,
   unmount,
+  onExitBattle,
 }: {
   initialSettings: BattleSettings
   close: (settings: BattleSettings | null) => void
   unmount: () => void
+  onExitBattle: () => void
 }) {
   return (
     <div className={styles.pauseOverlay} role="dialog" aria-modal="true" aria-label="Battle paused">
@@ -112,6 +116,7 @@ function PauseSettingsOverlay({
           onClick={() => {
             close(null)
             unmount()
+            onExitBattle()
           }}
         >
           Back
@@ -138,6 +143,7 @@ export function BattleView({
   fastStage,
   invincible,
   onComplete,
+  onExitBattle,
 }: BattleViewProps) {
   return (
     <BattleViewRuntime
@@ -147,6 +153,7 @@ export function BattleView({
       fastStage={fastStage}
       invincible={invincible}
       onComplete={onComplete}
+      onExitBattle={onExitBattle}
     />
   )
 }
@@ -158,6 +165,7 @@ function BattleViewRuntime({
   fastStage,
   invincible,
   onComplete,
+  onExitBattle,
 }: BattleViewRuntimeProps) {
   const { runtime, snapshot } = useBattleRuntime({
     difficulty,
@@ -195,6 +203,7 @@ function BattleViewRuntime({
             initialSettings={settings}
             close={close}
             unmount={unmount}
+            onExitBattle={() => onExitBattle?.()}
           />
         ),
       )

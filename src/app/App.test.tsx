@@ -36,6 +36,7 @@ vi.mock('../game/ui/BattleView', () => ({
       send: (event: { type: 'BATTLE_COMPLETED'; result: RunResult }) => void
     }
     onComplete?: (result: RunResult) => void
+    onExitBattle?: () => void
   }) => {
     mockBattleView(props)
     const stageNumber = props.stage?.stageNumber
@@ -108,6 +109,9 @@ vi.mock('../game/ui/BattleView', () => ({
           }}
         >
           Complete Defeat
+        </button>
+        <button type="button" onClick={() => props.onExitBattle?.()}>
+          Exit Battle
         </button>
       </section>
     )
@@ -313,6 +317,22 @@ describe('App', () => {
 
     await screen.findByLabelText(/mock stage 1 battle/i)
   }
+
+  it('returns to the title screen when the battle view requests an exit', async () => {
+    await deployToBattle('hard')
+
+    fireEvent.click(screen.getByRole('button', { name: /exit battle/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
+    })
+    expect(screen.queryByLabelText(/mock stage 1 battle/i)).not.toBeInTheDocument()
+    expect(mockBattleView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        onExitBattle: expect.any(Function),
+      }),
+    )
+  })
 
   it('shows battle asset loading progress before rendering the battle screen', async () => {
     let resolvePreload!: () => void

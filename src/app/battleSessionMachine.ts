@@ -188,6 +188,10 @@ export const battleSessionMachine = setup({
           target: 'result',
           actions: 'storeBattleResult',
         },
+        RETURN_TO_TITLE: {
+          target: 'title',
+          actions: 'returnToTitle',
+        },
       },
     },
     result: {

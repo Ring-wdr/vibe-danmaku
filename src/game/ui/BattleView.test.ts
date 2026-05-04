@@ -965,8 +965,9 @@ describe('BattleView', () => {
     })
   })
 
-  it('closes pause settings from the Back button without applying draft changes', async () => {
+  it('requests battle exit from the pause Back button without applying draft changes', async () => {
     const runtime = createMockRuntime()
+    const onExitBattle = vi.fn()
     mockUseBattleRuntime.mockReturnValue({
       runtime,
       snapshot: mockSnapshot,
@@ -978,6 +979,7 @@ describe('BattleView', () => {
         stage: defaultStage,
         character: lyraAerCharacter,
         onComplete: vi.fn(),
+        onExitBattle,
       }),
     )
 
@@ -989,21 +991,8 @@ describe('BattleView', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
     })
-
-    const controls = screen.getByTestId('battle-controls')
-    Object.defineProperty(controls, 'getBoundingClientRect', {
-      configurable: true,
-      value: () => controlRect,
-    })
-    controls.setPointerCapture = vi.fn()
-    controls.hasPointerCapture = vi.fn(() => true)
-    controls.releasePointerCapture = vi.fn()
-
-    fireEvent.pointerDown(controls, { pointerId: 1, clientX: 215, clientY: 466 })
-
-    expect(runtime.beginDrag).toHaveBeenCalledWith(
-      createExpectedPositionControlPoint(215, 466, controlRect),
-    )
+    expect(onExitBattle).toHaveBeenCalledTimes(1)
+    expect(window.localStorage.length).toBe(0)
   })
 
   it('activates beam-lance from the ready circular slot', () => {
