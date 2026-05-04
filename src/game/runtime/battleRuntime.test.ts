@@ -619,6 +619,7 @@ describe('createBattleRuntime', () => {
                   strafeSpeed: 0,
                   strafeRange: 0,
                 },
+                formation: { type: 'line', side: 'top' },
                 resolution: { type: 'allInactive' },
                 scale: 0.5,
                 hitRadius: 0.32,
@@ -684,6 +685,7 @@ describe('createBattleRuntime', () => {
                   strafeSpeed: 0,
                   strafeRange: 0,
                 },
+                formation: { type: 'line', side: 'top' },
                 resolution: { type: 'allInactive' },
                 scale: 0.5,
                 hitRadius: 0.28,
@@ -848,6 +850,46 @@ describe('createBattleRuntime', () => {
 
     expect(enemy?.position.z).toBeCloseTo(1, 5)
     expect(enemy?.position.x).toBeCloseTo(Math.sin(0.5), 5)
+  })
+
+  it('enters side formations from the edge before holding inside the arena', () => {
+    const stage = createStageDefinition('normal')
+    const wave = {
+      ...getFirstWave(stage),
+      id: 'left-side-formation',
+      count: 1,
+      hp: 999,
+      formation: { type: 'column', side: 'left', depth: 0.3 },
+      movement: {
+        type: 'enterAndStrafe',
+        entrySpeed: 1,
+        holdZ: 3.1,
+        strafeSpeed: 0,
+        strafeRange: 0,
+      },
+      pattern: {
+        shape: 'fan',
+        count: 0,
+        interval: 999,
+        speed: 0,
+        spread: 0,
+        life: 0,
+      },
+    } satisfies EnemyWave
+    const runtime = createRuntime({
+      stage: createEventStage(stage, [
+        createWaveEvent('left-side-formation-event', { type: 'time', at: 0 }, wave),
+      ]),
+    })
+
+    runtime.update(0.01)
+    const entryX = runtime.getSnapshot().enemies[0]?.position.x
+    runtime.update(1.1)
+    const holdX = runtime.getSnapshot().enemies[0]?.position.x
+
+    expect(entryX).toBeLessThan(-3.4)
+    expect(holdX).toBeGreaterThan(-3.4)
+    expect(holdX).toBeLessThan(-1.5)
   })
 
   it('keeps wave enemies from firing immediately while they are far offscreen', () => {

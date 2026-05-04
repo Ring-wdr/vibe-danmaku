@@ -204,6 +204,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-scout',
     count: 14,
     spacing: 0.42,
+    formation: { type: 'line', side: 'top' },
   },
   {
     id: 'wave-2',
@@ -212,6 +213,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-sentinel',
     count: 14,
     spacing: 0.42,
+    formation: { type: 'vee', side: 'top', depth: 0.2 },
   },
   {
     id: 'wave-3',
@@ -220,6 +222,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-lancer',
     count: 14,
     spacing: 0.42,
+    formation: { type: 'arc', side: 'top', depth: 0.08, bend: 0.16 },
   },
   {
     id: 'wave-4',
@@ -228,6 +231,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-splitter',
     count: 18,
     spacing: 0.33,
+    formation: { type: 'grid', side: 'left', columns: 3, rowGap: 0.22 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.15, holdZ: 1.35, strafeSpeed: 0.8, strafeRange: 0.62 },
+    resolution: { type: 'timeout', seconds: 7.5, then: 'forceEscape' },
   },
   {
     id: 'wave-5',
@@ -236,6 +242,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-mine-layer',
     count: 18,
     spacing: 0.33,
+    formation: { type: 'column', side: 'right', depth: 0.24 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.15, holdZ: 1.35, strafeSpeed: 0.8, strafeRange: 0.62 },
+    resolution: { type: 'timeout', seconds: 7.5, then: 'forceEscape' },
   },
   {
     id: 'wave-6',
@@ -244,6 +253,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-weaver',
     count: 18,
     spacing: 0.33,
+    formation: { type: 'vee', side: 'left', depth: 0.2 },
   },
   {
     id: 'wave-7',
@@ -252,6 +262,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-scout',
     count: 24,
     spacing: 0.25,
+    formation: { type: 'grid', side: 'top', columns: 4, rowGap: 0.2 },
     pattern: { count: 7, spread: 1.45 },
   },
   {
@@ -261,6 +272,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-weaver',
     count: 24,
     spacing: 0.25,
+    formation: { type: 'column', side: 'left', depth: 0.24 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.15, holdZ: 1.35, strafeSpeed: 0.8, strafeRange: 0.62 },
+    resolution: { type: 'timeout', seconds: 7.5, then: 'forceEscape' },
     pattern: { count: 8, interval: 1.05 },
   },
   {
@@ -270,6 +284,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-scout',
     count: 14,
     spacing: 0.42,
+    formation: { type: 'arc', side: 'top', depth: 0.1, bend: 0.14 },
   },
   {
     id: 'wave-10',
@@ -278,6 +293,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-sentinel',
     count: 14,
     spacing: 0.42,
+    formation: { type: 'vee', side: 'right', depth: 0.22 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.15, holdZ: 1.35, strafeSpeed: 0.8, strafeRange: 0.62 },
+    resolution: { type: 'timeout', seconds: 7.5, then: 'forceEscape' },
   },
   {
     id: 'wave-11',
@@ -286,6 +304,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-lancer',
     count: 14,
     spacing: 0.42,
+    formation: { type: 'grid', side: 'right', columns: 4, rowGap: 0.2 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.15, holdZ: 1.35, strafeSpeed: 0.8, strafeRange: 0.62 },
+    resolution: { type: 'timeout', seconds: 7.5, then: 'forceEscape' },
   },
   {
     id: 'wave-12',
@@ -294,6 +315,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-splitter',
     count: 18,
     spacing: 0.33,
+    formation: { type: 'line', side: 'left', offsetX: -0.45 },
   },
 ] as const
 

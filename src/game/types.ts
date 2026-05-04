@@ -1,7 +1,10 @@
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
 export type StageId = string
-export type StageBackgroundTheme = 'brass-cloud' | 'burning-ruins' | 'abyssal-biomech'
+export type StageBackgroundTheme =
+  | 'brass-cloud'
+  | 'burning-ruins'
+  | 'abyssal-biomech'
 
 export type AppScreen =
   | 'title'
@@ -23,7 +26,9 @@ export type EnemyArchetypeId =
   | 'weaver'
 
 export type EnemyThemeId = 'brass-cloud' | 'abyssal-biomech'
-export type EnemyAtlasId = 'enemy-brass-cloud' | 'enemy-abyssal-biomech'
+export type EnemyAtlasId =
+  | 'enemy-brass-cloud'
+  | 'enemy-abyssal-biomech'
 export type EnemyFrameId = EnemyArchetypeId
 export type EnemyVariantId = `${EnemyThemeId}-${EnemyArchetypeId}`
 export type EnemyKind = EnemyVariantId | 'boss-core'
@@ -159,6 +164,15 @@ export type EnemyMovementConfig =
       strafeRange: number
     }
 
+export type EnemyFormationSide = 'top' | 'left' | 'right'
+
+export type EnemyFormationConfig =
+  | { type: 'line'; side?: EnemyFormationSide; offsetX?: number }
+  | { type: 'vee'; side?: EnemyFormationSide; depth: number }
+  | { type: 'column'; side: 'left' | 'right'; depth: number }
+  | { type: 'arc'; side?: 'top'; depth: number; bend: number }
+  | { type: 'grid'; side?: EnemyFormationSide; columns: number; rowGap: number }
+
 export type SpawnGroupResolution =
   | { type: 'allInactive' }
   | { type: 'allDefeated' }
@@ -175,6 +189,7 @@ export type EnemyWave = {
   spacing: number
   hp: number
   movement: EnemyMovementConfig
+  formation: EnemyFormationConfig
   resolution: SpawnGroupResolution
   scale: number
   hitRadius: number

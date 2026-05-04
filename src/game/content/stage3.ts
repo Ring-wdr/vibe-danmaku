@@ -305,20 +305,20 @@ const leviathanCollapsePattern = {
 } satisfies BulletmlPatternConfig
 
 const baseWavePlacements = [
-  { id: 'wave-1', at: 2, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 18, spacing: 0.34 },
-  { id: 'wave-2', at: 7.2, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 16, spacing: 0.38 },
-  { id: 'wave-3', at: 12.4, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 18, spacing: 0.34 },
-  { id: 'wave-4', at: 17.6, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 20, spacing: 0.3 },
-  { id: 'wave-5', at: 22.8, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 20, spacing: 0.3 },
-  { id: 'wave-6', at: 28, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 20, spacing: 0.3 },
-  { id: 'wave-7', at: 33.2, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 24, spacing: 0.26 },
-  { id: 'wave-8', at: 43.2, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25 },
-  { id: 'wave-9', at: 48.4, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 20, spacing: 0.3 },
-  { id: 'wave-10', at: 53.6, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 22, spacing: 0.28 },
-  { id: 'wave-11', at: 58.8, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 22, spacing: 0.28 },
-  { id: 'wave-12', at: 64, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 18, spacing: 0.34 },
-  { id: 'wave-13', at: 69.2, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25 },
-  { id: 'wave-14', at: 74.4, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 28, spacing: 0.22 },
+  { id: 'wave-1', at: 2, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 18, spacing: 0.34, formation: { type: 'line', side: 'top' } },
+  { id: 'wave-2', at: 7.2, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 16, spacing: 0.38, formation: { type: 'vee', side: 'top', depth: 0.22 } },
+  { id: 'wave-3', at: 12.4, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 18, spacing: 0.34, formation: { type: 'column', side: 'left', depth: 0.23 }, movement: { type: 'enterAndStrafe', entrySpeed: 1.18, holdZ: 1.25, strafeSpeed: 0.9, strafeRange: 0.68 }, resolution: { type: 'timeout', seconds: 8, then: 'forceEscape' } },
+  { id: 'wave-4', at: 17.6, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 20, spacing: 0.3, formation: { type: 'arc', side: 'top', depth: 0.08, bend: 0.15 } },
+  { id: 'wave-5', at: 22.8, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 20, spacing: 0.3, formation: { type: 'grid', side: 'right', columns: 4, rowGap: 0.2 }, movement: { type: 'enterAndStrafe', entrySpeed: 1.18, holdZ: 1.25, strafeSpeed: 0.9, strafeRange: 0.68 }, resolution: { type: 'timeout', seconds: 8, then: 'forceEscape' } },
+  { id: 'wave-6', at: 28, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 20, spacing: 0.3, formation: { type: 'vee', side: 'left', depth: 0.2 } },
+  { id: 'wave-7', at: 33.2, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 24, spacing: 0.26, formation: { type: 'arc', side: 'top', depth: 0.1, bend: 0.18 } },
+  { id: 'wave-8', at: 43.2, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25, formation: { type: 'column', side: 'right', depth: 0.22 }, movement: { type: 'enterAndStrafe', entrySpeed: 1.18, holdZ: 1.25, strafeSpeed: 0.9, strafeRange: 0.68 }, resolution: { type: 'timeout', seconds: 8, then: 'forceEscape' } },
+  { id: 'wave-9', at: 48.4, archetype: 'lancer', variant: 'abyssal-biomech-lancer', count: 20, spacing: 0.3, formation: { type: 'grid', side: 'top', columns: 4, rowGap: 0.2 } },
+  { id: 'wave-10', at: 53.6, archetype: 'splitter', variant: 'abyssal-biomech-splitter', count: 22, spacing: 0.28, formation: { type: 'vee', side: 'right', depth: 0.2 } },
+  { id: 'wave-11', at: 58.8, archetype: 'mine-layer', variant: 'abyssal-biomech-mine-layer', count: 22, spacing: 0.28, formation: { type: 'column', side: 'left', depth: 0.22 }, movement: { type: 'enterAndStrafe', entrySpeed: 1.18, holdZ: 1.25, strafeSpeed: 0.9, strafeRange: 0.68 }, resolution: { type: 'timeout', seconds: 8, then: 'forceEscape' } },
+  { id: 'wave-12', at: 64, archetype: 'sentinel', variant: 'abyssal-biomech-sentinel', count: 18, spacing: 0.34, formation: { type: 'arc', side: 'top', depth: 0.08, bend: 0.16 } },
+  { id: 'wave-13', at: 69.2, archetype: 'weaver', variant: 'abyssal-biomech-weaver', count: 24, spacing: 0.25, formation: { type: 'grid', side: 'left', columns: 4, rowGap: 0.2 }, movement: { type: 'enterAndStrafe', entrySpeed: 1.18, holdZ: 1.25, strafeSpeed: 0.9, strafeRange: 0.68 }, resolution: { type: 'timeout', seconds: 8, then: 'forceEscape' } },
+  { id: 'wave-14', at: 74.4, archetype: 'scout', variant: 'abyssal-biomech-scout', count: 28, spacing: 0.22, formation: { type: 'line', side: 'right', offsetX: 0.4 } },
 ] as const
 
 const baseMidboss: BossDefinition = {

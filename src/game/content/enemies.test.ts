@@ -119,6 +119,7 @@ describe('enemy content resolver', () => {
       speed: enemyArchetypes.scout.speed,
     })
     expect(wave.resolution).toEqual({ type: 'allInactive' })
+    expect(wave.formation).toEqual({ type: 'line', side: 'top' })
   })
 
   it('allows placement overrides for guard-style strafe waves', () => {
@@ -146,6 +147,19 @@ describe('enemy content resolver', () => {
       strafeRange: 1.8,
     })
     expect(wave.resolution).toEqual({ type: 'allDefeated' })
+  })
+
+  it('allows placement overrides for enemy wave formations', () => {
+    const wave = resolveEnemyWave('normal', {
+      id: 'test-side-formation',
+      archetype: 'scout',
+      variant: 'brass-cloud-scout',
+      count: 5,
+      spacing: 0.6,
+      formation: { type: 'vee', side: 'left', depth: 0.28 },
+    })
+
+    expect(wave.formation).toEqual({ type: 'vee', side: 'left', depth: 0.28 })
   })
 
   it('uses forgiving hit radii for every regular enemy archetype', () => {

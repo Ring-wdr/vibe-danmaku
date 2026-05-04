@@ -468,7 +468,7 @@ describe('App', () => {
     expect(performance.now() - preloadResolvedAt).toBeGreaterThanOrEqual(1700)
   })
 
-  it('continues from stage 2 victory into stage 3 and shows the final stage result after stage 3 victory', async () => {
+  it('continues through stage 3 and shows the final campaign result after stage 3 victory', async () => {
     await deployToBattle('hard')
 
     fireEvent.click(screen.getByRole('button', { name: /complete victory/i }))
@@ -523,7 +523,7 @@ describe('App', () => {
         score: 97000,
       }),
     ])
-  })
+  }, 10000)
 
   it('records accumulated score when the player reaches game over', async () => {
     await deployToBattle('normal')

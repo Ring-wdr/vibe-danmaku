@@ -4,6 +4,7 @@ import type {
   Difficulty,
   EnemyArchetypeId,
   EnemyAtlasId,
+  EnemyFormationConfig,
   EnemyThemeId,
   EnemyMovementConfig,
   EnemyVariantId,
@@ -41,6 +42,7 @@ type StageEnemyPlacement = {
   speed?: number
   path?: Extract<EnemyMovementConfig, { type: 'flyThrough' }>['path']
   movement?: EnemyMovementConfig
+  formation?: EnemyFormationConfig
   resolution?: SpawnGroupResolution
   pattern?: Partial<BulletPatternConfig>
 }
@@ -372,6 +374,7 @@ export function resolveEnemyWave(
         path: placement.path ?? archetype.path,
         speed: placement.speed ?? archetype.speed,
       } satisfies EnemyMovementConfig),
+    formation: placement.formation ?? { type: 'line', side: 'top' },
     resolution: placement.resolution ?? { type: 'allInactive' },
     scale: archetype.scale,
     hitRadius: archetype.hitRadius,

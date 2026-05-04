@@ -69,7 +69,7 @@ export const battleSessionMachine = setup({
       currentStageNumber: 1,
     }),
     advanceToNextStage: assign(({ context }) => ({
-      currentStageNumber: context.result?.stageNumber === 2 ? 3 : 2,
+      currentStageNumber: Math.min(3, Math.max(1, (context.result?.stageNumber ?? 1) + 1)) as BattleStageNumber,
       battleSeed: context.battleSeed + 1,
       campaignScore: context.campaignScore + (context.result?.score ?? 0),
       result: null,

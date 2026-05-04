@@ -17,6 +17,12 @@ function getSpawnedWaves(stage: StageDefinition) {
   )
 }
 
+function getFormationSignatures(stage: StageDefinition) {
+  return new Set(
+    getSpawnedWaves(stage).map((wave) => `${wave.formation.type}:${wave.formation.side ?? 'top'}`),
+  )
+}
+
 function getBossFromStage(stage: StageDefinition, role: 'midboss' | 'final') {
   const action = stage.events
     .flatMap((event) => event.actions)
@@ -147,6 +153,14 @@ describe('createStageDefinition', () => {
     expect(new Set(getSpawnedWaves(stage).map((wave) => wave.archetype))).toEqual(
       new Set(['scout', 'sentinel', 'lancer', 'splitter', 'mine-layer', 'weaver']),
     )
+  })
+
+  it('varies regular wave formation signatures', () => {
+    const stage = createStageDefinition('normal')
+    const signatures = getFormationSignatures(stage)
+
+    expect(signatures.size).toBeGreaterThanOrEqual(3)
+    expect(signatures).not.toEqual(new Set(['line:top']))
   })
 
   it('expresses every Stage 1 spawn through explicit events', () => {

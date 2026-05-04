@@ -314,6 +314,7 @@ describe('getBossCoreTextureUrl', () => {
       gameAssets.stage3BossCoreUrl,
     )
   })
+
 })
 
 describe('getEnemyAtlasTextureUrl', () => {
@@ -325,6 +326,7 @@ describe('getEnemyAtlasTextureUrl', () => {
       gameAssets.enemyBrassCloudAtlasUrl,
     )
   })
+
 })
 
 describe('getRenderableBosses', () => {
@@ -393,6 +395,7 @@ describe('getBackgroundTextureUrls', () => {
       abyssalPressure: gameAssets.stage3PressureLayerUrl,
     })
   })
+
 }
 )
 

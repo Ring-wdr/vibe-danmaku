@@ -81,6 +81,8 @@ type RuntimeEnemy = {
   travel: number
   movement: EnemyWave['movement']
   strafeOriginX: number
+  entryOriginX: number
+  entryStartZ: number
   scale: number
   hitRadius: number
   hitFlashFor: number
@@ -278,6 +280,106 @@ function getEnemyEntryShootDelay(spawnZ: number, speed: number) {
   const timeToVisibleArena = Math.max(0, (spawnZ - attackReadyZ) / speed)
 
   return timeToVisibleArena + enemySpawnEntry.firstShotBuffer
+}
+
+const getFormationSide = (formation: EnemyWave['formation']) => {
+  if (formation.type === 'column') {
+    return formation.side
+  }
+
+  return formation.side ?? 'top'
+}
+
+const getSideEntryX = (side: 'left' | 'right') =>
+  side === 'left' ? bulletViewportBounds.minX - 0.72 : bulletViewportBounds.maxX + 0.72
+
+const getSideHoldCenterX = (side: 'left' | 'right') =>
+  side === 'left' ? bulletViewportBounds.minX + 1.08 : bulletViewportBounds.maxX - 1.08
+
+const getCenteredX = (count: number, spacing: number, index: number) =>
+  -(((count - 1) * spacing) / 2) + index * spacing
+
+const getEnemyFormationSlot = (wave: EnemyWave, index: number) => {
+  const formation = wave.formation ?? { type: 'line', side: 'top' }
+  const side = getFormationSide(formation)
+  const centeredX = getCenteredX(wave.count, wave.spacing, index)
+  const baseZ = enemySpawnEntry.startZ + index * enemySpawnEntry.rowOffset
+
+  if (side === 'left' || side === 'right') {
+    const sideSign = side === 'left' ? 1 : -1
+    const entryX = getSideEntryX(side)
+    const holdCenterX = getSideHoldCenterX(side)
+
+    if (formation.type === 'column') {
+      return {
+        x: entryX,
+        z: enemySpawnEntry.startZ + index * formation.depth,
+        strafeOriginX: holdCenterX,
+        shootDelayOffset: index * 0.1,
+      }
+    }
+
+    return {
+      x: entryX + centeredX * 0.2 * sideSign,
+      z: baseZ,
+      strafeOriginX: holdCenterX + centeredX * 0.45,
+      shootDelayOffset: index * 0.08,
+    }
+  }
+
+  if (formation.type === 'vee') {
+    const center = (wave.count - 1) / 2
+    const depth = Math.abs(index - center) * formation.depth
+
+    return {
+      x: centeredX,
+      z: enemySpawnEntry.startZ + depth + index * enemySpawnEntry.rowOffset,
+      strafeOriginX: centeredX,
+      shootDelayOffset: depth * 0.3,
+    }
+  }
+
+  if (formation.type === 'arc') {
+    const arcDepth = Math.abs(centeredX) * formation.bend + (index % 2) * formation.depth
+
+    return {
+      x: centeredX,
+      z: enemySpawnEntry.startZ + arcDepth,
+      strafeOriginX: centeredX,
+      shootDelayOffset: arcDepth * 0.25,
+    }
+  }
+
+  if (formation.type === 'grid') {
+    const columns = Math.max(1, formation.columns)
+    const row = Math.floor(index / columns)
+    const column = index % columns
+    const rowCount = Math.min(columns, wave.count - row * columns)
+    const rowX = getCenteredX(rowCount, wave.spacing, column)
+
+    return {
+      x: rowX,
+      z: enemySpawnEntry.startZ + row * formation.rowGap,
+      strafeOriginX: rowX,
+      shootDelayOffset: row * 0.12 + column * 0.04,
+    }
+  }
+
+  if (formation.type === 'line') {
+    return {
+      x: centeredX + (formation.offsetX ?? 0),
+      z: baseZ,
+      strafeOriginX: centeredX + (formation.offsetX ?? 0),
+      shootDelayOffset: index * 0.18,
+    }
+  }
+
+  return {
+    x: centeredX,
+    z: baseZ,
+    strafeOriginX: centeredX,
+    shootDelayOffset: index * 0.18,
+  }
 }
 
 function getFirstFinalBossTriggerTime(events: StageEvent[]) {
@@ -738,9 +840,8 @@ export function createBattleRuntime({
     spawnGroupCounts.set(wave.id, groupCount + 1)
     spawnGroups.set(groupId, group)
 
-    const halfSpread = ((wave.count - 1) * wave.spacing) / 2
     for (let index = 0; index < wave.count; index += 1) {
-      const spawnZ = enemySpawnEntry.startZ + index * enemySpawnEntry.rowOffset
+      const slot = getEnemyFormationSlot(wave, index)
       const entrySpeed = getEffectiveEnemyMovementSpeed(
         movement.type === 'flyThrough' ? movement.speed : movement.entrySpeed,
       )
@@ -753,15 +854,17 @@ export function createBattleRuntime({
         variant: wave.variant,
         atlasId: wave.atlasId,
         frameId: wave.frameId,
-        x: -halfSpread + index * wave.spacing,
-        z: spawnZ,
+        x: slot.x,
+        z: slot.z,
         hp: wave.hp,
         pattern: wave.pattern,
-        shootTimer: getEnemyEntryShootDelay(spawnZ, entrySpeed) + index * 0.18,
+        shootTimer: getEnemyEntryShootDelay(slot.z, entrySpeed) + slot.shootDelayOffset,
         drift: index * 0.7,
         travel: entrySpeed,
         movement,
-        strafeOriginX: -halfSpread + index * wave.spacing,
+        strafeOriginX: slot.strafeOriginX,
+        entryOriginX: slot.x,
+        entryStartZ: slot.z,
         scale: wave.scale,
         hitRadius: wave.hitRadius,
         hitFlashFor: 0,
@@ -1185,19 +1288,34 @@ export function createBattleRuntime({
       enemy.hitFlashFor = Math.max(0, enemy.hitFlashFor - delta)
 
       if (enemy.movement.type === 'enterAndStrafe') {
-        if (enemy.z > enemy.movement.holdZ) {
-          enemy.z = Math.max(
-            enemy.movement.holdZ,
-            enemy.z - getEffectiveEnemyMovementSpeed(enemy.movement.entrySpeed) * delta,
-          )
-        }
-        enemy.x =
+        const strafeX =
           enemy.strafeOriginX +
           Math.sin(
             elapsed * getEffectiveEnemyMovementSpeed(enemy.movement.strafeSpeed) +
               enemy.drift,
           ) *
             enemy.movement.strafeRange
+        if (enemy.z > enemy.movement.holdZ) {
+          enemy.z = Math.max(
+            enemy.movement.holdZ,
+            enemy.z - getEffectiveEnemyMovementSpeed(enemy.movement.entrySpeed) * delta,
+          )
+          if (enemy.z > enemy.movement.holdZ) {
+            const entryDistance = Math.max(0.001, enemy.entryStartZ - enemy.movement.holdZ)
+            const entryProgress = clamp(
+              (enemy.entryStartZ - enemy.z) / entryDistance,
+              0,
+              1,
+            )
+            enemy.x =
+              enemy.entryOriginX +
+              (enemy.strafeOriginX - enemy.entryOriginX) * entryProgress
+          } else {
+            enemy.x = strafeX
+          }
+        } else {
+          enemy.x = strafeX
+        }
       } else {
         enemy.z -= getEffectiveEnemyMovementSpeed(enemy.movement.speed) * delta
         const waveShift = elapsed * 1.8 * enemyMovementSpeedMultiplier + enemy.drift

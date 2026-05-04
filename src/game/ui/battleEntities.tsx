@@ -105,9 +105,11 @@ function getAtlasFrameUvForAtlas(frame: AtlasFrame, atlasId: EnemyAtlasId) {
 }
 
 export function getEnemyAtlasTextureUrl(atlasId: EnemyAtlasId) {
-  return atlasId === 'enemy-abyssal-biomech'
-    ? gameAssets.enemyAbyssalBiomechAtlasUrl
-    : gameAssets.enemyBrassCloudAtlasUrl
+  if (atlasId === 'enemy-abyssal-biomech') {
+    return gameAssets.enemyAbyssalBiomechAtlasUrl
+  }
+
+  return gameAssets.enemyBrassCloudAtlasUrl
 }
 
 function getActiveEnemyAtlasKey(enemies: readonly Pick<RenderEnemy, 'atlasId'>[]) {

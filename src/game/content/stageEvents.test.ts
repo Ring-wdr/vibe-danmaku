@@ -19,6 +19,7 @@ const fixtureWave = {
   spacing: 1,
   hp: 10,
   movement: { type: 'flyThrough', path: 'swoop-left', speed: 1 },
+  formation: { type: 'line', side: 'top' },
   resolution: { type: 'allInactive' },
   scale: 0.8,
   hitRadius: 0.33,

@@ -36,7 +36,6 @@ const stage3BossArmorTexturePaths = [
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-armor-texture.png'),
   path.join(process.cwd(), 'src/assets/generated/bosses/stage3-boss-armor-texture.webp'),
 ]
-
 async function getFrameAlphaBounds(filePath: string) {
   const image = sharp(filePath)
   const metadata = await image.metadata()
@@ -158,6 +157,7 @@ async function getTextureDetailStats(filePath: string) {
 
   const raw = await image.raw().toBuffer()
   let cyanAccent = 0
+  let blueAccent = 0
   let darkMetal = 0
   let contrastEdges = 0
 
@@ -170,6 +170,10 @@ async function getTextureDetailStats(filePath: string) {
 
       if (g > 120 && b > 120 && r < 80) {
         cyanAccent += 1
+      }
+
+      if (b > 120 && r < 95 && g < 150) {
+        blueAccent += 1
       }
 
       if (Math.max(r, g, b) < 70) {
@@ -186,6 +190,7 @@ async function getTextureDetailStats(filePath: string) {
 
   return {
     cyanAccentRatio: cyanAccent / area,
+    blueAccentRatio: blueAccent / area,
     darkMetalRatio: darkMetal / area,
     contrastEdgeRatio: contrastEdges / area,
   }
@@ -291,4 +296,5 @@ describe('gameAssets', () => {
       expect(stats.cyanAccentRatio).toBeGreaterThan(0.006)
     }
   })
+
 })

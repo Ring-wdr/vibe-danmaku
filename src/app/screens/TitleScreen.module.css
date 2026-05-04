@@ -100,6 +100,59 @@
   transform: translateY(-1px);
 }
 
+@media (max-height: 780px) {
+  .screen {
+    --thumb-zone-lift: 0px;
+    padding: 24px 18px 18px;
+    gap: 12px;
+  }
+
+  .heroCopy {
+    gap: 12px;
+  }
+
+  .title {
+    font-size: 2.85rem;
+  }
+
+  .copy {
+    line-height: 1.42;
+  }
+
+  .art {
+    margin-top: 0;
+    min-height: 0;
+    flex-basis: clamp(120px, 24dvh, 210px);
+  }
+
+  .portrait {
+    width: min(88%, 280px);
+  }
+
+  .crest {
+    display: none;
+  }
+
+  .actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 0;
+  }
+
+  .startButton {
+    grid-column: auto;
+  }
+
+  .startButton,
+  .secondaryButton {
+    min-height: 50px;
+    padding: 11px 8px;
+    border-radius: 18px;
+    font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+    line-height: 1.1;
+  }
+}
+
 @media (max-height: 620px) {
   .screen {
     --thumb-zone-lift: 0px;

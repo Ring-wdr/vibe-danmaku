@@ -18,6 +18,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-scout',
     count: 7,
     spacing: 0.86,
+    formation: { type: 'line', side: 'top' },
   },
   {
     id: 'wave-2',
@@ -26,6 +27,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-sentinel',
     count: 7,
     spacing: 0.82,
+    formation: { type: 'vee', side: 'top', depth: 0.22 },
   },
   {
     id: 'wave-3',
@@ -34,6 +36,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-lancer',
     count: 7,
     spacing: 0.86,
+    formation: { type: 'arc', side: 'top', depth: 0.08, bend: 0.18 },
   },
   {
     id: 'wave-4',
@@ -42,6 +45,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-splitter',
     count: 9,
     spacing: 0.7,
+    formation: { type: 'grid', side: 'top', columns: 3, rowGap: 0.24 },
   },
   {
     id: 'wave-5',
@@ -50,6 +54,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-mine-layer',
     count: 9,
     spacing: 0.68,
+    formation: { type: 'column', side: 'left', depth: 0.26 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.05, holdZ: 1.45, strafeSpeed: 0.65, strafeRange: 0.45 },
+    resolution: { type: 'timeout', seconds: 7, then: 'forceEscape' },
   },
   {
     id: 'wave-6',
@@ -58,6 +65,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-weaver',
     count: 9,
     spacing: 0.66,
+    formation: { type: 'vee', side: 'right', depth: 0.2 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.08, holdZ: 1.35, strafeSpeed: 0.72, strafeRange: 0.5 },
+    resolution: { type: 'timeout', seconds: 7, then: 'forceEscape' },
   },
   {
     id: 'wave-7',
@@ -66,6 +76,7 @@ const baseWavePlacements = [
     variant: 'brass-cloud-scout',
     count: 12,
     spacing: 0.52,
+    formation: { type: 'arc', side: 'top', depth: 0.1, bend: 0.16 },
     pattern: { count: 7, spread: 1.45 },
   },
   {
@@ -75,6 +86,9 @@ const baseWavePlacements = [
     variant: 'brass-cloud-weaver',
     count: 12,
     spacing: 0.5,
+    formation: { type: 'grid', side: 'right', columns: 4, rowGap: 0.22 },
+    movement: { type: 'enterAndStrafe', entrySpeed: 1.12, holdZ: 1.25, strafeSpeed: 0.84, strafeRange: 0.62 },
+    resolution: { type: 'timeout', seconds: 8, then: 'forceEscape' },
     pattern: { count: 8, interval: 1.05 },
   },
 ] as const
