@@ -9,9 +9,9 @@ const bossTuningByDifficulty: Record<
   Difficulty,
   { bulletCount: number; bulletSpeed: number; interval: number; rank: number }
 > = {
-  easy: { bulletCount: 1, bulletSpeed: 1, interval: 1, rank: 0.28 },
-  normal: { bulletCount: 1.08, bulletSpeed: 1.08, interval: 0.92, rank: 0.5 },
-  hard: { bulletCount: 1.2, bulletSpeed: 1.18, interval: 0.82, rank: 0.78 },
+  easy: { bulletCount: 0.74, bulletSpeed: 0.85, interval: 1.28, rank: 0.18 },
+  normal: { bulletCount: 0.94, bulletSpeed: 0.98, interval: 1.06, rank: 0.42 },
+  hard: { bulletCount: 1.12, bulletSpeed: 1.12, interval: 0.92, rank: 0.7 },
 }
 
 function isScriptedPattern(

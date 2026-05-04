@@ -196,35 +196,67 @@ describe('createStage2Definition', () => {
 
   it('raises classic counts and scripted ranks on hard difficulty', () => {
     const easy = createStage2Definition('easy')
+    const normal = createStage2Definition('normal')
     const hard = createStage2Definition('hard')
     const easyMidboss = getBossFromStage(easy, 'midboss')
+    const normalMidboss = getBossFromStage(normal, 'midboss')
     const hardMidboss = getBossFromStage(hard, 'midboss')
     const easyBoss = getBossFromStage(easy, 'final')
+    const normalBoss = getBossFromStage(normal, 'final')
     const hardBoss = getBossFromStage(hard, 'final')
 
     expect(hardMidboss.phases).toHaveLength(easyMidboss.phases.length)
     hardMidboss.phases.forEach((phase, index) => {
       const easyPattern = easyMidboss.phases[index]!.pattern
-      if (isClassicPattern(phase.pattern) && isClassicPattern(easyPattern)) {
-        expect(phase.pattern.count).toBeGreaterThan(easyPattern.count)
+      const normalPattern = normalMidboss.phases[index]!.pattern
+
+      if (isClassicPattern(phase.pattern)) {
+        if (!isClassicPattern(easyPattern) || !isClassicPattern(normalPattern)) {
+          throw new Error('expected matching classic midboss patterns')
+        }
+
+        expect(easyPattern.count).toBeLessThan(normalPattern.count)
+        expect(normalPattern.count).toBeLessThan(phase.pattern.count)
+        expect(easyPattern.speed).toBeLessThan(normalPattern.speed)
+        expect(normalPattern.speed).toBeLessThan(phase.pattern.speed)
+        expect(easyPattern.interval).toBeGreaterThan(normalPattern.interval)
+        expect(normalPattern.interval).toBeGreaterThan(phase.pattern.interval)
         return
       }
 
-      expect(isScriptedPattern(phase.pattern)).toBe(true)
-      expect(isScriptedPattern(easyPattern)).toBe(true)
-      expect((phase.pattern as BulletmlPatternConfig).rank).toBeGreaterThan(
-        (easyPattern as BulletmlPatternConfig).rank ?? 0,
-      )
+      if (!isScriptedPattern(easyPattern) || !isScriptedPattern(normalPattern)) {
+        throw new Error('expected matching BulletML midboss patterns')
+      }
+
+      expect([easyPattern.rank, normalPattern.rank, phase.pattern.rank]).toEqual([
+        0.18,
+        0.42,
+        0.7,
+      ])
+      expect(easyPattern.interval).toBeGreaterThan(normalPattern.interval)
+      expect(normalPattern.interval).toBeGreaterThan(phase.pattern.interval)
     })
 
     expect(hardBoss.phases).toHaveLength(easyBoss.phases.length)
     hardBoss.phases.forEach((phase, index) => {
       const easyPattern = easyBoss.phases[index]!.pattern
-      expect(isScriptedPattern(phase.pattern)).toBe(true)
-      expect(isScriptedPattern(easyPattern)).toBe(true)
-      expect((phase.pattern as BulletmlPatternConfig).rank).toBeGreaterThan(
-        (easyPattern as BulletmlPatternConfig).rank ?? 0,
-      )
+      const normalPattern = normalBoss.phases[index]!.pattern
+
+      if (
+        !isScriptedPattern(easyPattern) ||
+        !isScriptedPattern(normalPattern) ||
+        !isScriptedPattern(phase.pattern)
+      ) {
+        throw new Error('expected matching BulletML final boss patterns')
+      }
+
+      expect([easyPattern.rank, normalPattern.rank, phase.pattern.rank]).toEqual([
+        0.18,
+        0.42,
+        0.7,
+      ])
+      expect(easyPattern.interval).toBeGreaterThan(normalPattern.interval)
+      expect(normalPattern.interval).toBeGreaterThan(phase.pattern.interval)
     })
   })
 
@@ -233,7 +265,7 @@ describe('createStage2Definition', () => {
 
     expect(boss.phases.map((phase) => phase.pattern)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ engine: 'bulletml', rank: 0.5 }),
+        expect.objectContaining({ engine: 'bulletml', rank: 0.42 }),
       ]),
     )
     expect(boss.phases.every((phase) => isScriptedPattern(phase.pattern))).toBe(true)

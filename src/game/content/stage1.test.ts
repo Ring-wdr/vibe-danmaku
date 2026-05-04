@@ -81,10 +81,12 @@ describe('createStageDefinition', () => {
 
   it('keeps wave timing stable across difficulties while scaling bullet counts', () => {
     const easy = createStageDefinition('easy')
+    const normal = createStageDefinition('normal')
     const hard = createStageDefinition('hard')
     const easyWaves = getSpawnedWaves(easy)
     const hardWaves = getSpawnedWaves(hard)
     const easyBoss = getBossFromStage(easy, 'final')
+    const normalBoss = getBossFromStage(normal, 'final')
     const hardBoss = getBossFromStage(hard, 'final')
 
     expect(getSpawnWaveEvents(hard).map((event) => event.trigger)).toEqual(
@@ -97,14 +99,19 @@ describe('createStageDefinition', () => {
       expectClassicPattern(easyBoss.phases[1]!.pattern).count,
     )
     expect(easyBoss.phases.map((phase) => expectClassicPattern(phase.pattern).count)).toEqual([
+      6,
+      7,
+      9,
+    ])
+    expect(normalBoss.phases.map((phase) => expectClassicPattern(phase.pattern).count)).toEqual([
       8,
-      10,
-      12,
+      9,
+      11,
     ])
     expect(hardBoss.phases.map((phase) => expectClassicPattern(phase.pattern).count)).toEqual([
-      10,
-      12,
-      14,
+      9,
+      11,
+      13,
     ])
   })
 
