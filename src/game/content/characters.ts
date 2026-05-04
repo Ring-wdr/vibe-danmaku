@@ -14,6 +14,12 @@ export type PlayableCharacter = CharacterDefinition & {
   isFallback: boolean
 }
 
+export const screenMinusTenPercentMoveRadius = {
+  x: 4.14,
+  minZ: -3.14,
+  maxZ: 1.54,
+} as const
+
 export const lyraAerCharacter: PlayableCharacter = {
   id: 'lyra-aer',
   name: 'Lyra Aer',
@@ -22,11 +28,7 @@ export const lyraAerCharacter: PlayableCharacter = {
   portraitUrl: gameAssets.playerPortraitUrl,
   description: 'Balanced sortie pilot with steady movement, rapid aether fire, and reliable beam charge.',
   frameCount: 4,
-  moveRadius: {
-    x: 3.85,
-    minZ: -3.15,
-    maxZ: -0.45,
-  },
+  moveRadius: { ...screenMinusTenPercentMoveRadius },
   shot: {
     interval: 0.12,
     speed: 5.4,
@@ -49,11 +51,7 @@ export const vesperNoireCharacter: PlayableCharacter = {
   description:
     'Masked phantom thief with twin arcane panels, heavy burst volleys, and a bullet-clearing nova.',
   frameCount: 4,
-  moveRadius: {
-    x: 4.05,
-    minZ: -3.2,
-    maxZ: -0.35,
-  },
+  moveRadius: { ...screenMinusTenPercentMoveRadius },
   shot: {
     interval: 0.14,
     speed: 5.8,
@@ -105,11 +103,7 @@ export const reinaShiroganeCharacter: PlayableCharacter = {
   description:
     'Calm sword saint with a central flying blade shot and three orbiting swords that punish close enemies.',
   frameCount: 4,
-  moveRadius: {
-    x: 3.95,
-    minZ: -3.15,
-    maxZ: -0.4,
-  },
+  moveRadius: { ...screenMinusTenPercentMoveRadius },
   shot: {
     interval: 0.14,
     speed: 5.9,
@@ -177,11 +171,7 @@ export const astraVoltCharacter: PlayableCharacter = {
   description:
     'Fierce thunder caster with twin voltaic sigils, fast amber bolts, and a focused lightning lance.',
   frameCount: 4,
-  moveRadius: {
-    x: 4.18,
-    minZ: -3.28,
-    maxZ: -0.36,
-  },
+  moveRadius: { ...screenMinusTenPercentMoveRadius },
   shot: {
     interval: 0.105,
     speed: 6.25,

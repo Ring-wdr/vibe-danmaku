@@ -1,4 +1,6 @@
-import type { ArenaPoint } from '../types'
+import type { ArenaPoint, CharacterDefinition } from '../types'
+
+type MoveRadius = CharacterDefinition['moveRadius']
 
 export const battleDragInputConfig = {
   horizontalWorldSpan: 9.2,
@@ -99,5 +101,24 @@ export function createArenaPoint(
   return {
     x: (xRatio - 0.5) * battleDragInputConfig.horizontalWorldSpan,
     z: battleDragInputConfig.verticalWorldTop - yRatio * battleDragInputConfig.verticalWorldSpan,
+  }
+}
+
+function clampRatio(value: number) {
+  return Math.min(1, Math.max(0, value))
+}
+
+export function createMoveRadiusArenaPoint(
+  clientX: number,
+  clientY: number,
+  rect: DOMRect,
+  moveRadius: MoveRadius,
+): ArenaPoint {
+  const xRatio = clampRatio((clientX - rect.left) / rect.width)
+  const yRatio = clampRatio((clientY - rect.top) / rect.height)
+
+  return {
+    x: -moveRadius.x + xRatio * moveRadius.x * 2,
+    z: moveRadius.maxZ - yRatio * (moveRadius.maxZ - moveRadius.minZ),
   }
 }
