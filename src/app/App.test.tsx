@@ -243,6 +243,32 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
   })
 
+  it('disables drag sensitivity radios while position control is selected', () => {
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }))
+
+    const sensitivityRadios = ['1x', '2x', '3x'].map((name) =>
+      screen.getByRole('radio', { name }),
+    )
+
+    for (const radio of sensitivityRadios) {
+      expect(radio).toBeDisabled()
+    }
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
+
+    for (const radio of sensitivityRadios) {
+      expect(radio).not.toBeDisabled()
+    }
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Position' }))
+
+    for (const radio of sensitivityRadios) {
+      expect(radio).toBeDisabled()
+    }
+  })
+
   it('turns off the main soundtrack when BGM is disabled from settings', async () => {
     renderApp(<App />)
 

@@ -17,6 +17,7 @@ export function BattleSettingsForm({
   onCancel,
 }: BattleSettingsFormProps) {
   const [draftSettings, setDraftSettings] = useState<BattleSettings>(initialSettings)
+  const isPositionControl = draftSettings.controlMode === 'position'
 
   return (
     <form
@@ -86,6 +87,7 @@ export function BattleSettingsForm({
                 type="radio"
                 name="drag-sensitivity"
                 checked={draftSettings.dragSensitivity === sensitivity}
+                disabled={isPositionControl}
                 onChange={() =>
                   setDraftSettings((current) => ({
                     ...current,
