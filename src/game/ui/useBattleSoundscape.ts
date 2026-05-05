@@ -55,10 +55,21 @@ export function useBattleSoundscape(
   } = useSound(stageMusicUrl, stageMusicOptions)
   const contextRef = useRef<AudioContext | null>(null)
   const masterRef = useRef<GainNode | null>(null)
+  const stageMusicControlsRef = useRef({
+    play: playStageMusic,
+    pause: pauseStageMusic,
+    resume: resumeStageMusic,
+  })
   const stageMusicActiveRef = useRef(false)
   const stageMusicStartedRef = useRef(false)
   const lastCueRef = useRef(0)
   const lastShotBucketRef = useRef(0)
+
+  stageMusicControlsRef.current = {
+    play: playStageMusic,
+    pause: pauseStageMusic,
+    resume: resumeStageMusic,
+  }
 
   const ensureAudio = () => {
     if (typeof window === 'undefined') {
@@ -93,6 +104,8 @@ export function useBattleSoundscape(
   }
 
   useEffect(() => {
+    const stageMusic = stageMusicControlsRef.current
+
     if (active) {
       if (stageMusicActiveRef.current) {
         return
@@ -101,12 +114,12 @@ export function useBattleSoundscape(
       stageMusicActiveRef.current = true
 
       if (stageMusicStartedRef.current) {
-        resumeStageMusic()
+        stageMusic.resume()
         return
       }
 
       stageMusicStartedRef.current = true
-      void playStageMusic().catch(() => {
+      void stageMusic.play().catch(() => {
         stageMusicActiveRef.current = false
         stageMusicStartedRef.current = false
       })
@@ -114,18 +127,20 @@ export function useBattleSoundscape(
     }
 
     if (stageMusicActiveRef.current) {
-      pauseStageMusic()
+      stageMusic.pause()
       stageMusicActiveRef.current = false
     }
-  }, [active, pauseStageMusic, playStageMusic, resumeStageMusic])
+  }, [active, stageMusicUrl])
 
   useEffect(() => {
+    const stopCurrentStageMusic = stopStageMusic
+
     return () => {
       stageMusicActiveRef.current = false
       stageMusicStartedRef.current = false
-      stopStageMusic()
+      stopCurrentStageMusic()
     }
-  }, [stageMusicUrl, stopStageMusic])
+  }, [stageMusicUrl])
 
   useEffect(() => {
     const audio = ensureAudio()

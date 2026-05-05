@@ -153,4 +153,40 @@ describe('useBattleSoundscape', () => {
 
     expect(mockStop).toHaveBeenCalledTimes(1)
   })
+
+  it('does not start a second loop when the active battle rerenders after resume', () => {
+    mockUseSound.mockImplementation(() => ({
+      play: vi.fn(() => {
+        mockPlay()
+        return Promise.resolve()
+      }),
+      pause: vi.fn(() => mockPause()),
+      resume: vi.fn(),
+      stop: vi.fn(() => mockStop()),
+      isPlaying: false,
+      isLoaded: true,
+      checkPermission: vi.fn(),
+    }))
+
+    const { rerender } = renderHook(
+      ({ active, currentSnapshot }) => useBattleSoundscape(currentSnapshot, active, stage),
+      {
+        initialProps: { active: true, currentSnapshot: snapshot },
+      },
+    )
+
+    rerender({ active: false, currentSnapshot: snapshot })
+    rerender({ active: true, currentSnapshot: snapshot })
+    rerender({
+      active: true,
+      currentSnapshot: {
+        ...snapshot,
+        playerShots: snapshot.playerShots + 1,
+      },
+    })
+
+    expect(mockPlay).toHaveBeenCalledTimes(1)
+    expect(mockPause).toHaveBeenCalledTimes(1)
+    expect(mockStop).not.toHaveBeenCalled()
+  })
 })
