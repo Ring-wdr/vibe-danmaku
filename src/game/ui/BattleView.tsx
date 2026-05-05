@@ -189,7 +189,7 @@ function BattleViewRuntime({
   const [isPaused, setIsPaused] = useState(false)
   const { stopAudio, unlockAudio } = useBattleSoundscape(
     snapshot,
-    !isPaused && !exitingBattleRef.current,
+    settings.bgmEnabled && !isPaused && !exitingBattleRef.current,
     stage,
   )
 

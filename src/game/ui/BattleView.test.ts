@@ -554,6 +554,31 @@ describe('BattleView', () => {
     expect(mockUseBattleSoundscape).toHaveBeenCalledWith(mockSnapshot, true, stage)
   })
 
+  it('turns off the battle soundtrack when BGM is disabled from pause settings', async () => {
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(mockUseBattleSoundscape).toHaveBeenLastCalledWith(mockSnapshot, true, defaultStage)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
+    fireEvent.click(screen.getByRole('checkbox', { name: /bgm/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
+
+    await waitFor(() => {
+      expect(mockUseBattleSoundscape).toHaveBeenLastCalledWith(mockSnapshot, false, defaultStage)
+    })
+    expect(JSON.parse(window.localStorage.getItem('vibe-danmaku:battle-settings') ?? '{}')).toMatchObject({
+      bgmEnabled: false,
+    })
+  })
+
   it('renders score and combo above the stage status HUD', () => {
     render(
       createElement(BattleView, {

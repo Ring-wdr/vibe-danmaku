@@ -243,6 +243,21 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
   })
 
+  it('turns off the main soundtrack when BGM is disabled from settings', async () => {
+    renderApp(<App />)
+
+    expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /bgm/i }))
+    fireEvent.click(screen.getByRole('button', { name: /apply settings/i }))
+
+    expect(JSON.parse(window.localStorage.getItem(battleSettingsStorageKey) ?? '{}')).toMatchObject({
+      bgmEnabled: false,
+    })
+    await waitFor(() => expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(false))
+  })
+
   it('opens the leaderboard from the title screen', () => {
     renderApp(<App />)
 

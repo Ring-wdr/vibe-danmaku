@@ -18,6 +18,7 @@ import { saveLeaderboardEntry } from './leaderboardStorage'
 import { useMainSoundscape } from './useMainSoundscape'
 import styles from './App.module.css'
 import { resolveCharacterId } from '../game/content/characters'
+import { readBattleSettings, subscribeBattleSettings } from '../game/ui/battleSettingsStorage'
 
 type Viewport = {
   width: number
@@ -52,6 +53,7 @@ export function App({ initialViewport }: AppProps) {
   })
   const lastRecordedLeaderboardKeyRef = useRef<string | null>(null)
   const [viewport, setViewport] = useState(() => readViewport(initialViewport))
+  const [settings, setSettings] = useState(readBattleSettings)
   const [debugFlags] = useQueryStates({
     fastStage: parseAsBoolean.withDefault(false),
     invincible: parseAsBoolean.withDefault(false),
@@ -59,7 +61,13 @@ export function App({ initialViewport }: AppProps) {
   const isBattle = sessionSnapshot.matches('battle')
   const portraitOnly = viewport.width > viewport.height
 
-  useMainSoundscape(!isBattle)
+  useMainSoundscape(!isBattle && settings.bgmEnabled)
+
+  useEffect(() => {
+    return subscribeBattleSettings(() => {
+      setSettings(readBattleSettings())
+    })
+  }, [])
 
   useEffect(() => {
     if (initialViewport || typeof window === 'undefined') {

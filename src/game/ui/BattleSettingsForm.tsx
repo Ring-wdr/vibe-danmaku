@@ -91,6 +91,25 @@ export function BattleSettingsForm({ initialSettings, onApply, onCancel }: Battl
           ))}
         </div>
       </fieldset>
+      <fieldset className={styles.settingGroup}>
+        <legend>Audio</legend>
+        <div className={styles.optionStack}>
+          <label className={styles.option}>
+            <input
+              type="checkbox"
+              name="bgm-enabled"
+              checked={draftSettings.bgmEnabled}
+              onChange={(event) =>
+                setDraftSettings((current) => ({
+                  ...current,
+                  bgmEnabled: event.currentTarget.checked,
+                }))
+              }
+            />
+            <span>BGM</span>
+          </label>
+        </div>
+      </fieldset>
       <div className={styles.settingsActions}>
         {onCancel ? (
           <button type="button" className={styles.backButton} onClick={onCancel}>
