@@ -29,6 +29,7 @@ export function SettingsScreen({ sessionActorRef }: SettingsScreenProps) {
             setSettings(nextSettings)
             writeBattleSettings(nextSettings)
           }}
+          onSubmitApplied={() => sessionActorRef.send({ type: 'BACK' })}
           onCancel={() => sessionActorRef.send({ type: 'BACK' })}
         />
       </div>

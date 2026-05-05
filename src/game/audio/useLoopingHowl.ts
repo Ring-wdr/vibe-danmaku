@@ -12,7 +12,7 @@ export function useLoopingHowl(src: string, active: boolean, options: LoopingHow
   const howlRef = useRef<Howl | null>(null)
   const activeRef = useRef(false)
   const soundIdRef = useRef<number | null>(null)
-  const html5 = options.html5 ?? true
+  const html5 = options.html5 ?? false
   const inactiveBehavior = options.inactiveBehavior ?? 'pause'
 
   const stopAudio = () => {

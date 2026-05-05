@@ -14,12 +14,14 @@ const {
   mockBattleView,
   mockGetBattleAssetPreloadItems,
   mockUseMainSoundscape,
+  mockUnlockMainSoundscape,
   mockPreloadBattleAssets,
   mockPreloadBattleTextures,
 } = vi.hoisted(() => ({
   mockBattleView: vi.fn(),
   mockGetBattleAssetPreloadItems: vi.fn(),
-  mockUseMainSoundscape: vi.fn(),
+  mockUseMainSoundscape: vi.fn(() => ({ unlockAudio: mockUnlockMainSoundscape })),
+  mockUnlockMainSoundscape: vi.fn(() => Promise.resolve()),
   mockPreloadBattleAssets: vi.fn(),
   mockPreloadBattleTextures: vi.fn(),
 }))
@@ -135,6 +137,7 @@ describe('App', () => {
     window.localStorage.clear()
     mockBattleView.mockClear()
     mockUseMainSoundscape.mockClear()
+    mockUnlockMainSoundscape.mockClear()
     mockGetBattleAssetPreloadItems.mockReset()
     mockPreloadBattleAssets.mockReset()
     mockPreloadBattleTextures.mockReset()
@@ -222,7 +225,7 @@ describe('App', () => {
     )
   })
 
-  it('opens settings from the title screen and persists control settings', () => {
+  it('opens settings from the title screen, persists control settings, and returns to title on apply', () => {
     renderApp(<App />)
 
     fireEvent.click(screen.getByRole('button', { name: /settings/i }))
@@ -238,9 +241,15 @@ describe('App', () => {
       dragSensitivity: 2,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /back/i }))
-
     expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
+  })
+
+  it('unlocks the main soundtrack on the first title interaction', () => {
+    renderApp(<App />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /settings/i }))
+
+    expect(mockUnlockMainSoundscape).toHaveBeenCalledTimes(1)
   })
 
   it('disables drag sensitivity radios while position control is selected', () => {

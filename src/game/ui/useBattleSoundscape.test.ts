@@ -165,7 +165,7 @@ describe('useBattleSoundscape', () => {
       src: [expect.stringContaining('/src/assets/generated/sound/stage_2.mp3')],
       loop: true,
       volume: 0.42,
-      html5: true,
+      html5: false,
     })
     expect(stageHowl?.play).toHaveBeenCalledTimes(1)
 

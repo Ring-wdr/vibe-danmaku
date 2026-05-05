@@ -67,7 +67,7 @@ describe('useMainSoundscape', () => {
       src: [expect.stringContaining('/src/assets/generated/sound/main_theme.mp3')],
       loop: true,
       volume: 0.36,
-      html5: true,
+      html5: false,
     })
     expect(mainHowl?.play).toHaveBeenCalledTimes(1)
 

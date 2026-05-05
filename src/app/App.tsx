@@ -61,7 +61,7 @@ export function App({ initialViewport }: AppProps) {
   const isBattle = sessionSnapshot.matches('battle')
   const portraitOnly = viewport.width > viewport.height
 
-  useMainSoundscape(!isBattle && settings.bgmEnabled)
+  const { unlockAudio: unlockMainSoundscape } = useMainSoundscape(!isBattle && settings.bgmEnabled)
 
   useEffect(() => {
     return subscribeBattleSettings(() => {
@@ -128,7 +128,12 @@ export function App({ initialViewport }: AppProps) {
   }
 
   return (
-    <main className={styles.shell}>
+    <main
+      className={styles.shell}
+      onPointerDownCapture={() => {
+        void unlockMainSoundscape()
+      }}
+    >
       <div className={styles.backdrop} />
       <section className={styles.phoneFrame}>
         {portraitOnly ? <OrientationLock /> : null}
