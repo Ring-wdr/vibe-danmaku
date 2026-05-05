@@ -13,11 +13,13 @@ const leaderboardStorageKey = 'vibe-danmaku.leaderboard.v1'
 const {
   mockBattleView,
   mockGetBattleAssetPreloadItems,
+  mockUseMainSoundscape,
   mockPreloadBattleAssets,
   mockPreloadBattleTextures,
 } = vi.hoisted(() => ({
   mockBattleView: vi.fn(),
   mockGetBattleAssetPreloadItems: vi.fn(),
+  mockUseMainSoundscape: vi.fn(),
   mockPreloadBattleAssets: vi.fn(),
   mockPreloadBattleTextures: vi.fn(),
 }))
@@ -118,6 +120,10 @@ vi.mock('./battleAssetPreload', () => ({
   preloadBattleTextures: mockPreloadBattleTextures,
 }))
 
+vi.mock('./useMainSoundscape', () => ({
+  useMainSoundscape: mockUseMainSoundscape,
+}))
+
 function renderApp(ui: ReactElement) {
   return render(ui, {
     wrapper: withNuqsTestingAdapter({ searchParams: '' }),
@@ -128,6 +134,7 @@ describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mockBattleView.mockClear()
+    mockUseMainSoundscape.mockClear()
     mockGetBattleAssetPreloadItems.mockReset()
     mockPreloadBattleAssets.mockReset()
     mockPreloadBattleTextures.mockReset()
@@ -182,6 +189,25 @@ describe('App', () => {
     expect(screen.getByText(/전투 중 화면 어디든 드래그해 회피하세요/)).toBeInTheDocument()
   })
 
+  it('branches the main soundtrack only by whether the app is in battle', async () => {
+    renderApp(<App />)
+
+    expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    fireEvent.click(screen.getByRole('button', { name: /normal/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }))
+
+    await screen.findByLabelText(/mock stage 1 battle/i)
+
+    await waitFor(() => expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(false))
+
+    fireEvent.click(screen.getByRole('button', { name: /exit battle/i }))
+
+    await waitFor(() => expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(true))
+  })
+
   it('uses the last saved character id as the default selection', () => {
     window.localStorage.setItem(lastCharacterStorageKey, 'lyra-aer')
 
@@ -215,6 +241,46 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /back/i }))
 
     expect(screen.getByRole('button', { name: /start sortie/i })).toBeInTheDocument()
+  })
+
+  it('disables drag sensitivity radios while position control is selected', () => {
+    renderApp(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }))
+
+    const sensitivityRadios = ['1x', '2x', '3x'].map((name) =>
+      screen.getByRole('radio', { name }),
+    )
+
+    for (const radio of sensitivityRadios) {
+      expect(radio).toBeDisabled()
+    }
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Drag' }))
+
+    for (const radio of sensitivityRadios) {
+      expect(radio).not.toBeDisabled()
+    }
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Position' }))
+
+    for (const radio of sensitivityRadios) {
+      expect(radio).toBeDisabled()
+    }
+  })
+
+  it('turns off the main soundtrack when BGM is disabled from settings', async () => {
+    renderApp(<App />)
+
+    expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /settings/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /bgm/i }))
+
+    expect(JSON.parse(window.localStorage.getItem(battleSettingsStorageKey) ?? '{}')).toMatchObject({
+      bgmEnabled: false,
+    })
+    await waitFor(() => expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(false))
   })
 
   it('opens the leaderboard from the title screen', () => {

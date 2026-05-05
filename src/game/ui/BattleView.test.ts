@@ -35,9 +35,19 @@ vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }))
 
-const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted(() => ({
+const {
+  mockActivateSpecial,
+  mockSnapshot,
+  mockStopAudio,
+  mockUnlockAudio,
+  mockUseBattleRuntime,
+  mockUseBattleSoundscape,
+} = vi.hoisted(() => ({
   mockActivateSpecial: vi.fn(),
+  mockStopAudio: vi.fn(),
+  mockUnlockAudio: vi.fn(() => Promise.resolve()),
   mockUseBattleRuntime: vi.fn(),
+  mockUseBattleSoundscape: vi.fn(),
   mockSnapshot: {
     difficulty: 'normal',
     stageName: 'Test Stage',
@@ -122,6 +132,10 @@ const defaultBossFsm = {
 
 vi.mock('./useBattleRuntime', () => ({
   useBattleRuntime: mockUseBattleRuntime,
+}))
+
+vi.mock('./useBattleSoundscape', () => ({
+  useBattleSoundscape: mockUseBattleSoundscape,
 }))
 
 const controlRect = {
@@ -475,7 +489,14 @@ describe('BattleView', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mockActivateSpecial.mockClear()
+    mockStopAudio.mockClear()
+    mockUnlockAudio.mockClear()
     mockUseBattleRuntime.mockReset()
+    mockUseBattleSoundscape.mockReset()
+    mockUseBattleSoundscape.mockReturnValue({
+      stopAudio: mockStopAudio,
+      unlockAudio: mockUnlockAudio,
+    })
     mockSnapshot.boss = null
     mockSnapshot.bosses = []
     mockSnapshot.result = null
@@ -516,6 +537,46 @@ describe('BattleView', () => {
     expect(screen.getByTestId('battle-controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
     expect(container.querySelector('.battle-stage-plane')).not.toBeInTheDocument()
+  })
+
+  it('connects the battle soundscape to the selected stage', () => {
+    const stage = createStage2Definition('normal')
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(mockUseBattleSoundscape).toHaveBeenCalledWith(mockSnapshot, true, stage)
+  })
+
+  it('turns off the battle soundtrack when BGM is disabled from pause settings', async () => {
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage: defaultStage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(mockUseBattleSoundscape).toHaveBeenLastCalledWith(mockSnapshot, true, defaultStage)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
+    await screen.findByRole('dialog', { name: 'Battle paused' })
+    fireEvent.click(screen.getByRole('checkbox', { name: /bgm/i }))
+
+    await waitFor(() => {
+      expect(mockUseBattleSoundscape).toHaveBeenLastCalledWith(mockSnapshot, false, defaultStage)
+    })
+    expect(screen.getByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
+    expect(JSON.parse(window.localStorage.getItem('vibe-danmaku:battle-settings') ?? '{}')).toMatchObject({
+      bgmEnabled: false,
+    })
   })
 
   it('renders score and combo above the stage status HUD', () => {
@@ -962,6 +1023,8 @@ describe('BattleView', () => {
       expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
     })
     expect(onExitBattle).toHaveBeenCalledTimes(1)
+    expect(mockStopAudio).toHaveBeenCalledTimes(1)
+    expect(mockUseBattleSoundscape).toHaveBeenLastCalledWith(mockSnapshot, false, defaultStage)
     expect(window.localStorage.length).toBe(0)
   })
 

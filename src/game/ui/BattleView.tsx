@@ -17,6 +17,7 @@ import {
   createMoveRadiusArenaPoint,
 } from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
+import { useBattleSoundscape } from './useBattleSoundscape'
 import styles from './BattleView.module.css'
 import type { ArenaPoint, CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
 
@@ -91,11 +92,13 @@ function PauseSettingsOverlay({
   initialSettings,
   close,
   unmount,
+  onApplySettings,
   onExitBattle,
 }: {
   initialSettings: BattleSettings
   close: (settings: BattleSettings | null) => void
   unmount: () => void
+  onApplySettings: (settings: BattleSettings) => void
   onExitBattle: () => void
 }) {
   return (
@@ -105,8 +108,9 @@ function PauseSettingsOverlay({
         <h1 className={styles.pauseTitle}>Battle paused</h1>
         <BattleSettingsForm
           initialSettings={initialSettings}
-          onApply={(settings) => {
-            close(settings)
+          onApply={onApplySettings}
+          onSubmitApplied={() => {
+            close(null)
             unmount()
           }}
         />
@@ -176,6 +180,7 @@ function BattleViewRuntime({
     onComplete,
   })
   const overlayRef = useRef<HTMLDivElement | null>(null)
+  const exitingBattleRef = useRef(false)
   const isPausedRef = useRef(false)
   const [settings, setSettings] = useState<BattleSettings>(readBattleSettings)
   const pauseOverlayOpenRef = useRef(false)
@@ -185,6 +190,11 @@ function BattleViewRuntime({
     originPlayer: ArenaPoint
   } | null>(null)
   const [isPaused, setIsPaused] = useState(false)
+  const { stopAudio, unlockAudio } = useBattleSoundscape(
+    snapshot,
+    settings.bgmEnabled && !isPaused && !exitingBattleRef.current,
+    stage,
+  )
 
   const openPauseSettings = useEffectEvent(async () => {
     if (pauseOverlayOpenRef.current) {
@@ -197,21 +207,22 @@ function BattleViewRuntime({
     runtime.endDrag()
 
     try {
-      const selectedSettings = await overlay.openAsync<BattleSettings | null>(
-        ({ close, unmount }) => (
-          <PauseSettingsOverlay
-            initialSettings={settings}
-            close={close}
-            unmount={unmount}
-            onExitBattle={() => onExitBattle?.()}
-          />
-        ),
-      )
-
-      if (selectedSettings) {
-        setSettings(selectedSettings)
-        writeBattleSettings(selectedSettings)
-      }
+      await overlay.openAsync<BattleSettings | null>(({ close, unmount }) => (
+        <PauseSettingsOverlay
+          initialSettings={settings}
+          close={close}
+          unmount={unmount}
+          onApplySettings={(nextSettings) => {
+            setSettings(nextSettings)
+            writeBattleSettings(nextSettings)
+          }}
+          onExitBattle={() => {
+            exitingBattleRef.current = true
+            stopAudio()
+            onExitBattle?.()
+          }}
+        />
+      ))
     } finally {
       pauseOverlayOpenRef.current = false
       isPausedRef.current = false
@@ -288,6 +299,8 @@ function BattleViewRuntime({
         className={styles.controls}
         data-testid="battle-controls"
         onPointerDown={(event) => {
+          void unlockAudio()
+
           if (isPausedRef.current) {
             return
           }

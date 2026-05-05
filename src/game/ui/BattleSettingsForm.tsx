@@ -6,11 +6,18 @@ import type { BattleSettings, DragSensitivity } from './battleSettingsStorage'
 type BattleSettingsFormProps = {
   initialSettings: BattleSettings
   onApply: (settings: BattleSettings) => void
+  onSubmitApplied?: () => void
   onCancel?: () => void
 }
 
-export function BattleSettingsForm({ initialSettings, onApply, onCancel }: BattleSettingsFormProps) {
+export function BattleSettingsForm({
+  initialSettings,
+  onApply,
+  onSubmitApplied,
+  onCancel,
+}: BattleSettingsFormProps) {
   const [draftSettings, setDraftSettings] = useState<BattleSettings>(initialSettings)
+  const isPositionControl = draftSettings.controlMode === 'position'
 
   return (
     <form
@@ -18,6 +25,7 @@ export function BattleSettingsForm({ initialSettings, onApply, onCancel }: Battl
       onSubmit={(event) => {
         event.preventDefault()
         onApply(draftSettings)
+        onSubmitApplied?.()
       }}
     >
       <fieldset className={styles.settingGroup}>
@@ -79,6 +87,7 @@ export function BattleSettingsForm({ initialSettings, onApply, onCancel }: Battl
                 type="radio"
                 name="drag-sensitivity"
                 checked={draftSettings.dragSensitivity === sensitivity}
+                disabled={isPositionControl}
                 onChange={() =>
                   setDraftSettings((current) => ({
                     ...current,
@@ -89,6 +98,28 @@ export function BattleSettingsForm({ initialSettings, onApply, onCancel }: Battl
               <span>{sensitivity}x</span>
             </label>
           ))}
+        </div>
+      </fieldset>
+      <fieldset className={styles.settingGroup}>
+        <legend>Audio</legend>
+        <div className={styles.optionStack}>
+          <label className={styles.option}>
+            <input
+              type="checkbox"
+              name="bgm-enabled"
+              checked={draftSettings.bgmEnabled}
+              onChange={(event) => {
+                const bgmEnabled = event.currentTarget.checked
+                const nextSettings = {
+                  ...draftSettings,
+                  bgmEnabled,
+                }
+                setDraftSettings(nextSettings)
+                onApply(nextSettings)
+              }}
+            />
+            <span>BGM</span>
+          </label>
         </div>
       </fieldset>
       <div className={styles.settingsActions}>

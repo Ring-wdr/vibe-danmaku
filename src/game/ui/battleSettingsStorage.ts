@@ -6,6 +6,7 @@ export type BattleSettings = {
   frameRate: FrameRate
   controlMode: ControlMode
   dragSensitivity: DragSensitivity
+  bgmEnabled: boolean
 }
 
 export const battleSettingsStorageKey = 'vibe-danmaku:battle-settings'
@@ -14,7 +15,10 @@ export const defaultBattleSettings: BattleSettings = {
   frameRate: 60,
   controlMode: 'position',
   dragSensitivity: 1,
+  bgmEnabled: true,
 }
+
+const battleSettingsListeners = new Set<() => void>()
 
 function getBrowserStorage() {
   if (typeof window === 'undefined') {
@@ -28,20 +32,30 @@ function getBrowserStorage() {
   }
 }
 
-function isBattleSettings(value: unknown): value is BattleSettings {
+function normalizeBattleSettings(value: unknown): BattleSettings | null {
   if (!value || typeof value !== 'object') {
-    return false
+    return null
   }
 
   const candidate = value as Partial<BattleSettings>
 
-  return (
-    (candidate.frameRate === 30 || candidate.frameRate === 60) &&
-    (candidate.controlMode === 'position' || candidate.controlMode === 'drag') &&
-    (candidate.dragSensitivity === 1 ||
-      candidate.dragSensitivity === 2 ||
-      candidate.dragSensitivity === 3)
-  )
+  if (
+    (candidate.frameRate !== 30 && candidate.frameRate !== 60) ||
+    (candidate.controlMode !== 'position' && candidate.controlMode !== 'drag') ||
+    (candidate.dragSensitivity !== 1 &&
+      candidate.dragSensitivity !== 2 &&
+      candidate.dragSensitivity !== 3) ||
+    (candidate.bgmEnabled !== undefined && typeof candidate.bgmEnabled !== 'boolean')
+  ) {
+    return null
+  }
+
+  return {
+    frameRate: candidate.frameRate,
+    controlMode: candidate.controlMode,
+    dragSensitivity: candidate.dragSensitivity,
+    bgmEnabled: candidate.bgmEnabled ?? true,
+  }
 }
 
 export function readBattleSettings(storage = getBrowserStorage()): BattleSettings {
@@ -56,7 +70,7 @@ export function readBattleSettings(storage = getBrowserStorage()): BattleSetting
     }
 
     const parsed = JSON.parse(raw) as unknown
-    return isBattleSettings(parsed) ? parsed : defaultBattleSettings
+    return normalizeBattleSettings(parsed) ?? defaultBattleSettings
   } catch {
     return defaultBattleSettings
   }
@@ -72,7 +86,17 @@ export function writeBattleSettings(
 
   try {
     storage.setItem(battleSettingsStorageKey, JSON.stringify(settings))
+    for (const listener of battleSettingsListeners) {
+      listener()
+    }
   } catch {
     // Storage can be unavailable. The current battle still keeps settings in memory.
+  }
+}
+
+export function subscribeBattleSettings(listener: () => void) {
+  battleSettingsListeners.add(listener)
+  return () => {
+    battleSettingsListeners.delete(listener)
   }
 }
