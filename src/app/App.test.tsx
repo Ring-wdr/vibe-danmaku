@@ -13,11 +13,13 @@ const leaderboardStorageKey = 'vibe-danmaku.leaderboard.v1'
 const {
   mockBattleView,
   mockGetBattleAssetPreloadItems,
+  mockUseMainSoundscape,
   mockPreloadBattleAssets,
   mockPreloadBattleTextures,
 } = vi.hoisted(() => ({
   mockBattleView: vi.fn(),
   mockGetBattleAssetPreloadItems: vi.fn(),
+  mockUseMainSoundscape: vi.fn(),
   mockPreloadBattleAssets: vi.fn(),
   mockPreloadBattleTextures: vi.fn(),
 }))
@@ -118,6 +120,10 @@ vi.mock('./battleAssetPreload', () => ({
   preloadBattleTextures: mockPreloadBattleTextures,
 }))
 
+vi.mock('./useMainSoundscape', () => ({
+  useMainSoundscape: mockUseMainSoundscape,
+}))
+
 function renderApp(ui: ReactElement) {
   return render(ui, {
     wrapper: withNuqsTestingAdapter({ searchParams: '' }),
@@ -128,6 +134,7 @@ describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mockBattleView.mockClear()
+    mockUseMainSoundscape.mockClear()
     mockGetBattleAssetPreloadItems.mockReset()
     mockPreloadBattleAssets.mockReset()
     mockPreloadBattleTextures.mockReset()
@@ -180,6 +187,25 @@ describe('App', () => {
     expect(screen.getByText(/difficulty hard engaged/i)).toBeInTheDocument()
     expect(screen.getByText(/pilot lyra aer/i)).toBeInTheDocument()
     expect(screen.getByText(/전투 중 화면 어디든 드래그해 회피하세요/)).toBeInTheDocument()
+  })
+
+  it('branches the main soundtrack only by whether the app is in battle', async () => {
+    renderApp(<App />)
+
+    expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /start sortie/i }))
+    fireEvent.click(screen.getByRole('button', { name: /normal/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deploy lyra aer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }))
+
+    await screen.findByLabelText(/mock stage 1 battle/i)
+
+    await waitFor(() => expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(false))
+
+    fireEvent.click(screen.getByRole('button', { name: /exit battle/i }))
+
+    await waitFor(() => expect(mockUseMainSoundscape).toHaveBeenLastCalledWith(true))
   })
 
   it('uses the last saved character id as the default selection', () => {

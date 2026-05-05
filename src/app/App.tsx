@@ -15,6 +15,7 @@ import { StageIntroScreen } from './screens/StageIntroScreen'
 import { TitleScreen } from './screens/TitleScreen'
 import { cx } from './classNames'
 import { saveLeaderboardEntry } from './leaderboardStorage'
+import { useMainSoundscape } from './useMainSoundscape'
 import styles from './App.module.css'
 import { resolveCharacterId } from '../game/content/characters'
 
@@ -55,7 +56,10 @@ export function App({ initialViewport }: AppProps) {
     fastStage: parseAsBoolean.withDefault(false),
     invincible: parseAsBoolean.withDefault(false),
   })
+  const isBattle = sessionSnapshot.matches('battle')
   const portraitOnly = viewport.width > viewport.height
+
+  useMainSoundscape(!isBattle)
 
   useEffect(() => {
     if (initialViewport || typeof window === 'undefined') {
@@ -105,7 +109,7 @@ export function App({ initialViewport }: AppProps) {
     lastRecordedLeaderboardKeyRef.current = leaderboardKey
   }, [sessionSnapshot.context])
 
-  if (sessionSnapshot.matches('battleLoading') || sessionSnapshot.matches('battle')) {
+  if (sessionSnapshot.matches('battleLoading') || isBattle) {
     return (
       <BattlePhase
         sessionActorRef={sessionActorRef}
