@@ -177,6 +177,7 @@ function BattleViewRuntime({
     onComplete,
   })
   const overlayRef = useRef<HTMLDivElement | null>(null)
+  const exitingBattleRef = useRef(false)
   const isPausedRef = useRef(false)
   const [settings, setSettings] = useState<BattleSettings>(readBattleSettings)
   const pauseOverlayOpenRef = useRef(false)
@@ -186,7 +187,11 @@ function BattleViewRuntime({
     originPlayer: ArenaPoint
   } | null>(null)
   const [isPaused, setIsPaused] = useState(false)
-  const { unlockAudio } = useBattleSoundscape(snapshot, !isPaused, stage)
+  const { stopAudio, unlockAudio } = useBattleSoundscape(
+    snapshot,
+    !isPaused && !exitingBattleRef.current,
+    stage,
+  )
 
   const openPauseSettings = useEffectEvent(async () => {
     if (pauseOverlayOpenRef.current) {
@@ -201,12 +206,16 @@ function BattleViewRuntime({
     try {
       const selectedSettings = await overlay.openAsync<BattleSettings | null>(
         ({ close, unmount }) => (
-          <PauseSettingsOverlay
-            initialSettings={settings}
-            close={close}
-            unmount={unmount}
-            onExitBattle={() => onExitBattle?.()}
-          />
+            <PauseSettingsOverlay
+              initialSettings={settings}
+              close={close}
+              unmount={unmount}
+              onExitBattle={() => {
+                exitingBattleRef.current = true
+                stopAudio()
+                onExitBattle?.()
+              }}
+            />
         ),
       )
 

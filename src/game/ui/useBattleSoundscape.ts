@@ -59,6 +59,7 @@ export function useBattleSoundscape(
     play: playStageMusic,
     pause: pauseStageMusic,
     resume: resumeStageMusic,
+    stop: stopStageMusic,
   })
   const stageMusicActiveRef = useRef(false)
   const stageMusicStartedRef = useRef(false)
@@ -69,6 +70,7 @@ export function useBattleSoundscape(
     play: playStageMusic,
     pause: pauseStageMusic,
     resume: resumeStageMusic,
+    stop: stopStageMusic,
   }
 
   const ensureAudio = () => {
@@ -103,6 +105,12 @@ export function useBattleSoundscape(
     }
   }
 
+  const stopAudio = () => {
+    stageMusicActiveRef.current = false
+    stageMusicStartedRef.current = false
+    stageMusicControlsRef.current.stop()
+  }
+
   useEffect(() => {
     const stageMusic = stageMusicControlsRef.current
 
@@ -133,12 +141,8 @@ export function useBattleSoundscape(
   }, [active, stageMusicUrl])
 
   useEffect(() => {
-    const stopCurrentStageMusic = stopStageMusic
-
     return () => {
-      stageMusicActiveRef.current = false
-      stageMusicStartedRef.current = false
-      stopCurrentStageMusic()
+      stopAudio()
     }
   }, [stageMusicUrl])
 
@@ -176,5 +180,5 @@ export function useBattleSoundscape(
     }
   }, [snapshot.playerShots])
 
-  return { unlockAudio }
+  return { stopAudio, unlockAudio }
 }

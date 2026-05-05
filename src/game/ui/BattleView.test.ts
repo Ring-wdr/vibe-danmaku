@@ -38,11 +38,13 @@ vi.mock('@react-three/fiber', () => ({
 const {
   mockActivateSpecial,
   mockSnapshot,
+  mockStopAudio,
   mockUnlockAudio,
   mockUseBattleRuntime,
   mockUseBattleSoundscape,
 } = vi.hoisted(() => ({
   mockActivateSpecial: vi.fn(),
+  mockStopAudio: vi.fn(),
   mockUnlockAudio: vi.fn(() => Promise.resolve()),
   mockUseBattleRuntime: vi.fn(),
   mockUseBattleSoundscape: vi.fn(),
@@ -487,10 +489,14 @@ describe('BattleView', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mockActivateSpecial.mockClear()
+    mockStopAudio.mockClear()
     mockUnlockAudio.mockClear()
     mockUseBattleRuntime.mockReset()
     mockUseBattleSoundscape.mockReset()
-    mockUseBattleSoundscape.mockReturnValue({ unlockAudio: mockUnlockAudio })
+    mockUseBattleSoundscape.mockReturnValue({
+      stopAudio: mockStopAudio,
+      unlockAudio: mockUnlockAudio,
+    })
     mockSnapshot.boss = null
     mockSnapshot.bosses = []
     mockSnapshot.result = null
@@ -992,6 +998,8 @@ describe('BattleView', () => {
       expect(screen.queryByRole('dialog', { name: 'Battle paused' })).not.toBeInTheDocument()
     })
     expect(onExitBattle).toHaveBeenCalledTimes(1)
+    expect(mockStopAudio).toHaveBeenCalledTimes(1)
+    expect(mockUseBattleSoundscape).toHaveBeenLastCalledWith(mockSnapshot, false, defaultStage)
     expect(window.localStorage.length).toBe(0)
   })
 

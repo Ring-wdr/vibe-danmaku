@@ -189,4 +189,14 @@ describe('useBattleSoundscape', () => {
     expect(mockPause).toHaveBeenCalledTimes(1)
     expect(mockStop).not.toHaveBeenCalled()
   })
+
+  it('can explicitly stop stage music before the battle view unmounts', () => {
+    const { result } = renderHook(() => useBattleSoundscape(snapshot, true, stage))
+
+    act(() => {
+      result.current.stopAudio()
+    })
+
+    expect(mockStop).toHaveBeenCalledTimes(1)
+  })
 })
