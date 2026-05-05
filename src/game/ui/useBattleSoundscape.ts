@@ -1,6 +1,22 @@
 import { useEffect, useRef } from 'react'
+import { useSound } from 'react-sounds'
 
-import type { BattleSnapshot } from '../types'
+import stage1MusicUrl from '../../assets/generated/sound/stage_1.mp3'
+import stage2MusicUrl from '../../assets/generated/sound/stage_2.mp3'
+import stage3MusicUrl from '../../assets/generated/sound/stage_3.mp3'
+import type { BattleSnapshot, StageDefinition } from '../types'
+
+const stageMusicUrls = {
+  1: stage1MusicUrl,
+  2: stage2MusicUrl,
+  3: stage3MusicUrl,
+} as const
+
+const stageMusicOptions = { loop: true, volume: 0.42 } as const
+
+export function getStageMusicUrl(stageNumber: number) {
+  return stageMusicUrls[stageNumber as keyof typeof stageMusicUrls]
+}
 
 function playTone(
   context: AudioContext,
@@ -25,10 +41,22 @@ function playTone(
   oscillator.stop(now + duration + 0.04)
 }
 
-export function useBattleSoundscape(snapshot: BattleSnapshot, active: boolean) {
+export function useBattleSoundscape(
+  snapshot: BattleSnapshot,
+  active: boolean,
+  stage: StageDefinition,
+) {
+  const stageMusicUrl = getStageMusicUrl(stage.stageNumber) ?? stage1MusicUrl
+  const {
+    play: playStageMusic,
+    pause: pauseStageMusic,
+    resume: resumeStageMusic,
+    stop: stopStageMusic,
+  } = useSound(stageMusicUrl, stageMusicOptions)
   const contextRef = useRef<AudioContext | null>(null)
   const masterRef = useRef<GainNode | null>(null)
-  const loopRef = useRef<number | null>(null)
+  const stageMusicActiveRef = useRef(false)
+  const stageMusicStartedRef = useRef(false)
   const lastCueRef = useRef(0)
   const lastShotBucketRef = useRef(0)
 
@@ -65,39 +93,39 @@ export function useBattleSoundscape(snapshot: BattleSnapshot, active: boolean) {
   }
 
   useEffect(() => {
-    if (!active) {
-      if (loopRef.current !== null) {
-        window.clearInterval(loopRef.current)
-        loopRef.current = null
-      }
-      return
-    }
-
-    const audio = ensureAudio()
-    if (!audio || loopRef.current !== null) {
-      return
-    }
-
-    const notes = [196, 247, 294, 370]
-    let noteIndex = 0
-    loopRef.current = window.setInterval(() => {
-      if (audio.context.state !== 'running') {
+    if (active) {
+      if (stageMusicActiveRef.current) {
         return
       }
 
-      const root = notes[noteIndex % notes.length] ?? 196
-      playTone(audio.context, 'triangle', root, 0.44, 0.015, audio.master)
-      playTone(audio.context, 'sine', root * 2, 0.26, 0.01, audio.master)
-      noteIndex += 1
-    }, 620)
+      stageMusicActiveRef.current = true
 
-    return () => {
-      if (loopRef.current !== null) {
-        window.clearInterval(loopRef.current)
-        loopRef.current = null
+      if (stageMusicStartedRef.current) {
+        resumeStageMusic()
+        return
       }
+
+      stageMusicStartedRef.current = true
+      void playStageMusic().catch(() => {
+        stageMusicActiveRef.current = false
+        stageMusicStartedRef.current = false
+      })
+      return
     }
-  }, [active])
+
+    if (stageMusicActiveRef.current) {
+      pauseStageMusic()
+      stageMusicActiveRef.current = false
+    }
+  }, [active, pauseStageMusic, playStageMusic, resumeStageMusic])
+
+  useEffect(() => {
+    return () => {
+      stageMusicActiveRef.current = false
+      stageMusicStartedRef.current = false
+      stopStageMusic()
+    }
+  }, [stageMusicUrl, stopStageMusic])
 
   useEffect(() => {
     const audio = ensureAudio()

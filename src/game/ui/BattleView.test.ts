@@ -35,9 +35,17 @@ vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }))
 
-const { mockActivateSpecial, mockSnapshot, mockUseBattleRuntime } = vi.hoisted(() => ({
+const {
+  mockActivateSpecial,
+  mockSnapshot,
+  mockUnlockAudio,
+  mockUseBattleRuntime,
+  mockUseBattleSoundscape,
+} = vi.hoisted(() => ({
   mockActivateSpecial: vi.fn(),
+  mockUnlockAudio: vi.fn(() => Promise.resolve()),
   mockUseBattleRuntime: vi.fn(),
+  mockUseBattleSoundscape: vi.fn(),
   mockSnapshot: {
     difficulty: 'normal',
     stageName: 'Test Stage',
@@ -122,6 +130,10 @@ const defaultBossFsm = {
 
 vi.mock('./useBattleRuntime', () => ({
   useBattleRuntime: mockUseBattleRuntime,
+}))
+
+vi.mock('./useBattleSoundscape', () => ({
+  useBattleSoundscape: mockUseBattleSoundscape,
 }))
 
 const controlRect = {
@@ -475,7 +487,10 @@ describe('BattleView', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mockActivateSpecial.mockClear()
+    mockUnlockAudio.mockClear()
     mockUseBattleRuntime.mockReset()
+    mockUseBattleSoundscape.mockReset()
+    mockUseBattleSoundscape.mockReturnValue({ unlockAudio: mockUnlockAudio })
     mockSnapshot.boss = null
     mockSnapshot.bosses = []
     mockSnapshot.result = null
@@ -516,6 +531,21 @@ describe('BattleView', () => {
     expect(screen.getByTestId('battle-controls')).toBeInTheDocument()
     expect(container.querySelector('.battle-entities')).not.toBeInTheDocument()
     expect(container.querySelector('.battle-stage-plane')).not.toBeInTheDocument()
+  })
+
+  it('connects the battle soundscape to the selected stage', () => {
+    const stage = createStage2Definition('normal')
+
+    render(
+      createElement(BattleView, {
+        difficulty: 'normal',
+        stage,
+        character: lyraAerCharacter,
+        onComplete: vi.fn(),
+      }),
+    )
+
+    expect(mockUseBattleSoundscape).toHaveBeenCalledWith(mockSnapshot, true, stage)
   })
 
   it('renders score and combo above the stage status HUD', () => {

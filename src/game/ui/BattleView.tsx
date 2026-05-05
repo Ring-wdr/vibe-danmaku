@@ -17,6 +17,7 @@ import {
   createMoveRadiusArenaPoint,
 } from './battleViewMath'
 import { useBattleRuntime } from './useBattleRuntime'
+import { useBattleSoundscape } from './useBattleSoundscape'
 import styles from './BattleView.module.css'
 import type { ArenaPoint, CharacterDefinition, Difficulty, RunResult, StageDefinition } from '../types'
 
@@ -185,6 +186,7 @@ function BattleViewRuntime({
     originPlayer: ArenaPoint
   } | null>(null)
   const [isPaused, setIsPaused] = useState(false)
+  const { unlockAudio } = useBattleSoundscape(snapshot, !isPaused, stage)
 
   const openPauseSettings = useEffectEvent(async () => {
     if (pauseOverlayOpenRef.current) {
@@ -288,6 +290,8 @@ function BattleViewRuntime({
         className={styles.controls}
         data-testid="battle-controls"
         onPointerDown={(event) => {
+          void unlockAudio()
+
           if (isPausedRef.current) {
             return
           }

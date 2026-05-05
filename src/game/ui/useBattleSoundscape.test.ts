@@ -1,8 +1,19 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useBattleSoundscape } from './useBattleSoundscape'
-import type { BattleSnapshot } from '../types'
+import { getStageMusicUrl, useBattleSoundscape } from './useBattleSoundscape'
+import type { BattleSnapshot, StageDefinition } from '../types'
+
+const { mockPause, mockPlay, mockStop, mockUseSound } = vi.hoisted(() => ({
+  mockPause: vi.fn(),
+  mockPlay: vi.fn(() => Promise.resolve()),
+  mockStop: vi.fn(),
+  mockUseSound: vi.fn(),
+}))
+
+vi.mock('react-sounds', () => ({
+  useSound: mockUseSound,
+}))
 
 const snapshot: BattleSnapshot = {
   difficulty: 'normal',
@@ -39,6 +50,24 @@ const snapshot: BattleSnapshot = {
   result: null,
 }
 
+const stage: StageDefinition = {
+  id: 'test-stage',
+  stageNumber: 2,
+  backgroundTheme: 'burning-ruins',
+  name: 'Test Stage',
+  lore: 'A test stage.',
+  duration: 90,
+  events: [],
+}
+
+describe('getStageMusicUrl', () => {
+  it('maps authored battle stages to generated mp3 tracks', () => {
+    expect(getStageMusicUrl(1)).toContain('/src/assets/generated/sound/stage_1.mp3')
+    expect(getStageMusicUrl(2)).toContain('/src/assets/generated/sound/stage_2.mp3')
+    expect(getStageMusicUrl(3)).toContain('/src/assets/generated/sound/stage_3.mp3')
+  })
+})
+
 describe('useBattleSoundscape', () => {
   const createdGains: Array<{ gain: { value: number }; connect: ReturnType<typeof vi.fn> }> = []
   let originalAudioContext: typeof window.AudioContext | undefined
@@ -46,6 +75,19 @@ describe('useBattleSoundscape', () => {
   beforeEach(() => {
     originalAudioContext = window.AudioContext
     createdGains.length = 0
+    mockPause.mockClear()
+    mockPlay.mockClear()
+    mockStop.mockClear()
+    mockUseSound.mockReset()
+    mockUseSound.mockReturnValue({
+      play: mockPlay,
+      pause: mockPause,
+      stop: mockStop,
+      resume: vi.fn(),
+      isPlaying: false,
+      isLoaded: true,
+      checkPermission: vi.fn(),
+    })
 
     class MockAudioContext {
       currentTime = 0
@@ -80,12 +122,35 @@ describe('useBattleSoundscape', () => {
   })
 
   it('uses an audible default master gain for the generated demo mix', async () => {
-    const { result } = renderHook(() => useBattleSoundscape(snapshot, false))
+    const { result } = renderHook(() => useBattleSoundscape(snapshot, false, stage))
 
     await act(async () => {
       await result.current.unlockAudio()
     })
 
     expect(createdGains[0]?.gain.value).toBeCloseTo(1)
+  })
+
+  it('plays the current stage track while battle is active and pauses it with the battle', async () => {
+    const { rerender, unmount } = renderHook(
+      ({ active }) => useBattleSoundscape(snapshot, active, stage),
+      {
+        initialProps: { active: true },
+      },
+    )
+
+    expect(mockUseSound).toHaveBeenCalledWith(
+      expect.stringContaining('/src/assets/generated/sound/stage_2.mp3'),
+      { loop: true, volume: 0.42 },
+    )
+    expect(mockPlay).toHaveBeenCalledTimes(1)
+
+    rerender({ active: false })
+
+    expect(mockPause).toHaveBeenCalledTimes(1)
+
+    unmount()
+
+    expect(mockStop).toHaveBeenCalledTimes(1)
   })
 })
