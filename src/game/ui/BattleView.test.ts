@@ -569,11 +569,11 @@ describe('BattleView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pause battle' }))
     await screen.findByRole('dialog', { name: 'Battle paused' })
     fireEvent.click(screen.getByRole('checkbox', { name: /bgm/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Apply settings' }))
 
     await waitFor(() => {
       expect(mockUseBattleSoundscape).toHaveBeenLastCalledWith(mockSnapshot, false, defaultStage)
     })
+    expect(screen.getByRole('dialog', { name: 'Battle paused' })).toBeInTheDocument()
     expect(JSON.parse(window.localStorage.getItem('vibe-danmaku:battle-settings') ?? '{}')).toMatchObject({
       bgmEnabled: false,
     })

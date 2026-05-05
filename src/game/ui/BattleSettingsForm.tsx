@@ -6,10 +6,16 @@ import type { BattleSettings, DragSensitivity } from './battleSettingsStorage'
 type BattleSettingsFormProps = {
   initialSettings: BattleSettings
   onApply: (settings: BattleSettings) => void
+  onSubmitApplied?: () => void
   onCancel?: () => void
 }
 
-export function BattleSettingsForm({ initialSettings, onApply, onCancel }: BattleSettingsFormProps) {
+export function BattleSettingsForm({
+  initialSettings,
+  onApply,
+  onSubmitApplied,
+  onCancel,
+}: BattleSettingsFormProps) {
   const [draftSettings, setDraftSettings] = useState<BattleSettings>(initialSettings)
 
   return (
@@ -18,6 +24,7 @@ export function BattleSettingsForm({ initialSettings, onApply, onCancel }: Battl
       onSubmit={(event) => {
         event.preventDefault()
         onApply(draftSettings)
+        onSubmitApplied?.()
       }}
     >
       <fieldset className={styles.settingGroup}>
@@ -101,10 +108,12 @@ export function BattleSettingsForm({ initialSettings, onApply, onCancel }: Battl
               checked={draftSettings.bgmEnabled}
               onChange={(event) => {
                 const bgmEnabled = event.currentTarget.checked
-                setDraftSettings((current) => ({
-                  ...current,
+                const nextSettings = {
+                  ...draftSettings,
                   bgmEnabled,
-                }))
+                }
+                setDraftSettings(nextSettings)
+                onApply(nextSettings)
               }}
             />
             <span>BGM</span>

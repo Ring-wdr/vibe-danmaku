@@ -250,7 +250,6 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /settings/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /bgm/i }))
-    fireEvent.click(screen.getByRole('button', { name: /apply settings/i }))
 
     expect(JSON.parse(window.localStorage.getItem(battleSettingsStorageKey) ?? '{}')).toMatchObject({
       bgmEnabled: false,

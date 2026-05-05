@@ -56,7 +56,7 @@ describe('useMainSoundscape', () => {
     howlInstances.length = 0
   })
 
-  it('plays the main theme on non-battle screens and pauses it during battle', () => {
+  it('plays the main theme on non-battle screens and stops it during battle', () => {
     const { rerender, unmount } = renderHook(({ active }) => useMainSoundscape(active), {
       initialProps: { active: true },
     })
@@ -73,12 +73,18 @@ describe('useMainSoundscape', () => {
 
     rerender({ active: false })
 
-    expect(mainHowl?.pause).toHaveBeenCalledTimes(1)
-    expect(mainHowl?.pause).toHaveBeenCalledWith(77)
+    expect(mainHowl?.pause).not.toHaveBeenCalled()
+    expect(mainHowl?.stop).toHaveBeenCalledTimes(1)
+    expect(mainHowl?.stop).toHaveBeenCalledWith(77)
+
+    rerender({ active: true })
+
+    expect(mainHowl?.play).toHaveBeenCalledTimes(2)
+    expect(mainHowl?.play).toHaveBeenLastCalledWith()
 
     unmount()
 
-    expect(mainHowl?.stop).toHaveBeenCalledTimes(1)
+    expect(mainHowl?.stop).toHaveBeenCalledTimes(2)
     expect(mainHowl?.unload).toHaveBeenCalledTimes(1)
   })
 })

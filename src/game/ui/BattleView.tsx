@@ -92,11 +92,13 @@ function PauseSettingsOverlay({
   initialSettings,
   close,
   unmount,
+  onApplySettings,
   onExitBattle,
 }: {
   initialSettings: BattleSettings
   close: (settings: BattleSettings | null) => void
   unmount: () => void
+  onApplySettings: (settings: BattleSettings) => void
   onExitBattle: () => void
 }) {
   return (
@@ -106,8 +108,9 @@ function PauseSettingsOverlay({
         <h1 className={styles.pauseTitle}>Battle paused</h1>
         <BattleSettingsForm
           initialSettings={initialSettings}
-          onApply={(settings) => {
-            close(settings)
+          onApply={onApplySettings}
+          onSubmitApplied={() => {
+            close(null)
             unmount()
           }}
         />
@@ -204,25 +207,22 @@ function BattleViewRuntime({
     runtime.endDrag()
 
     try {
-      const selectedSettings = await overlay.openAsync<BattleSettings | null>(
-        ({ close, unmount }) => (
-            <PauseSettingsOverlay
-              initialSettings={settings}
-              close={close}
-              unmount={unmount}
-              onExitBattle={() => {
-                exitingBattleRef.current = true
-                stopAudio()
-                onExitBattle?.()
-              }}
-            />
-        ),
-      )
-
-      if (selectedSettings) {
-        setSettings(selectedSettings)
-        writeBattleSettings(selectedSettings)
-      }
+      await overlay.openAsync<BattleSettings | null>(({ close, unmount }) => (
+        <PauseSettingsOverlay
+          initialSettings={settings}
+          close={close}
+          unmount={unmount}
+          onApplySettings={(nextSettings) => {
+            setSettings(nextSettings)
+            writeBattleSettings(nextSettings)
+          }}
+          onExitBattle={() => {
+            exitingBattleRef.current = true
+            stopAudio()
+            onExitBattle?.()
+          }}
+        />
+      ))
     } finally {
       pauseOverlayOpenRef.current = false
       isPausedRef.current = false

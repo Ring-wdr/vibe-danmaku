@@ -5,6 +5,7 @@ type LoopingHowlOptions = {
   loop: boolean
   volume: number
   html5?: boolean
+  inactiveBehavior?: 'pause' | 'stop'
 }
 
 export function useLoopingHowl(src: string, active: boolean, options: LoopingHowlOptions) {
@@ -12,6 +13,7 @@ export function useLoopingHowl(src: string, active: boolean, options: LoopingHow
   const activeRef = useRef(false)
   const soundIdRef = useRef<number | null>(null)
   const html5 = options.html5 ?? true
+  const inactiveBehavior = options.inactiveBehavior ?? 'pause'
 
   const stopAudio = () => {
     activeRef.current = false
@@ -81,6 +83,11 @@ export function useLoopingHowl(src: string, active: boolean, options: LoopingHow
     }
 
     if (activeRef.current) {
+      if (inactiveBehavior === 'stop') {
+        stopAudio()
+        return
+      }
+
       if (soundIdRef.current !== null) {
         howl.pause(soundIdRef.current)
       } else {
@@ -88,7 +95,7 @@ export function useLoopingHowl(src: string, active: boolean, options: LoopingHow
       }
       activeRef.current = false
     }
-  }, [active, src])
+  }, [active, inactiveBehavior, src])
 
   return { stopAudio, unlockAudio }
 }
