@@ -99,12 +99,13 @@ export function BattleSettingsForm({ initialSettings, onApply, onCancel }: Battl
               type="checkbox"
               name="bgm-enabled"
               checked={draftSettings.bgmEnabled}
-              onChange={(event) =>
+              onChange={(event) => {
+                const bgmEnabled = event.currentTarget.checked
                 setDraftSettings((current) => ({
                   ...current,
-                  bgmEnabled: event.currentTarget.checked,
+                  bgmEnabled,
                 }))
-              }
+              }}
             />
             <span>BGM</span>
           </label>
