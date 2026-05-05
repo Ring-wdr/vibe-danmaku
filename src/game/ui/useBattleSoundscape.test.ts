@@ -4,15 +4,47 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getStageMusicUrl, useBattleSoundscape } from './useBattleSoundscape'
 import type { BattleSnapshot, StageDefinition } from '../types'
 
-const { mockPause, mockPlay, mockStop, mockUseSound } = vi.hoisted(() => ({
-  mockPause: vi.fn(),
-  mockPlay: vi.fn(() => Promise.resolve()),
-  mockStop: vi.fn(),
-  mockUseSound: vi.fn(),
-}))
+const { howlInstances, MockHowl } = vi.hoisted(() => {
+  class MockHowl {
+    options: {
+      src: string[]
+      loop: boolean
+      volume: number
+      html5: boolean
+    }
+    play = vi.fn((id?: number) => {
+      void id
+      return 42
+    })
+    pause = vi.fn(() => this)
+    stop = vi.fn(() => this)
+    unload = vi.fn(() => null)
+    playing = vi.fn(() => false)
 
-vi.mock('react-sounds', () => ({
-  useSound: mockUseSound,
+    constructor(options: {
+      src: string[]
+      loop: boolean
+      volume: number
+      html5: boolean
+    }) {
+      this.options = options
+      howlInstances.push(this)
+    }
+  }
+
+  const howlInstances: MockHowl[] = []
+
+  return { howlInstances, MockHowl }
+})
+
+vi.mock('howler', () => ({
+  Howl: MockHowl,
+  Howler: {
+    ctx: {
+      state: 'running',
+      resume: vi.fn(() => Promise.resolve()),
+    },
+  },
 }))
 
 const snapshot: BattleSnapshot = {
@@ -75,19 +107,7 @@ describe('useBattleSoundscape', () => {
   beforeEach(() => {
     originalAudioContext = window.AudioContext
     createdGains.length = 0
-    mockPause.mockClear()
-    mockPlay.mockClear()
-    mockStop.mockClear()
-    mockUseSound.mockReset()
-    mockUseSound.mockReturnValue({
-      play: mockPlay,
-      pause: mockPause,
-      stop: mockStop,
-      resume: vi.fn(),
-      isPlaying: false,
-      isLoaded: true,
-      checkPermission: vi.fn(),
-    })
+    howlInstances.length = 0
 
     class MockAudioContext {
       currentTime = 0
@@ -139,35 +159,28 @@ describe('useBattleSoundscape', () => {
       },
     )
 
-    expect(mockUseSound).toHaveBeenCalledWith(
-      expect.stringContaining('/src/assets/generated/sound/stage_2.mp3'),
-      { loop: true, volume: 0.42 },
-    )
-    expect(mockPlay).toHaveBeenCalledTimes(1)
+    const [stageHowl] = howlInstances
+
+    expect(stageHowl?.options).toEqual({
+      src: [expect.stringContaining('/src/assets/generated/sound/stage_2.mp3')],
+      loop: true,
+      volume: 0.42,
+      html5: true,
+    })
+    expect(stageHowl?.play).toHaveBeenCalledTimes(1)
 
     rerender({ active: false })
 
-    expect(mockPause).toHaveBeenCalledTimes(1)
+    expect(stageHowl?.pause).toHaveBeenCalledTimes(1)
+    expect(stageHowl?.pause).toHaveBeenCalledWith(42)
 
     unmount()
 
-    expect(mockStop).toHaveBeenCalledTimes(1)
+    expect(stageHowl?.stop).toHaveBeenCalledTimes(1)
+    expect(stageHowl?.unload).toHaveBeenCalledTimes(1)
   })
 
   it('does not start a second loop when the active battle rerenders after resume', () => {
-    mockUseSound.mockImplementation(() => ({
-      play: vi.fn(() => {
-        mockPlay()
-        return Promise.resolve()
-      }),
-      pause: vi.fn(() => mockPause()),
-      resume: vi.fn(),
-      stop: vi.fn(() => mockStop()),
-      isPlaying: false,
-      isLoaded: true,
-      checkPermission: vi.fn(),
-    }))
-
     const { rerender } = renderHook(
       ({ active, currentSnapshot }) => useBattleSoundscape(currentSnapshot, active, stage),
       {
@@ -185,18 +198,23 @@ describe('useBattleSoundscape', () => {
       },
     })
 
-    expect(mockPlay).toHaveBeenCalledTimes(1)
-    expect(mockPause).toHaveBeenCalledTimes(1)
-    expect(mockStop).not.toHaveBeenCalled()
+    const [stageHowl] = howlInstances
+    const newLoopStarts = stageHowl?.play.mock.calls.filter(([id]) => id === undefined)
+
+    expect(newLoopStarts).toHaveLength(1)
+    expect(stageHowl?.play).toHaveBeenLastCalledWith(42)
+    expect(stageHowl?.pause).toHaveBeenCalledTimes(1)
+    expect(stageHowl?.stop).not.toHaveBeenCalled()
   })
 
   it('can explicitly stop stage music before the battle view unmounts', () => {
     const { result } = renderHook(() => useBattleSoundscape(snapshot, true, stage))
+    const [stageHowl] = howlInstances
 
     act(() => {
       result.current.stopAudio()
     })
 
-    expect(mockStop).toHaveBeenCalledTimes(1)
+    expect(stageHowl?.stop).toHaveBeenCalledTimes(1)
   })
 })

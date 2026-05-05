@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useSound } from 'react-sounds'
+import { Howl, Howler } from 'howler'
 
 import stage1MusicUrl from '../../assets/generated/sound/stage_1.mp3'
 import stage2MusicUrl from '../../assets/generated/sound/stage_2.mp3'
@@ -47,31 +47,13 @@ export function useBattleSoundscape(
   stage: StageDefinition,
 ) {
   const stageMusicUrl = getStageMusicUrl(stage.stageNumber) ?? stage1MusicUrl
-  const {
-    play: playStageMusic,
-    pause: pauseStageMusic,
-    resume: resumeStageMusic,
-    stop: stopStageMusic,
-  } = useSound(stageMusicUrl, stageMusicOptions)
   const contextRef = useRef<AudioContext | null>(null)
   const masterRef = useRef<GainNode | null>(null)
-  const stageMusicControlsRef = useRef({
-    play: playStageMusic,
-    pause: pauseStageMusic,
-    resume: resumeStageMusic,
-    stop: stopStageMusic,
-  })
+  const stageHowlRef = useRef<Howl | null>(null)
   const stageMusicActiveRef = useRef(false)
-  const stageMusicStartedRef = useRef(false)
+  const stageMusicIdRef = useRef<number | null>(null)
   const lastCueRef = useRef(0)
   const lastShotBucketRef = useRef(0)
-
-  stageMusicControlsRef.current = {
-    play: playStageMusic,
-    pause: pauseStageMusic,
-    resume: resumeStageMusic,
-    stop: stopStageMusic,
-  }
 
   const ensureAudio = () => {
     if (typeof window === 'undefined') {
@@ -103,16 +85,56 @@ export function useBattleSoundscape(
     if (audio.context.state === 'suspended') {
       await audio.context.resume()
     }
+
+    if (Howler.ctx?.state === 'suspended') {
+      await Howler.ctx.resume()
+    }
   }
 
   const stopAudio = () => {
     stageMusicActiveRef.current = false
-    stageMusicStartedRef.current = false
-    stageMusicControlsRef.current.stop()
+    const howl = stageHowlRef.current
+    if (!howl) {
+      return
+    }
+
+    if (stageMusicIdRef.current !== null) {
+      howl.stop(stageMusicIdRef.current)
+      stageMusicIdRef.current = null
+      return
+    }
+
+    howl.stop()
   }
 
   useEffect(() => {
-    const stageMusic = stageMusicControlsRef.current
+    const stageHowl = new Howl({
+      src: [stageMusicUrl],
+      loop: stageMusicOptions.loop,
+      volume: stageMusicOptions.volume,
+      html5: true,
+    })
+
+    stageHowlRef.current = stageHowl
+    stageMusicActiveRef.current = false
+    stageMusicIdRef.current = null
+
+    return () => {
+      stageHowl.stop()
+      stageHowl.unload()
+      if (stageHowlRef.current === stageHowl) {
+        stageHowlRef.current = null
+        stageMusicActiveRef.current = false
+        stageMusicIdRef.current = null
+      }
+    }
+  }, [stageMusicUrl])
+
+  useEffect(() => {
+    const stageHowl = stageHowlRef.current
+    if (!stageHowl) {
+      return
+    }
 
     if (active) {
       if (stageMusicActiveRef.current) {
@@ -121,30 +143,24 @@ export function useBattleSoundscape(
 
       stageMusicActiveRef.current = true
 
-      if (stageMusicStartedRef.current) {
-        stageMusic.resume()
+      if (stageMusicIdRef.current !== null) {
+        stageHowl.play(stageMusicIdRef.current)
         return
       }
 
-      stageMusicStartedRef.current = true
-      void stageMusic.play().catch(() => {
-        stageMusicActiveRef.current = false
-        stageMusicStartedRef.current = false
-      })
+      stageMusicIdRef.current = stageHowl.play()
       return
     }
 
     if (stageMusicActiveRef.current) {
-      stageMusic.pause()
+      if (stageMusicIdRef.current !== null) {
+        stageHowl.pause(stageMusicIdRef.current)
+      } else {
+        stageHowl.pause()
+      }
       stageMusicActiveRef.current = false
     }
   }, [active, stageMusicUrl])
-
-  useEffect(() => {
-    return () => {
-      stopAudio()
-    }
-  }, [stageMusicUrl])
 
   useEffect(() => {
     const audio = ensureAudio()
